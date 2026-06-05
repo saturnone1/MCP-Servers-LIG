@@ -17,3 +17,5 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legacy SSE at `http://localhost:8080/sse`. Trusted-local images enable document creation, batch edits, render/export, and raw OfficeCLI calls by default.
+
+The `extract_text` tool reads modern Office files through OfficeCLI and legacy `.doc` files through `antiword`.
