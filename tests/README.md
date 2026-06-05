@@ -1,6 +1,6 @@
 # MCP Smoke Tests
 
-This folder contains smoke tests for the six Docker MCP servers.
+This folder contains smoke tests for the Docker MCP servers.
 
 ## Run
 
@@ -8,7 +8,7 @@ This folder contains smoke tests for the six Docker MCP servers.
 .\tests\mcp-smoke.ps1
 ```
 
-The script builds images, restarts the six containers, verifies `/healthz`, verifies legacy SSE at `/sse`, lists MCP tools over Streamable HTTP, and calls one representative tool per server.
+The script builds images, restarts the containers, verifies `/healthz`, verifies legacy SSE at `/sse`, lists MCP tools over Streamable HTTP, and calls one representative tool per server.
 
 ## Host Path Mapping
 
@@ -25,6 +25,8 @@ MCP_PATH_MAPPINGS=C:\Users\taewon\Desktop\가상화=/virtualization
 ```
 
 That lets clients pass the original Windows path while the server transparently calls the mounted Linux path.
+
+The HWP smoke test reads an actual `.hwp` file from that folder when present and creates a small `.hwpx` fixture under `tests/fixtures`.
 
 ## MSSQL
 
