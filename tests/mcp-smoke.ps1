@@ -1,5 +1,7 @@
 param(
     [string]$Workspace = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
+    [string]$HostDriveRoot = 'C:\',
+    [string]$HostDriveMount = '/host/c',
     [string]$VirtualizationHostPath = 'C:\Users\taewon\Desktop\가상화',
     [string]$MssqlConnectionString = '',
     [switch]$SkipBuild,
@@ -19,7 +21,10 @@ $servers = @(
     @{ Name = 'mcp-shell'; Port = 8083; Tool = 'run_command'; Args = @{ command = 'pwd'; args = @(); workingDirectory = 'C:\Users\taewon\source\repos\mcp_servers'; timeoutMs = 10000 } },
     @{ Name = 'mcp-dotnet'; Port = 8084; Tool = 'sdk_info'; Args = @{} },
     @{ Name = 'mcp-mssql'; Port = 8085; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } },
-    @{ Name = 'mcp-hwp'; Port = 8086; Tool = 'extract_text'; Args = @{ path = $hwpPath; maxChars = 4000 }; ExtraCalls = @(@{ Tool = 'extract_text'; Args = @{ path = $hwpxFixturePath; maxChars = 4000 } }) }
+    @{ Name = 'mcp-hwp'; Port = 8086; Tool = 'extract_text'; Args = @{ path = $hwpPath; maxChars = 4000 }; ExtraCalls = @(
+        @{ Tool = 'extract_text'; Args = @{ path = $hwpxFixturePath; maxChars = 4000 } },
+        @{ Tool = 'convert'; Args = @{ path = $hwpPath; outputDirectory = '/tmp/hwp-output'; format = 'txt' } }
+    ) }
 )
 
 function Write-Step([string]$Message) {
@@ -97,6 +102,10 @@ function Restart-Containers {
     foreach ($server in $servers) {
         $args = @('run', '-d', '--name', $server.Name, '-p', "$($server.Port):8080", '-v', "${Workspace}:/workspace")
         $pathMappings = @("${Workspace}=/workspace")
+        if (Test-Path -LiteralPath $HostDriveRoot) {
+            $args += @('-v', "$($HostDriveRoot):$HostDriveMount")
+            $pathMappings += "$HostDriveRoot=$HostDriveMount"
+        }
         if (Test-Path -LiteralPath $VirtualizationHostPath) {
             $args += @('-v', "${VirtualizationHostPath}:/virtualization")
             $pathMappings += "${VirtualizationHostPath}=/virtualization"
@@ -114,7 +123,7 @@ function New-HwpxFixture {
     $fixtureDir = Split-Path -Parent $hwpxFixturePath
     New-Item -ItemType Directory -Force -Path $fixtureDir | Out-Null
     if (Test-Path -LiteralPath $hwpxFixturePath) {
-        Remove-Item -LiteralPath $hwpxFixturePath -Force
+        return
     }
 
     $tempDir = Join-Path $fixtureDir ('hwpx-' + [guid]::NewGuid().ToString('N'))

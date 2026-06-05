@@ -51,18 +51,26 @@ foreach ($server in $servers) {
 
 이 스크립트는 이미지를 빌드하고 컨테이너를 재시작한 뒤 `/healthz`, SSE, MCP tool 목록, 대표 tool 호출을 확인합니다. `MSSQL_CONNECTION_STRING`이 없으면 MSSQL 서버 기동과 tool discovery만 확인하고 실제 SQL 호출은 건너뜁니다.
 
+smoke 호출 없이 7개 서버만 모두 실행하려면 다음 스크립트를 사용합니다.
+
+```powershell
+.\scripts\run-all.ps1
+```
+
+기본값으로 저장소는 `/workspace`, Windows `C:\` 드라이브는 `/host/c`에 마운트하고 `MCP_PATH_MAPPINGS=C:\=/host/c`를 설정합니다. 그래서 MCP 클라이언트가 `C:\Users\taewon\Desktop\넥스원\2024 분산스위치 논문.hwp` 같은 일반 Windows 경로를 그대로 넘겨도 컨테이너 내부 경로로 변환됩니다.
+
 ## Windows 경로 매핑
 
-Linux 컨테이너 안에서 MCP 클라이언트가 넘긴 Windows 호스트 경로를 쓰려면 `MCP_PATH_MAPPINGS`를 지정합니다.
+Linux 컨테이너 안에서 MCP 클라이언트가 넘긴 Windows 호스트 경로를 쓰려면 해당 호스트 폴더를 Docker로 마운트하고 `MCP_PATH_MAPPINGS`에 등록해야 합니다.
 
 ```powershell
 docker run --rm -p 8081:8080 `
-  -v C:\Users\taewon\Desktop\가상화:/virtualization `
-  -e "MCP_PATH_MAPPINGS=C:\Users\taewon\Desktop\가상화=/virtualization" `
+  -v C:\:/host/c `
+  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
   local/mcp-filesystem
 ```
 
-같은 방식의 경로 매핑은 Office, filesystem, Git, shell, .NET, HWP처럼 파일 경로를 받는 서버에서 지원합니다.
+같은 방식의 경로 매핑은 Office, filesystem, Git, shell, .NET, HWP처럼 파일 경로를 받는 서버에서 지원합니다. `MCP_ALLOWED_DIRS=/`는 컨테이너 내부 파일시스템을 여는 설정이지, Docker에 마운트하지 않은 호스트 폴더까지 자동으로 보이게 하지는 않습니다.
 
 ## 서버별 문서
 
