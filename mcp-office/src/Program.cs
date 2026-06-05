@@ -1,0 +1,147 @@
+using ModelContextProtocol.Server;
+using System.ComponentModel;
+using System.Diagnostics;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080");
+#pragma warning disable MCP9004
+builder.Services.AddMcpServer()
+    .WithHttpTransport(options => options.EnableLegacySse = true)
+    .WithTools<OfficeTools>();
+#pragma warning restore MCP9004
+
+var app = builder.Build();
+app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", server = "mcp-office" }));
+app.MapMcp("/mcp");
+app.MapMcp("");
+app.Run();
+
+public sealed class OfficeTools
+{
+    [McpServerTool(ReadOnly = true)]
+    [Description("Return officecli --version.")]
+    public static Task<CommandResult> Version() => OfficeCli(30000, "--version");
+
+    [McpServerTool(ReadOnly = true)]
+    [Description("Dump or inspect an Office document with OfficeCLI JSON output.")]
+    public static Task<CommandResult> InspectDocument(string path, string mode = "dump")
+    {
+        var fullPath = Guard.RequireAllowedPath(path);
+        return OfficeCli(60000, mode, fullPath, "--json");
+    }
+
+    [McpServerTool]
+    [Description("Create an Office document with OfficeCLI.")]
+    public static Task<CommandResult> CreateDocument(string path)
+    {
+        Guard.RequireOfficeWrites();
+        var fullPath = Guard.RequireAllowedPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        return OfficeCli(60000, "create", fullPath, "--json");
+    }
+
+    [McpServerTool]
+    [Description("Apply an OfficeCLI batch JSON file to a document.")]
+    public static Task<CommandResult> ApplyBatch(string documentPath, string batchJsonPath)
+    {
+        Guard.RequireOfficeWrites();
+        var document = Guard.RequireAllowedPath(documentPath);
+        var batch = Guard.RequireAllowedPath(batchJsonPath);
+        return OfficeCli(120000, "batch", document, batch, "--json");
+    }
+
+    [McpServerTool]
+    [Description("Render or export an Office document to an output path.")]
+    public static Task<CommandResult> RenderDocument(string documentPath, string outputPath)
+    {
+        Guard.RequireOfficeWrites();
+        var document = Guard.RequireAllowedPath(documentPath);
+        var output = Guard.RequireAllowedPath(outputPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        return OfficeCli(120000, "render", document, output, "--json");
+    }
+
+    [McpServerTool]
+    [Description("Run raw OfficeCLI arguments inside the container.")]
+    public static Task<CommandResult> RunOfficeCli(string[] args, int timeoutMs = 120000)
+    {
+        Guard.RequireOfficeWrites();
+        return OfficeCli(Math.Clamp(timeoutMs, 1000, 300000), args);
+    }
+
+    private static Task<CommandResult> OfficeCli(int timeoutMs, params string[] args) =>
+        CommandRunner.Run(Environment.GetEnvironmentVariable("OFFICECLI_PATH") ?? "officecli", args, "/workspace", timeoutMs, 2097152);
+}
+
+internal static class CommandRunner
+{
+    public static async Task<CommandResult> Run(string fileName, string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes)
+    {
+        using var cts = new CancellationTokenSource(timeoutMs);
+        var startInfo = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = Directory.Exists(workingDirectory) ? workingDirectory : "/",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {fileName}.");
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
+        var stderrTask = process.StandardError.ReadToEndAsync(cts.Token);
+        try
+        {
+            await process.WaitForExitAsync(cts.Token);
+            return new CommandResult(process.ExitCode, Trim(await stdoutTask, maxOutputBytes), Trim(await stderrTask, maxOutputBytes));
+        }
+        catch (OperationCanceledException)
+        {
+            TryKill(process);
+            return new CommandResult(124, "", $"Command timed out after {timeoutMs}ms.");
+        }
+    }
+
+    private static string Trim(string value, int maxBytes) => value.Length <= maxBytes ? value : value[..maxBytes] + "\n[truncated]";
+    private static void TryKill(Process process)
+    {
+        try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
+    }
+}
+
+internal static class Guard
+{
+    private static readonly string[] AllowedRoots = ParseAllowedRoots();
+
+    public static string RequireAllowedPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (!AllowedRoots.Any(root => root == Path.GetPathRoot(root) || fullPath.Equals(root, StringComparison.Ordinal) || fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
+            throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {fullPath}");
+        return fullPath;
+    }
+
+    public static void RequireOfficeWrites()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_OFFICE_WRITES"), "false", StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("Office write tools are disabled because MCP_ENABLE_OFFICE_WRITES=false.");
+    }
+
+    private static string[] ParseAllowedRoots()
+    {
+        var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
+        var values = string.IsNullOrWhiteSpace(raw)
+            ? ["/"]
+            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return values.Select(NormalizeRoot).ToArray();
+    }
+
+    private static string NormalizeRoot(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath);
+        return fullPath == root ? fullPath : fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+}
+
+public sealed record CommandResult(int ExitCode, string Stdout, string Stderr);
