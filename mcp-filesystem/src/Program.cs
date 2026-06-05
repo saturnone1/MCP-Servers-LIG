@@ -187,7 +187,7 @@ internal static class Guard
 
     public static string RequireAllowedPath(string path)
     {
-        var fullPath = Path.GetFullPath(path);
+        var fullPath = Path.GetFullPath(TranslateHostPath(path));
         var finalPath = File.Exists(fullPath) || Directory.Exists(fullPath)
             ? Path.GetFullPath(new FileInfo(fullPath).FullName)
             : fullPath;
@@ -215,6 +215,34 @@ internal static class Guard
         root == Path.GetPathRoot(root) ||
         path.Equals(root, StringComparison.Ordinal) ||
         path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+
+    private static string TranslateHostPath(string path)
+    {
+        foreach (var mapping in ParsePathMappings())
+        {
+            if (path.Equals(mapping.HostPath, StringComparison.OrdinalIgnoreCase))
+                return mapping.ContainerPath;
+            if (path.StartsWith(mapping.HostPath + "\\", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(mapping.HostPath + "/", StringComparison.OrdinalIgnoreCase))
+            {
+                var relative = path[mapping.HostPath.Length..].TrimStart('\\', '/').Replace('\\', Path.DirectorySeparatorChar);
+                return Path.Combine(mapping.ContainerPath, relative);
+            }
+        }
+
+        if (!OperatingSystem.IsWindows() && path.Length >= 3 && char.IsLetter(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/'))
+            throw new DirectoryNotFoundException($"Windows host path is not mounted in this Linux container: {path}. Mount it and set MCP_PATH_MAPPINGS, for example C:\\path=/container/path.");
+
+        return path;
+    }
+
+    private static (string HostPath, string ContainerPath)[] ParsePathMappings() =>
+        (Environment.GetEnvironmentVariable("MCP_PATH_MAPPINGS") ?? "")
+            .Split([';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(entry => entry.Split('=', 2))
+            .Where(parts => parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[0]) && !string.IsNullOrWhiteSpace(parts[1]))
+            .Select(parts => (parts[0].TrimEnd('\\', '/'), parts[1]))
+            .ToArray();
 
     private static string NormalizeRoot(string path)
     {
