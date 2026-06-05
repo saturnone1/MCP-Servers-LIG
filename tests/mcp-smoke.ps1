@@ -9,6 +9,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $docPath = Join-Path $VirtualizationHostPath 'ICFICE_2024_Fullpaper_template.doc'
+$hwpPath = Join-Path $VirtualizationHostPath '090717_174041909.hwp'
+$hwpxFixturePath = Join-Path $PSScriptRoot 'fixtures\sample.hwpx'
 
 $servers = @(
     @{ Name = 'mcp-office'; Port = 8080; Tool = 'extract_text'; Args = @{ path = $docPath; maxLines = 20 } },
@@ -16,7 +18,8 @@ $servers = @(
     @{ Name = 'mcp-git'; Port = 8082; Tool = 'status'; Args = @{ repositoryPath = 'C:\Users\taewon\source\repos\mcp_servers' } },
     @{ Name = 'mcp-shell'; Port = 8083; Tool = 'run_command'; Args = @{ command = 'pwd'; args = @(); workingDirectory = 'C:\Users\taewon\source\repos\mcp_servers'; timeoutMs = 10000 } },
     @{ Name = 'mcp-dotnet'; Port = 8084; Tool = 'sdk_info'; Args = @{} },
-    @{ Name = 'mcp-mssql'; Port = 8085; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } }
+    @{ Name = 'mcp-mssql'; Port = 8085; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } },
+    @{ Name = 'mcp-hwp'; Port = 8086; Tool = 'extract_text'; Args = @{ path = $hwpPath; maxChars = 4000 }; ExtraCalls = @(@{ Tool = 'extract_text'; Args = @{ path = $hwpxFixturePath; maxChars = 4000 } }) }
 )
 
 function Write-Step([string]$Message) {
@@ -107,8 +110,28 @@ function Restart-Containers {
     }
 }
 
+function New-HwpxFixture {
+    $fixtureDir = Split-Path -Parent $hwpxFixturePath
+    New-Item -ItemType Directory -Force -Path $fixtureDir | Out-Null
+    if (Test-Path -LiteralPath $hwpxFixturePath) {
+        Remove-Item -LiteralPath $hwpxFixturePath -Force
+    }
+
+    $tempDir = Join-Path $fixtureDir ('hwpx-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path (Join-Path $tempDir 'Contents') | Out-Null
+    @'
+<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph">
+  <hp:p><hp:run><hp:t>HWPX smoke test 한글 텍스트</hp:t></hp:run></hp:p>
+</root>
+'@ | Set-Content -LiteralPath (Join-Path $tempDir 'Contents\section0.xml') -Encoding UTF8
+    Compress-Archive -Path (Join-Path $tempDir '*') -DestinationPath $hwpxFixturePath -Force
+    Remove-Item -LiteralPath $tempDir -Recurse -Force
+}
+
 Write-Step 'Checking Docker'
 Assert-Docker
+New-HwpxFixture
 
 if (-not $SkipBuild) {
     Write-Step 'Building images'
@@ -162,6 +185,14 @@ foreach ($server in $servers) {
             else {
                 throw
             }
+        }
+
+        foreach ($extra in @($server.ExtraCalls)) {
+            if ($null -eq $extra) { continue }
+            $extraCall = Invoke-Mcp $baseUrl $session 4 'tools/call' @{ name = $extra.Tool; arguments = $extra.Args }
+            if ($extraCall.error) { throw ($extraCall.error | ConvertTo-Json -Compress) }
+            if ($extraCall.result.isError) { throw (($extraCall.result.content | ConvertTo-Json -Compress)) }
+            Write-Host "PASS $($server.Name): $($extra.Tool)"
         }
     }
     catch {
