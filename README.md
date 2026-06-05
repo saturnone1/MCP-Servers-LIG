@@ -1,16 +1,36 @@
 # MCP Remote Server Bundle
 
-This workspace contains six independent Docker-buildable remote MCP servers:
+Korean version: [README.ko.md](README.ko.md)
 
-- `mcp-office`
-- `mcp-filesystem`
-- `mcp-git`
-- `mcp-shell`
-- `mcp-mssql`
-- `mcp-dotnet`
-- `mcp-hwp`
+This workspace contains seven independent Docker-buildable remote MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, listens on container port `8080`, and provides `/healthz` for Docker health checks.
 
-Each server exposes Streamable HTTP at `/mcp`, legacy SSE at `/sse` with messages at `/message`, listens on container port `8080`, and exposes `/healthz` for health checks. These images are trusted-local defaults: write/execute tools are enabled and allowed paths default to `/` inside the container.
+These images are intended for trusted local testing. Write and execute capabilities are enabled by default, and allowed paths default to `/` inside the container. Host filesystem access is still limited by Docker volume mounts.
+
+## Server Matrix
+
+| Server | Port | Upstream / lineage | Implementation strategy | Main capabilities |
+| --- | ---: | --- | --- | --- |
+| `mcp-office` | 8080 | `iOfficeAI/OfficeCLI` | Wrap bundled OfficeCLI plus `antiword` for legacy `.doc` | Inspect/read Office docs, extract text, create docs, apply batch edits, render/export, raw OfficeCLI |
+| `mcp-filesystem` | 8081 | `mark3labs/mcp-filesystem-server` security model | C# reimplementation with `System.IO` | Read/write/copy/move/delete files, stat, list/search directories, allowed-root handling |
+| `mcp-git` | 8082 | `modelcontextprotocol/servers` Git server behavior | C# wrapper around the `git` CLI | Status, log, diff, show, branch list, blame, grep, init/add/commit/checkout |
+| `mcp-shell` | 8083 | New local implementation | C# `ProcessStartInfo` command runner | Run local container commands with timeout, output limit, optional command/env allowlists |
+| `mcp-dotnet` | 8084 | Inspired by `jongalloway/dotnet-mcp` | C# wrapper around the `dotnet` CLI | SDK info, project discovery, restore/build/test, add package, format |
+| `mcp-mssql` | 8085 | Based on `little-fort/mcp-dotnet-mssql` behavior | C# SQL Server tools using `Microsoft.Data.SqlClient` | List databases/schemas/tables, describe tables, read queries, non-query SQL |
+| `mcp-hwp` | 8086 | Local implementation using open tooling | C# server using `pyhwp`/`hwp5txt`, LibreOffice, and ZIP/XML parsing | Extract `.hwp`/`.hwpx` text, inspect files, convert to `txt/docx/pdf/odt` |
+
+## Connections
+
+Each image listens on port `8080` inside the container. The smoke-test port layout is:
+
+| Server | Streamable HTTP | Legacy SSE |
+| --- | --- | --- |
+| `mcp-office` | `http://localhost:8080/mcp` | `http://localhost:8080/sse` |
+| `mcp-filesystem` | `http://localhost:8081/mcp` | `http://localhost:8081/sse` |
+| `mcp-git` | `http://localhost:8082/mcp` | `http://localhost:8082/sse` |
+| `mcp-shell` | `http://localhost:8083/mcp` | `http://localhost:8083/sse` |
+| `mcp-dotnet` | `http://localhost:8084/mcp` | `http://localhost:8084/sse` |
+| `mcp-mssql` | `http://localhost:8085/mcp` | `http://localhost:8085/sse` |
+| `mcp-hwp` | `http://localhost:8086/mcp` | `http://localhost:8086/sse` |
 
 ## Build All
 
@@ -22,3 +42,36 @@ foreach ($server in $servers) {
 ```
 
 Runtime images are designed to run without internet access. Build-time package restore and upstream downloads are allowed.
+
+## Run All Smoke Containers
+
+```powershell
+.\tests\mcp-smoke.ps1
+```
+
+The smoke test builds the images, restarts the containers, verifies `/healthz`, checks SSE, lists MCP tools, and calls representative tools. `MSSQL_CONNECTION_STRING` is optional; without it, the MSSQL server is started and tool discovery is tested, but live SQL execution is skipped.
+
+## Path Mapping
+
+For Linux containers to accept Windows host paths from MCP clients, use `MCP_PATH_MAPPINGS`:
+
+```powershell
+docker run --rm -p 8081:8080 `
+  -v C:\Users\taewon\Desktop\가상화:/virtualization `
+  -e "MCP_PATH_MAPPINGS=C:\Users\taewon\Desktop\가상화=/virtualization" `
+  local/mcp-filesystem
+```
+
+The same mapping pattern is supported by path-based servers such as Office, filesystem, Git, shell, .NET, and HWP.
+
+## Per-Server Docs
+
+Each folder contains a dedicated `README.md` with implementation notes, tool lists, environment variables, and run examples:
+
+- `mcp-office/README.md`
+- `mcp-filesystem/README.md`
+- `mcp-git/README.md`
+- `mcp-shell/README.md`
+- `mcp-dotnet/README.md`
+- `mcp-mssql/README.md`
+- `mcp-hwp/README.md`

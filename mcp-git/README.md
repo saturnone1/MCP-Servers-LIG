@@ -1,6 +1,15 @@
 # mcp-git
 
+Korean version: [README.ko.md](README.ko.md)
+
 C# remote MCP Git server over Streamable HTTP. It wraps the `git` CLI inside the container.
+
+## Lineage
+
+- Upstream / reference behavior: official/reference Git MCP server lineage from `modelcontextprotocol/servers`.
+- Strategy: C# wrapper around the container's `git` CLI instead of porting Python source.
+- Runtime requirement: target repositories must be mounted into the container.
+- Trusted-local Docker defaults enable mutating Git operations.
 
 ## Build
 
@@ -15,3 +24,27 @@ docker run --rm -p 8082:8080 -v ${PWD}:/workspace local/mcp-git
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8082/mcp` or legacy SSE at `http://localhost:8082/sse`. Trusted-local images enable mutating git tools by default and allow `/` inside the container unless `MCP_ALLOWED_DIRS` overrides it.
+
+## Tools
+
+| Tool | What it does |
+| --- | --- |
+| `status` | Runs `git status --short --branch`. |
+| `log` | Returns recent commits. |
+| `diff` | Shows unstaged, staged, or refspec diffs. |
+| `show` | Shows a Git object or commit. |
+| `branch_list` | Lists local and remote branches. |
+| `blame` | Runs `git blame` for a file or line range. |
+| `grep` | Searches tracked content with `git grep`. |
+| `init` | Runs `git init`. |
+| `add` | Runs `git add` for paths. |
+| `commit` | Runs `git commit`. |
+| `checkout` | Runs `git checkout`, optionally creating a branch. |
+
+## Environment
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for repository paths. |
+| `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
+| `MCP_ENABLE_GIT_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block `init/add/commit/checkout`. |

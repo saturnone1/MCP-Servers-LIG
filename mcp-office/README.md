@@ -1,6 +1,15 @@
 # mcp-office
 
-C# remote MCP wrapper for OfficeCLI over Streamable HTTP.
+Korean version: [README.ko.md](README.ko.md)
+
+C# remote MCP wrapper for OfficeCLI over Streamable HTTP and legacy SSE.
+
+## Lineage
+
+- Upstream / porting source: `iOfficeAI/OfficeCLI`
+- Strategy: bundle the Linux x64 OfficeCLI release into the Docker image and expose it as MCP tools.
+- Extra compatibility: install `antiword` for legacy `.doc` text extraction.
+- Runtime target: headless and Office-free. Microsoft Office does not need to be installed in the container.
 
 ## Build
 
@@ -17,5 +26,29 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legacy SSE at `http://localhost:8080/sse`. Trusted-local images enable document creation, batch edits, render/export, and raw OfficeCLI calls by default.
+
+## Tools
+
+| Tool | What it does |
+| --- | --- |
+| `version` | Returns `officecli --version`. |
+| `inspect_document` | Runs OfficeCLI inspection/dump modes for an Office document. |
+| `extract_text` | Extracts readable text from `.doc`, `.docx`, `.xlsx`, or `.pptx`. |
+| `create_document` | Creates an Office document using OfficeCLI. |
+| `apply_batch` | Applies an OfficeCLI batch JSON file to a document. |
+| `render_document` | Renders or exports a document to an output path. |
+| `run_office_cli` | Runs raw OfficeCLI arguments for advanced operations. |
+
+## Environment
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for file paths. |
+| `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
+| `MCP_ENABLE_OFFICE_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block mutating Office tools. |
+| `OFFICECLI_PATH` | bundled OfficeCLI path | Override OfficeCLI executable path. |
+| `ANTIWORD_PATH` | `antiword` | Override legacy `.doc` extractor. |
+
+## Notes
 
 The `extract_text` tool reads modern Office files through OfficeCLI and legacy `.doc` files through `antiword`.
