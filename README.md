@@ -51,18 +51,26 @@ Runtime images are designed to run without internet access. Build-time package r
 
 The smoke test builds the images, restarts the containers, verifies `/healthz`, checks SSE, lists MCP tools, and calls representative tools. `MSSQL_CONNECTION_STRING` is optional; without it, the MSSQL server is started and tool discovery is tested, but live SQL execution is skipped.
 
+To start all servers without running the smoke calls:
+
+```powershell
+.\scripts\run-all.ps1
+```
+
+By default, this mounts the repository at `/workspace` and the Windows `C:\` drive at `/host/c`, then sets `MCP_PATH_MAPPINGS=C:\=/host/c`. That lets MCP clients pass normal Windows paths such as `C:\Users\taewon\Desktop\넥스원\2024 분산스위치 논문.hwp`.
+
 ## Path Mapping
 
-For Linux containers to accept Windows host paths from MCP clients, use `MCP_PATH_MAPPINGS`:
+For Linux containers to accept Windows host paths from MCP clients, the matching host folder must be mounted with Docker and listed in `MCP_PATH_MAPPINGS`:
 
 ```powershell
 docker run --rm -p 8081:8080 `
-  -v C:\Users\taewon\Desktop\가상화:/virtualization `
-  -e "MCP_PATH_MAPPINGS=C:\Users\taewon\Desktop\가상화=/virtualization" `
+  -v C:\:/host/c `
+  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
   local/mcp-filesystem
 ```
 
-The same mapping pattern is supported by path-based servers such as Office, filesystem, Git, shell, .NET, and HWP.
+The same mapping pattern is supported by path-based servers such as Office, filesystem, Git, shell, .NET, and HWP. `MCP_ALLOWED_DIRS=/` opens the container filesystem, but it does not grant access to host folders that were not mounted into the container.
 
 ## Per-Server Docs
 

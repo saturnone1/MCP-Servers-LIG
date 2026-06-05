@@ -26,6 +26,9 @@ public sealed class HwpTools
     public static async Task<string> ExtractText(string path, int maxChars = 20000)
     {
         var fullPath = Guard.RequireAllowedPath(path);
+        if (!File.Exists(fullPath))
+            return $"File not found after path mapping: {fullPath}";
+
         var extension = Path.GetExtension(fullPath);
         if (string.Equals(extension, ".hwpx", StringComparison.OrdinalIgnoreCase))
             return Trim(ExtractHwpxText(fullPath), maxChars);
@@ -39,9 +42,21 @@ public sealed class HwpTools
     public static object Inspect(string path)
     {
         var fullPath = Guard.RequireAllowedPath(path);
+        if (!File.Exists(fullPath))
+        {
+            return new
+            {
+                exists = false,
+                requestedPath = path,
+                mappedPath = fullPath,
+                error = $"File not found after path mapping: {fullPath}"
+            };
+        }
+
         var info = new FileInfo(fullPath);
         return new
         {
+            exists = true,
             path = fullPath,
             extension = info.Extension,
             info.Length,
@@ -51,14 +66,32 @@ public sealed class HwpTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Convert .hwp or .hwpx to txt, docx, pdf, or odt using LibreOffice.")]
+    [Description("Convert .hwp or .hwpx to txt, docx, pdf, or odt. Text output uses the extractor; other formats use LibreOffice.")]
     public static async Task<CommandResult> Convert(string path, string outputDirectory = "/tmp/hwp-output", string format = "txt", int timeoutMs = 120000)
     {
         var fullPath = Guard.RequireAllowedPath(path);
+        if (!File.Exists(fullPath))
+            return new CommandResult(2, "", $"File not found after path mapping: {fullPath}");
+
         var output = Guard.RequireAllowedPath(outputDirectory);
         Directory.CreateDirectory(output);
-        Guard.RequireSupportedOutput(format);
-        return await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", format, "--outdir", output, fullPath], "/tmp", Math.Clamp(timeoutMs, 1000, 600000), 2097152);
+        var normalizedFormat = Guard.RequireSupportedOutput(format);
+
+        if (string.Equals(normalizedFormat, "txt", StringComparison.OrdinalIgnoreCase))
+        {
+            var text = await ExtractText(fullPath, 1_000_000);
+            var txtPath = Path.Combine(output, Path.GetFileNameWithoutExtension(fullPath) + ".txt");
+            await File.WriteAllTextAsync(txtPath, text, Encoding.UTF8);
+            return new CommandResult(0, $"Wrote {txtPath}", "");
+        }
+
+        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", normalizedFormat, "--outdir", output, fullPath], "/tmp", Math.Clamp(timeoutMs, 1000, 600000), 2097152);
+        var outputPath = Path.Combine(output, Path.GetFileNameWithoutExtension(fullPath) + "." + normalizedFormat);
+        var fallback = Directory.EnumerateFiles(output, Path.GetFileNameWithoutExtension(fullPath) + ".*").FirstOrDefault(file => string.Equals(Path.GetExtension(file), "." + normalizedFormat, StringComparison.OrdinalIgnoreCase));
+        if (result.ExitCode != 0 || (!File.Exists(outputPath) && fallback is null) || result.Stderr.Contains("source file could not be loaded", StringComparison.OrdinalIgnoreCase))
+            return new CommandResult(result.ExitCode == 0 ? 1 : result.ExitCode, result.Stdout, $"Conversion failed. Stdout={result.Stdout}; Stderr={result.Stderr}");
+
+        return result with { Stdout = string.IsNullOrWhiteSpace(result.Stdout) ? $"Wrote {fallback ?? outputPath}" : result.Stdout };
     }
 
     private static async Task<string> ExtractHwpTextWithHwp5Txt(string path)
@@ -173,11 +206,13 @@ internal static class Guard
         return fullPath;
     }
 
-    public static void RequireSupportedOutput(string format)
+    public static string RequireSupportedOutput(string format)
     {
         var allowed = new[] { "txt", "docx", "pdf", "odt" };
-        if (!allowed.Contains(format, StringComparer.OrdinalIgnoreCase))
+        var normalized = format.Trim().TrimStart('.').ToLowerInvariant();
+        if (!allowed.Contains(normalized, StringComparer.OrdinalIgnoreCase))
             throw new NotSupportedException($"Unsupported output format: {format}. Allowed: {string.Join(", ", allowed)}");
+        return normalized;
     }
 
     private static string[] ParseAllowedRoots()
