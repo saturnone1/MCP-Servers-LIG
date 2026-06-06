@@ -37,6 +37,16 @@ docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
 | `inspect` | 기본 파일 메타데이터를 반환합니다. |
 | `convert` | `.hwp` 또는 `.hwpx`를 `txt`, `docx`, `pdf`, `odt`로 변환합니다. `txt`는 텍스트 추출기로 생성하고, 나머지 형식은 LibreOffice를 사용합니다. |
 
+## API 설명
+
+| Tool | Arguments | 반환 |
+| --- | --- | --- |
+| `extract_text` | `path` string, `maxChars` int = `20000` | 추출된 텍스트. 매핑된 파일이 없으면 파일 없음 메시지를 반환합니다. |
+| `inspect` | `path` string | metadata 객체. 파일이 없으면 `{ "exists": false, "requestedPath": ..., "mappedPath": ..., "error": ... }`를 반환합니다. |
+| `convert` | `path` string, `outputDirectory` string = `/tmp/hwp-output`, `format` string = `txt`, `timeoutMs` int = `120000` | `{ "exitCode": number, "stdout": string, "stderr": string }`. `txt`는 추출 텍스트를 저장하고, `docx`, `pdf`, `odt`는 LibreOffice를 사용합니다. |
+
+지원 format은 `txt`, `docx`, `pdf`, `odt`입니다.
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |

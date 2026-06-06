@@ -34,6 +34,16 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8086/mcp` or legac
 | `inspect` | Returns basic file metadata. |
 | `convert` | Converts `.hwp` or `.hwpx` to `txt`, `docx`, `pdf`, or `odt`. Text output uses the extractor; other formats use LibreOffice. |
 
+## API Reference
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `extract_text` | `path` string, `maxChars` int = `20000` | Extracted text. If the mapped file is missing, returns a file-not-found message. |
+| `inspect` | `path` string | Metadata object. Missing files return `{ "exists": false, "requestedPath": ..., "mappedPath": ..., "error": ... }`. |
+| `convert` | `path` string, `outputDirectory` string = `/tmp/hwp-output`, `format` string = `txt`, `timeoutMs` int = `120000` | `{ "exitCode": number, "stdout": string, "stderr": string }`. `txt` writes extracted text. `docx`, `pdf`, and `odt` use LibreOffice. |
+
+Supported formats are `txt`, `docx`, `pdf`, and `odt`.
+
 ## Environment
 
 | Variable | Default | Purpose |

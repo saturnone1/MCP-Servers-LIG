@@ -37,6 +37,20 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8084/mcp` or legac
 | `add_package` | Runs `dotnet add package`, optionally with a version. |
 | `format` | Runs `dotnet format`. |
 
+## API Reference
+
+Command tools return `{ "exitCode": number, "stdout": string, "stderr": string }`.
+
+| Tool | Arguments | Notes |
+| --- | --- | --- |
+| `sdk_info` | none | Runs from `/workspace`. |
+| `list_projects` | `path` string = `.`, `limit` int = `200` | Returns project/solution metadata array. |
+| `restore` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | Runs `dotnet restore`. |
+| `build` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `120000` | Runs `dotnet build --no-restore`. |
+| `test` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `180000` | Runs `dotnet test --no-build`. |
+| `add_package` | `projectPath` string, `packageName` string, `version` string? = `null` | Runs `dotnet add package`. |
+| `format` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | Runs `dotnet format`. |
+
 ## Environment
 
 | Variable | Default | Purpose |

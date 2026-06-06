@@ -32,6 +32,29 @@ Each image listens on port `8080` inside the container. The smoke-test port layo
 | `mcp-mssql` | `http://localhost:8085/mcp` | `http://localhost:8085/sse` |
 | `mcp-hwp` | `http://localhost:8086/mcp` | `http://localhost:8086/sse` |
 
+## MCP API Shape
+
+All servers expose the same MCP transport API. Tool discovery uses `tools/list`; tool execution uses `tools/call` against the server's `/mcp` endpoint. Legacy clients can connect through `/sse` and send messages to `/message`.
+
+Example Streamable HTTP call:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "extract_text",
+    "arguments": {
+      "path": "C:\\Users\\taewon\\Desktop\\넥스원\\2024 분산스위치 논문.hwp",
+      "maxChars": 4000
+    }
+  }
+}
+```
+
+Each per-server README includes the exact tool names, parameters, defaults, and return shape.
+
 ## Build All
 
 ```powershell

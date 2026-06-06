@@ -39,6 +39,19 @@ docker run --rm -p 8085:8080 -e MSSQL_CONNECTION_STRING="Server=host.docker.inte
 | `execute_read_query` | read-only `SELECT` 또는 `WITH` SQL을 실행하고 row를 반환합니다. |
 | `execute_non_query` | DDL/DML 같은 non-query SQL을 실행합니다. |
 
+## API 설명
+
+SQL tool은 기본적으로 `MSSQL_CONNECTION_STRING`을 사용합니다. 호출별로 `connectionString`을 넘기면 해당 값을 우선 사용합니다.
+
+| Tool | Arguments | 반환 |
+| --- | --- | --- |
+| `list_databases` | `connectionString` string? = `null` | database metadata 배열 |
+| `list_schemas` | `connectionString` string? = `null` | schema metadata 배열 |
+| `list_tables` | `connectionString` string? = `null`, `schema` string? = `null` | table metadata 배열 |
+| `describe_table` | `tableName` string, `schema` string = `dbo`, `connectionString` string? = `null` | column metadata 배열 |
+| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `200` | row 객체 배열. `SELECT`, `WITH` query만 허용합니다. |
+| `execute_non_query` | `sql` string, `connectionString` string? = `null`, `timeoutSeconds` int = `30` | affected row 수와 실행 metadata |
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |

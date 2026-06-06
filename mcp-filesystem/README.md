@@ -40,6 +40,23 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8081/mcp` or legac
 | `list_directory` | Lists directory entries with pattern, recursion, and limit options. |
 | `search` | Searches file names using a regular expression. |
 
+## API Reference
+
+Path arguments accept normal container paths or Windows host paths when `MCP_PATH_MAPPINGS` is configured.
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `list_allowed_directories` | none | string array of allowed roots. |
+| `read_file` | `path` string, `maxBytes` int = `1048576` | File text. |
+| `read_multiple_files` | `paths` string array, `maxBytesPerFile` int = `1048576` | Object keyed by path with file text values. |
+| `write_file` | `path` string, `content` string | Write metadata. |
+| `copy` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | Copy metadata. |
+| `move` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | Move metadata. |
+| `delete` | `path` string, `recursive` bool = `false` | Delete metadata. |
+| `stat` | `path` string | File or directory metadata. |
+| `list_directory` | `path` string = `.`, `pattern` string = `*`, `recursive` bool = `false`, `limit` int = `200` | Entry metadata array. |
+| `search` | `path` string, `regex` string, `limit` int = `100` | Matching entry metadata array. |
+
 ## Environment
 
 | Variable | Default | Purpose |

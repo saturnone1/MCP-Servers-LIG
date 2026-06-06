@@ -44,6 +44,24 @@ docker run --rm -p 8082:8080 -v ${PWD}:/workspace local/mcp-git
 | `commit` | `git commit`을 실행합니다. |
 | `checkout` | `git checkout`을 실행하고, 옵션으로 branch를 생성합니다. |
 
+## API 설명
+
+대부분의 tool은 내부 `git` 프로세스 결과인 `{ "exitCode": number, "stdout": string, "stderr": string }` 형태를 반환합니다.
+
+| Tool | Arguments | Git 명령 |
+| --- | --- | --- |
+| `status` | `repositoryPath` string = `.` | `git status --short --branch` |
+| `log` | `repositoryPath` string = `.`, `maxCount` int = `20` | `git log` |
+| `diff` | `repositoryPath` string = `.`, `refspec` string? = `null`, `staged` bool = `false` | `git diff` |
+| `show` | `repositoryPath` string, `revision` string | `git show` |
+| `branch_list` | `repositoryPath` string = `.` | `git branch --all` |
+| `blame` | `repositoryPath` string, `filePath` string, `startLine` int? = `null`, `endLine` int? = `null` | `git blame` |
+| `grep` | `repositoryPath` string, `pattern` string, `maxMatches` int = `100` | `git grep` |
+| `init` | `repositoryPath` string | `git init` |
+| `add` | `repositoryPath` string, `paths` string array | `git add` |
+| `commit` | `repositoryPath` string, `message` string | `git commit -m` |
+| `checkout` | `repositoryPath` string, `target` string, `createBranch` bool = `false` | `git checkout` 또는 `git checkout -b` |
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |

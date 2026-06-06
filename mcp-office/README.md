@@ -39,6 +39,20 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legac
 | `render_document` | Renders or exports a document to an output path. |
 | `run_office_cli` | Runs raw OfficeCLI arguments for advanced operations. |
 
+## API Reference
+
+All tools return a command-style object: `{ "exitCode": number, "stdout": string, "stderr": string }`.
+
+| Tool | Arguments | Notes |
+| --- | --- | --- |
+| `version` | none | Returns the bundled OfficeCLI version. |
+| `inspect_document` | `path` string, `mode` string = `text` | Runs OfficeCLI inspection for `.docx`, `.xlsx`, `.pptx`, and supported OfficeCLI formats. |
+| `extract_text` | `path` string, `maxLines` int = `200` | Uses OfficeCLI for modern Office files and `antiword` for legacy `.doc`. |
+| `create_document` | `path` string | Creates a document at the mapped path. |
+| `apply_batch` | `documentPath` string, `batchJsonPath` string | Applies an OfficeCLI batch JSON file. |
+| `render_document` | `documentPath` string, `outputPath` string | Renders or exports to the requested output path. |
+| `run_office_cli` | `args` string array, `timeoutMs` int = `120000` | Advanced escape hatch for raw OfficeCLI arguments. |
+
 ## Environment
 
 | Variable | Default | Purpose |

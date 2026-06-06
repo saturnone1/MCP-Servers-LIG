@@ -34,6 +34,14 @@ docker run --rm -p 8083:8080 -v ${PWD}:/workspace local/mcp-shell
 | --- | --- |
 | `run_command` | command, args, working directory, timeout, max output size, optional environment를 받아 명령을 실행합니다. |
 
+## API 설명
+
+| Tool | Arguments | 반환 |
+| --- | --- | --- |
+| `run_command` | `command` string, `args` string array = `[]`, `workingDirectory` string = `/workspace`, `timeoutMs` int = `30000`, `maxOutputBytes` int = `1048576`, `environment` object? = `null` | `{ "exitCode": number, "stdout": string, "stderr": string }` |
+
+`workingDirectory`는 매핑된 Windows 호스트 경로도 받을 수 있습니다. `MCP_SHELL_ALLOWED_ENV`가 설정되어 있으면 `environment`는 해당 allowlist로 필터링됩니다.
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |

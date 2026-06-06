@@ -40,6 +40,20 @@ docker run --rm -p 8084:8080 -v ${PWD}:/workspace local/mcp-dotnet
 | `add_package` | `dotnet add package`를 실행하고, optional version을 지원합니다. |
 | `format` | `dotnet format`을 실행합니다. |
 
+## API 설명
+
+명령 실행 tool은 `{ "exitCode": number, "stdout": string, "stderr": string }` 형태를 반환합니다.
+
+| Tool | Arguments | 설명 |
+| --- | --- | --- |
+| `sdk_info` | 없음 | `/workspace`에서 `dotnet --info`를 실행합니다. |
+| `list_projects` | `path` string = `.`, `limit` int = `200` | project/solution metadata 배열을 반환합니다. |
+| `restore` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | `dotnet restore`를 실행합니다. |
+| `build` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `120000` | `dotnet build --no-restore`를 실행합니다. |
+| `test` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `180000` | `dotnet test --no-build`를 실행합니다. |
+| `add_package` | `projectPath` string, `packageName` string, `version` string? = `null` | `dotnet add package`를 실행합니다. |
+| `format` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | `dotnet format`을 실행합니다. |
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |

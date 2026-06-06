@@ -32,6 +32,29 @@
 | `mcp-mssql` | `http://localhost:8085/mcp` | `http://localhost:8085/sse` |
 | `mcp-hwp` | `http://localhost:8086/mcp` | `http://localhost:8086/sse` |
 
+## MCP API 형태
+
+모든 서버는 같은 MCP transport API를 제공합니다. Tool 목록은 `/mcp`에서 `tools/list`로 조회하고, tool 실행은 `tools/call`로 호출합니다. Legacy 클라이언트는 `/sse`로 연결하고 `/message`로 메시지를 보낼 수 있습니다.
+
+Streamable HTTP 호출 예시:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "extract_text",
+    "arguments": {
+      "path": "C:\\Users\\taewon\\Desktop\\넥스원\\2024 분산스위치 논문.hwp",
+      "maxChars": 4000
+    }
+  }
+}
+```
+
+정확한 tool 이름, 파라미터, 기본값, 반환 형태는 각 서버별 README에 정리되어 있습니다.
+
 ## 전체 빌드
 
 ```powershell
