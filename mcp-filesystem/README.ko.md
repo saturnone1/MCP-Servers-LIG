@@ -43,6 +43,23 @@ docker run --rm -p 8081:8080 -v ${PWD}:/workspace local/mcp-filesystem
 | `list_directory` | 패턴, 재귀, limit 옵션으로 디렉터리를 나열합니다. |
 | `search` | 정규식으로 파일 이름을 검색합니다. |
 
+## API 설명
+
+경로 파라미터는 컨테이너 경로를 받습니다. `MCP_PATH_MAPPINGS`가 설정되어 있으면 Windows 호스트 경로도 그대로 받을 수 있습니다.
+
+| Tool | Arguments | 반환 |
+| --- | --- | --- |
+| `list_allowed_directories` | 없음 | 허용 root string 배열 |
+| `read_file` | `path` string, `maxBytes` int = `1048576` | 파일 텍스트 |
+| `read_multiple_files` | `paths` string array, `maxBytesPerFile` int = `1048576` | path별 텍스트 객체 |
+| `write_file` | `path` string, `content` string | 쓰기 결과 metadata |
+| `copy` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | 복사 결과 metadata |
+| `move` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | 이동 결과 metadata |
+| `delete` | `path` string, `recursive` bool = `false` | 삭제 결과 metadata |
+| `stat` | `path` string | 파일 또는 디렉터리 metadata |
+| `list_directory` | `path` string = `.`, `pattern` string = `*`, `recursive` bool = `false`, `limit` int = `200` | entry metadata 배열 |
+| `search` | `path` string, `regex` string, `limit` int = `100` | 검색 결과 metadata 배열 |
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |

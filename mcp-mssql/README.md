@@ -36,6 +36,19 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8085/mcp` or legac
 | `execute_read_query` | Executes read-only `SELECT` or `WITH` SQL and returns rows. |
 | `execute_non_query` | Executes non-query SQL such as DDL/DML commands. |
 
+## API Reference
+
+SQL tools use `MSSQL_CONNECTION_STRING` by default. Pass `connectionString` per call to override it.
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `list_databases` | `connectionString` string? = `null` | Database metadata array. |
+| `list_schemas` | `connectionString` string? = `null` | Schema metadata array. |
+| `list_tables` | `connectionString` string? = `null`, `schema` string? = `null` | Table metadata array. |
+| `describe_table` | `tableName` string, `schema` string = `dbo`, `connectionString` string? = `null` | Column metadata array. |
+| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `200` | Row objects. Only `SELECT` and `WITH` queries are accepted. |
+| `execute_non_query` | `sql` string, `connectionString` string? = `null`, `timeoutSeconds` int = `30` | Rows affected and execution metadata. |
+
 ## Environment
 
 | Variable | Default | Purpose |

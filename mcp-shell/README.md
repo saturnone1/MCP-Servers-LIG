@@ -31,6 +31,14 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8083/mcp` or legac
 | --- | --- |
 | `run_command` | Runs a command with arguments, working directory, timeout, max output size, and optional environment variables. |
 
+## API Reference
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `run_command` | `command` string, `args` string array = `[]`, `workingDirectory` string = `/workspace`, `timeoutMs` int = `30000`, `maxOutputBytes` int = `1048576`, `environment` object? = `null` | `{ "exitCode": number, "stdout": string, "stderr": string }` |
+
+`workingDirectory` can be a mapped Windows host path. `environment` is filtered by `MCP_SHELL_ALLOWED_ENV` when that allowlist is set.
+
 ## Environment
 
 | Variable | Default | Purpose |
