@@ -17,6 +17,10 @@ C# remote MCP server for the .NET SDK over Streamable HTTP.
 docker build -t local/mcp-dotnet .
 ```
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-dotnet:latest` as `airgap/local-mcp-dotnet.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -58,3 +62,7 @@ Command tools return `{ "exitCode": number, "stdout": string, "stderr": string }
 | `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for project paths. |
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_ENABLE_DOTNET_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block `add_package` and `format`. |
+
+## Kubernetes
+
+Kubernetes manifests are available in [k8s/](k8s/README.ko.md). The Kubernetes profile mounts a PVC at `/workspace`, sets `MCP_ALLOWED_DIRS=/workspace`, and keeps .NET write tools enabled. `sdk_info`, project discovery, build, and test work with mounted source. `restore` and `add_package` need a preloaded NuGet cache or an internal NuGet feed in air-gapped clusters.

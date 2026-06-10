@@ -24,7 +24,10 @@ $servers = @(
     @{ Name = 'mcp-hwp'; Port = 8086; Tool = 'extract_text'; Args = @{ path = $hwpPath; maxChars = 4000 }; ExtraCalls = @(
         @{ Tool = 'extract_text'; Args = @{ path = $hwpxFixturePath; maxChars = 4000 } },
         @{ Tool = 'convert'; Args = @{ path = $hwpPath; outputDirectory = '/tmp/hwp-output'; format = 'txt' } }
-    ) }
+    ) },
+    @{ Name = 'mcp-kubernetes'; Port = 8087; Tool = 'version'; Args = @{ clientOnly = $true } },
+    @{ Name = 'mcp-docker'; Port = 8088; Tool = 'version'; Args = @{} },
+    @{ Name = 'mcp-prometheus'; Port = 8089; Tool = 'config'; Args = @{} }
 )
 
 function Write-Step([string]$Message) {
@@ -113,6 +116,12 @@ function Restart-Containers {
         $args += @('-e', "MCP_PATH_MAPPINGS=$($pathMappings -join ';')")
         if ($server.Name -eq 'mcp-mssql' -and -not [string]::IsNullOrWhiteSpace($MssqlConnectionString)) {
             $args += @('-e', "MSSQL_CONNECTION_STRING=$MssqlConnectionString")
+        }
+        if ($server.Name -eq 'mcp-docker') {
+            $args += @('-v', '/var/run/docker.sock:/var/run/docker.sock')
+        }
+        if ($server.Name -eq 'mcp-kubernetes' -and (Test-Path -LiteralPath (Join-Path $HOME '.kube'))) {
+            $args += @('-v', "$HOME\.kube:/root/.kube")
         }
         $args += "local/$($server.Name)"
         docker @args | Out-Null

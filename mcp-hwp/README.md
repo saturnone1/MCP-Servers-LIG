@@ -18,6 +18,10 @@ C# remote MCP server for Korean Hangul Word Processor files over Streamable HTTP
 docker build -t local/mcp-hwp .
 ```
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-hwp:latest` as `airgap/local-mcp-hwp.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -56,3 +60,7 @@ Supported formats are `txt`, `docx`, `pdf`, and `odt`.
 ## Notes
 
 `.hwp` uses `pyhwp`/`hwp5txt` first, with LibreOffice headless conversion as a fallback. `.hwpx` is parsed directly as ZIP/XML. `convert` writes `txt` output from extracted text. `docx`, `pdf`, and `odt` conversion fails loudly when LibreOffice cannot create an output file.
+
+## Kubernetes
+
+No Kubernetes manifests are provided for `mcp-hwp` in this phase. It is excluded because the workflow depends on document conversion tooling, fonts, and host document access patterns that need a separate cluster storage and rendering review.

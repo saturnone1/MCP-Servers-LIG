@@ -17,6 +17,10 @@ C# remote MCP shell server over Streamable HTTP.
 docker build -t local/mcp-shell .
 ```
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-shell:latest` as `airgap/local-mcp-shell.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -48,3 +52,7 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8083/mcp` or legac
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_SHELL_ALLOWED_COMMANDS` | empty | Optional command allowlist. Empty means any command. |
 | `MCP_SHELL_ALLOWED_ENV` | empty | Optional environment-variable allowlist. Empty means no custom env vars are passed unless the server code allows them. |
+
+## Kubernetes
+
+No Kubernetes manifests are provided for `mcp-shell` in this phase. It intentionally exposes arbitrary command execution and is better treated as a trusted local/debug container than a default cluster service.

@@ -17,6 +17,10 @@
 docker build -t local/mcp-git .
 ```
 
+## Air Gap 추출
+
+`local/mcp-git:latest` 이미지를 `airgap/local-mcp-git.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -69,3 +73,7 @@ docker run --rm -p 8082:8080 -v ${PWD}:/workspace local/mcp-git
 | `MCP_ALLOWED_DIRS` | `/` | repository path로 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_ENABLE_GIT_WRITES` | Dockerfile에서 `true` | `false`로 설정하면 `init/add/commit/checkout`을 막습니다. |
+
+## Kubernetes
+
+Kubernetes 매니페스트는 [k8s/](k8s/README.ko.md)에 있습니다. Kubernetes 배포에서는 PVC를 `/workspace`에 마운트하고 `MCP_ALLOWED_DIRS=/workspace`, `MCP_ENABLE_GIT_WRITES=true`를 사용합니다. 로컬 Git 작업은 클러스터 안에서 동작하지만, remote fetch/push는 클러스터 egress 또는 내부 Git 서버 접근이 필요합니다.

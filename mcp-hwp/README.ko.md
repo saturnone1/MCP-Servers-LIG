@@ -18,6 +18,10 @@
 docker build -t local/mcp-hwp .
 ```
 
+## Air Gap 추출
+
+`local/mcp-hwp:latest` 이미지를 `airgap/local-mcp-hwp.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -59,3 +63,7 @@ docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
 ## 참고
 
 `.hwp`는 `pyhwp`/`hwp5txt`를 우선 사용하고 LibreOffice를 fallback으로 사용합니다. `.hwpx`는 ZIP/XML로 직접 파싱합니다. `convert`의 `txt` 출력은 이 텍스트 추출 결과를 파일로 저장합니다. `docx`, `pdf`, `odt` 변환은 LibreOffice가 실제 출력 파일을 만들지 못하면 오류로 처리합니다.
+
+## Kubernetes
+
+이번 단계에서는 `mcp-hwp`용 Kubernetes 매니페스트를 제공하지 않습니다. 문서 변환 도구, font, 호스트 문서 접근 방식이 얽혀 있어 별도의 클러스터 스토리지/렌더링 검토가 필요하기 때문입니다.

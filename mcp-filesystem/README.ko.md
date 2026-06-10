@@ -17,6 +17,10 @@
 docker build -t local/mcp-filesystem .
 ```
 
+## Air Gap 추출
+
+`local/mcp-filesystem:latest` 이미지를 `airgap/local-mcp-filesystem.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -67,3 +71,7 @@ docker run --rm -p 8081:8080 -v ${PWD}:/workspace local/mcp-filesystem
 | `MCP_ALLOWED_DIRS` | `/` | 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_ENABLE_WRITES` | Dockerfile에서 `true` | `false`로 설정하면 write/copy/move/delete를 막습니다. |
+
+## Kubernetes
+
+Kubernetes 매니페스트는 [k8s/](k8s/README.ko.md)에 있습니다. Kubernetes 배포에서는 PVC를 `/workspace`에 마운트하고 `MCP_ALLOWED_DIRS=/workspace`, `MCP_ENABLE_WRITES=true`를 사용합니다. PVC 또는 다른 클러스터 네이티브 볼륨이 있으면 Linux Kubernetes에서 정상 동작합니다.

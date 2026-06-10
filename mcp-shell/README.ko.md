@@ -17,6 +17,10 @@
 docker build -t local/mcp-shell .
 ```
 
+## Air Gap 추출
+
+`local/mcp-shell:latest` 이미지를 `airgap/local-mcp-shell.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -51,3 +55,7 @@ docker run --rm -p 8083:8080 -v ${PWD}:/workspace local/mcp-shell
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_SHELL_ALLOWED_COMMANDS` | 빈 값 | 선택적 command allowlist입니다. 빈 값이면 모든 command를 허용합니다. |
 | `MCP_SHELL_ALLOWED_ENV` | 빈 값 | 선택적 환경 변수 allowlist입니다. |
+
+## Kubernetes
+
+이번 단계에서는 `mcp-shell`용 Kubernetes 매니페스트를 제공하지 않습니다. 임의 명령 실행을 의도적으로 노출하는 서버라서 기본 클러스터 서비스보다는 신뢰된 로컬/디버그 컨테이너로 다루는 편이 맞습니다.

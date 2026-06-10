@@ -17,6 +17,10 @@ C# remote MCP filesystem server over Streamable HTTP.
 docker build -t local/mcp-filesystem .
 ```
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-filesystem:latest` as `airgap/local-mcp-filesystem.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -64,3 +68,7 @@ Path arguments accept normal container paths or Windows host paths when `MCP_PAT
 | `MCP_ALLOWED_DIRS` | `/` | Allowed container roots. |
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_ENABLE_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block write/copy/move/delete. |
+
+## Kubernetes
+
+Kubernetes manifests are available in [k8s/](k8s/README.ko.md). The Kubernetes profile mounts a PVC at `/workspace`, sets `MCP_ALLOWED_DIRS=/workspace`, and keeps write tools enabled. This server is fully compatible with Linux Kubernetes when backed by a PVC or another cluster-native volume.

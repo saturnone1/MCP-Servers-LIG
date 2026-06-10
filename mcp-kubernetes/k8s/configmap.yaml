@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-kubernetes-config
+  namespace: mcp-servers
+data:
+  MCP_ALLOWED_DIRS: /workspace
+  MCP_ENABLE_KUBERNETES_WRITES: "true"
+  MCP_ENABLE_RAW_KUBECTL: "true"
+  KUBECTL_PATH: /usr/local/bin/kubectl

@@ -17,6 +17,10 @@
 docker build -t local/mcp-dotnet .
 ```
 
+## Air Gap 추출
+
+`local/mcp-dotnet:latest` 이미지를 `airgap/local-mcp-dotnet.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -61,3 +65,7 @@ docker run --rm -p 8084:8080 -v ${PWD}:/workspace local/mcp-dotnet
 | `MCP_ALLOWED_DIRS` | `/` | project path로 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_ENABLE_DOTNET_WRITES` | Dockerfile에서 `true` | `false`로 설정하면 `add_package`, `format`을 막습니다. |
+
+## Kubernetes
+
+Kubernetes 매니페스트는 [k8s/](k8s/README.ko.md)에 있습니다. Kubernetes 배포에서는 PVC를 `/workspace`에 마운트하고 `MCP_ALLOWED_DIRS=/workspace`, `MCP_ENABLE_DOTNET_WRITES=true`를 사용합니다. `sdk_info`, 프로젝트 탐색, build/test는 마운트된 소스로 동작합니다. air gap 클러스터에서 `restore`, `add_package`를 쓰려면 NuGet cache를 미리 넣거나 내부 NuGet feed가 필요합니다.

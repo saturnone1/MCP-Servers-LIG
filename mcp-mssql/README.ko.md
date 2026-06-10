@@ -17,6 +17,10 @@ Microsoft SQL Server 작업을 MCP tool로 제공하는 C# 원격 서버입니�
 docker build -t local/mcp-mssql .
 ```
 
+## Air Gap 추출
+
+`local/mcp-mssql:latest` 이미지를 `airgap/local-mcp-mssql.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -62,3 +66,7 @@ SQL tool은 기본적으로 `MSSQL_CONNECTION_STRING`을 사용합니다. 호출
 ## 참고
 
 `execute_read_query`는 의도적으로 `SELECT` 또는 `WITH`로 시작하는 query만 허용합니다. 변경 SQL은 trusted 환경에서 `execute_non_query`를 사용합니다.
+
+## Kubernetes
+
+이번 단계에서는 `mcp-mssql`용 Kubernetes 매니페스트를 제공하지 않습니다. 요청한 Kubernetes 대상에서 명시적으로 제외되었고, 실제 클러스터 배포에는 SQL connection string, Secret, NetworkPolicy, DB egress 정책을 별도로 정해야 합니다.
