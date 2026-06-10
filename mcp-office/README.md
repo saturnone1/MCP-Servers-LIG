@@ -19,6 +19,10 @@ docker build -t local/mcp-office .
 
 The Dockerfile downloads the Linux x64 OfficeCLI release during build and embeds it in the final image, so runtime does not need internet access.
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-office:latest` as `airgap/local-mcp-office.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -66,3 +70,7 @@ All tools return a command-style object: `{ "exitCode": number, "stdout": string
 ## Notes
 
 The `extract_text` tool reads modern Office files through OfficeCLI and legacy `.doc` files through `antiword`.
+
+## Kubernetes
+
+No Kubernetes manifests are provided for `mcp-office` in this phase. It is excluded from the Linux Kubernetes set because it is primarily a desktop/document-conversion workload and was explicitly grouped with local/Windows-oriented servers for this review.

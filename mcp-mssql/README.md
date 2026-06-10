@@ -17,6 +17,10 @@ C# remote MCP server for Microsoft SQL Server over Streamable HTTP.
 docker build -t local/mcp-mssql .
 ```
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-mssql:latest` as `airgap/local-mcp-mssql.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -59,3 +63,7 @@ SQL tools use `MSSQL_CONNECTION_STRING` by default. Pass `connectionString` per 
 ## Notes
 
 `execute_read_query` intentionally accepts only queries beginning with `SELECT` or `WITH`. Use `execute_non_query` for mutating SQL when running in a trusted environment.
+
+## Kubernetes
+
+No Kubernetes manifests are provided for `mcp-mssql` in this phase. It was explicitly excluded from the requested Kubernetes set; a production cluster deployment should separately decide how to provide SQL connection strings, secrets, network policy, and database egress.

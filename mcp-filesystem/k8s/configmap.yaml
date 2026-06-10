@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-filesystem-config
+  namespace: mcp-servers
+data:
+  MCP_ALLOWED_DIRS: /workspace
+  MCP_ENABLE_WRITES: "true"

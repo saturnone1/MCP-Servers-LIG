@@ -19,6 +19,10 @@ docker build -t local/mcp-office .
 
 Dockerfile은 빌드 시점에 OfficeCLI Linux x64 릴리스를 다운로드해 최종 이미지에 포함합니다. 따라서 런타임에는 인터넷이 필요 없습니다.
 
+## Air Gap 추출
+
+`local/mcp-office:latest` 이미지를 `airgap/local-mcp-office.tar`로 추출하고 air gap PC에서 `docker load` 후 실행하는 방법은 [airgap/README.ko.md](airgap/README.ko.md)에 정리되어 있습니다.
+
 ## 실행
 
 ```powershell
@@ -69,3 +73,7 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 ## 참고
 
 `extract_text`는 최신 Office 파일은 OfficeCLI로 읽고, legacy `.doc` 파일은 `antiword`로 읽습니다.
+
+## Kubernetes
+
+이번 단계에서는 `mcp-office`용 Kubernetes 매니페스트를 제공하지 않습니다. 문서 변환/데스크톱 파일 처리 성격이 강하고, 이번 검토에서 로컬/Windows 지향 서버로 분류했기 때문입니다.

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-dotnet
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: mcp-dotnet
+    app.kubernetes.io/component: mcp-server
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mcp-dotnet
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

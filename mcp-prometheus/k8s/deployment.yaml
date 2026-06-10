@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-prometheus
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: mcp-prometheus
+    app.kubernetes.io/component: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-prometheus
+      app.kubernetes.io/component: mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-prometheus
+        app.kubernetes.io/component: mcp-server
+    spec:
+      containers:
+        - name: mcp-prometheus
+          image: local/mcp-prometheus:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: mcp-prometheus-config
+          # Optional bearer token:
+          # env:
+          #   - name: PROMETHEUS_BEARER_TOKEN
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: mcp-prometheus-auth
+          #         key: bearer-token
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+

@@ -17,6 +17,10 @@ C# remote MCP Git server over Streamable HTTP. It wraps the `git` CLI inside the
 docker build -t local/mcp-git .
 ```
 
+## Air Gap Export
+
+Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-git:latest` as `airgap/local-mcp-git.tar`, copy it to an air-gapped machine, load it with `docker load`, and run it.
+
 ## Run
 
 ```powershell
@@ -66,3 +70,7 @@ Most tools return `{ "exitCode": number, "stdout": string, "stderr": string }` f
 | `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for repository paths. |
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_ENABLE_GIT_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block `init/add/commit/checkout`. |
+
+## Kubernetes
+
+Kubernetes manifests are available in [k8s/](k8s/README.ko.md). The Kubernetes profile mounts a PVC at `/workspace`, sets `MCP_ALLOWED_DIRS=/workspace`, and keeps Git write tools enabled. Local Git commands work in-cluster; remote fetch/push needs cluster egress or access to an internal Git server.

@@ -5,3 +5,5 @@ obj/
 *.suo
 
 .mcp-*-test.pid
+
+mcp-*/airgap/*.tar
