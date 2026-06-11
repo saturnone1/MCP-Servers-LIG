@@ -43,7 +43,7 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 | `extract_text` | `.doc`, `.docx`, `.xlsx`, `.pptx`에서 읽을 수 있는 텍스트를 추출합니다. |
 | `create_document` | OfficeCLI로 Office 문서를 생성합니다. |
 | `apply_batch` | OfficeCLI batch JSON을 문서에 적용합니다. |
-| `render_document` | 문서를 지정한 출력 경로로 렌더링하거나 내보냅니다. |
+| `render_document` | OfficeCLI 텍스트 view 결과를 지정한 출력 경로로 저장합니다. |
 | `run_office_cli` | 고급 작업을 위해 raw OfficeCLI 인자를 실행합니다. |
 
 ## API 설명
@@ -57,7 +57,7 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 | `extract_text` | `path` string, `maxLines` int = `200` | 최신 Office 파일은 OfficeCLI, legacy `.doc`는 `antiword`로 텍스트를 추출합니다. |
 | `create_document` | `path` string | 매핑된 경로에 문서를 생성합니다. |
 | `apply_batch` | `documentPath` string, `batchJsonPath` string | OfficeCLI batch JSON을 문서에 적용합니다. |
-| `render_document` | `documentPath` string, `outputPath` string | 문서를 지정한 출력 경로로 렌더링하거나 내보냅니다. |
+| `render_document` | `documentPath` string, `outputPath` string | OfficeCLI `view text --json` 결과를 지정 경로에 저장합니다. PDF/HTML/이미지 렌더링이 아니라 텍스트 스냅샷입니다. |
 | `run_office_cli` | `args` string array, `timeoutMs` int = `120000` | raw OfficeCLI 인자를 직접 실행하는 고급용 tool입니다. |
 
 ## 환경 변수

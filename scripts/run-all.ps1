@@ -3,6 +3,20 @@ param(
     [string]$HostDriveRoot = 'C:\',
     [string]$HostDriveMount = '/host/c',
     [string]$MssqlConnectionString = '',
+    [string]$PostgresConnectionString = '',
+    [string]$PrometheusBaseUrl = '',
+    [string]$PrometheusBearerToken = '',
+    [string]$GitLabBaseUrl = '',
+    [string]$GitLabToken = '',
+    [string]$JiraBaseUrl = '',
+    [string]$JiraBearerToken = '',
+    [string]$JiraEmail = '',
+    [string]$JiraApiToken = '',
+    [string]$LokiBaseUrl = '',
+    [string]$LokiBearerToken = '',
+    [string]$LokiUsername = '',
+    [string]$LokiPassword = '',
+    [string]$LokiTenantId = '',
     [switch]$Build
 )
 
@@ -18,7 +32,11 @@ $servers = @(
     @{ Name = 'mcp-hwp'; Port = 8086 },
     @{ Name = 'mcp-kubernetes'; Port = 8087 },
     @{ Name = 'mcp-docker'; Port = 8088 },
-    @{ Name = 'mcp-prometheus'; Port = 8089 }
+    @{ Name = 'mcp-prometheus'; Port = 8089 },
+    @{ Name = 'mcp-postgresql'; Port = 8090 },
+    @{ Name = 'mcp-gitlab'; Port = 8091 },
+    @{ Name = 'mcp-jira'; Port = 8092 },
+    @{ Name = 'mcp-loki'; Port = 8093 }
 )
 
 if ($Build) {
@@ -47,6 +65,56 @@ foreach ($server in $servers) {
     $args += @('-e', "MCP_PATH_MAPPINGS=$($pathMappings -join ';')")
     if ($server.Name -eq 'mcp-mssql' -and -not [string]::IsNullOrWhiteSpace($MssqlConnectionString)) {
         $args += @('-e', "MSSQL_CONNECTION_STRING=$MssqlConnectionString")
+    }
+    if ($server.Name -eq 'mcp-postgresql' -and -not [string]::IsNullOrWhiteSpace($PostgresConnectionString)) {
+        $args += @('-e', "POSTGRES_CONNECTION_STRING=$PostgresConnectionString")
+    }
+    if ($server.Name -eq 'mcp-prometheus') {
+        if (-not [string]::IsNullOrWhiteSpace($PrometheusBaseUrl)) {
+            $args += @('-e', "PROMETHEUS_BASE_URL=$PrometheusBaseUrl")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($PrometheusBearerToken)) {
+            $args += @('-e', "PROMETHEUS_BEARER_TOKEN=$PrometheusBearerToken")
+        }
+    }
+    if ($server.Name -eq 'mcp-gitlab') {
+        if (-not [string]::IsNullOrWhiteSpace($GitLabBaseUrl)) {
+            $args += @('-e', "GITLAB_BASE_URL=$GitLabBaseUrl")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($GitLabToken)) {
+            $args += @('-e', "GITLAB_TOKEN=$GitLabToken")
+        }
+    }
+    if ($server.Name -eq 'mcp-jira') {
+        if (-not [string]::IsNullOrWhiteSpace($JiraBaseUrl)) {
+            $args += @('-e', "JIRA_BASE_URL=$JiraBaseUrl")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($JiraBearerToken)) {
+            $args += @('-e', "JIRA_BEARER_TOKEN=$JiraBearerToken")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($JiraEmail)) {
+            $args += @('-e', "JIRA_EMAIL=$JiraEmail")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($JiraApiToken)) {
+            $args += @('-e', "JIRA_API_TOKEN=$JiraApiToken")
+        }
+    }
+    if ($server.Name -eq 'mcp-loki') {
+        if (-not [string]::IsNullOrWhiteSpace($LokiBaseUrl)) {
+            $args += @('-e', "LOKI_BASE_URL=$LokiBaseUrl")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($LokiBearerToken)) {
+            $args += @('-e', "LOKI_BEARER_TOKEN=$LokiBearerToken")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($LokiUsername)) {
+            $args += @('-e', "LOKI_USERNAME=$LokiUsername")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($LokiPassword)) {
+            $args += @('-e', "LOKI_PASSWORD=$LokiPassword")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($LokiTenantId)) {
+            $args += @('-e', "LOKI_TENANT_ID=$LokiTenantId")
+        }
     }
     if ($server.Name -eq 'mcp-docker') {
         $args += @('-v', '/var/run/docker.sock:/var/run/docker.sock')

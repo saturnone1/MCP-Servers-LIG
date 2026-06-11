@@ -65,14 +65,18 @@ public sealed class OfficeTools
     }
 
     [McpServerTool]
-    [Description("Render or export an Office document to an output path.")]
-    public static Task<CommandResult> RenderDocument(string documentPath, string outputPath)
+    [Description("Export a text snapshot of an Office document to an output path.")]
+    public static async Task<CommandResult> RenderDocument(string documentPath, string outputPath)
     {
         Guard.RequireOfficeWrites();
         var document = Guard.RequireAllowedPath(documentPath);
         var output = Guard.RequireAllowedPath(outputPath);
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
-        return OfficeCli(120000, "render", document, output, "--json");
+        var result = await OfficeCli(120000, "view", document, "text", "--json");
+        if (result.ExitCode != 0)
+            return result;
+        await File.WriteAllTextAsync(output, result.Stdout);
+        return result with { Stdout = $"Wrote text snapshot to {output}\n{result.Stdout}" };
     }
 
     [McpServerTool]

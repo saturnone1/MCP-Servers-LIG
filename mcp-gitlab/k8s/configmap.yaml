@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-gitlab-config
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: mcp-gitlab
+    app.kubernetes.io/component: mcp-server
+data:
+  GITLAB_BASE_URL: "https://gitlab.example.local"
+  MCP_ENABLE_GITLAB_WRITES: "true"
+

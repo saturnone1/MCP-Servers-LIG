@@ -7,3 +7,5 @@ obj/
 .mcp-*-test.pid
 
 mcp-*/airgap/*.tar
+mcp-rhapsody/publish/
+tests/fixtures/office-smoke-*
