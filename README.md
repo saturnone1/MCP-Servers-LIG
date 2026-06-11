@@ -2,7 +2,7 @@
 
 Korean version: [README.ko.md](README.ko.md)
 
-This workspace contains fourteen independent Docker-buildable remote MCP servers plus one Windows-host Rhapsody MCP server. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
+This workspace contains fourteen independent Docker-buildable remote MCP servers plus four Windows-host desktop automation MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
 
 These images are intended for trusted local testing. Write and execute capabilities are enabled by default, and allowed paths default to `/` inside the container. Host filesystem access is still limited by Docker volume mounts.
 
@@ -25,10 +25,13 @@ These images are intended for trusted local testing. Write and execute capabilit
 | `mcp-jira` | 8092 | Local implementation | C# Jira REST API client | JQL search, issues, comments, transitions, projects |
 | `mcp-loki` | 8093 | Local implementation | C# Loki HTTP API client | LogQL queries, recent log search, labels, series, index stats |
 | `mcp-rhapsody` | 8094 | Local implementation | Windows-host C# server for Rhapsody COM/CLI/file automation | Detect Rhapsody, inspect model files, run configured CLI |
+| `mcp-matlab` | 8095 | Official `matlab/matlab-mcp-core-server` lineage | Windows-host C# wrapper around MATLAB CLI/COM plus official MCP bridge hook | Detect MATLAB, run batch/script, COM eval, workspace summary |
+| `mcp-autocad` | 8096 | Open-source AutoCAD MCP COM automation pattern | Windows-host C# AutoCAD COM wrapper | Open drawings, list layers/entities, send commands, create layer/line, save |
+| `mcp-solidworks` | 8097 | Open-source SolidWorks MCP COM automation pattern | Windows-host C# SolidWorks COM wrapper | Open CAD docs, list features/components, mass properties, rebuild/save/export |
 
 ## Connections
 
-Each image listens on port `8080` inside the container. The smoke-test port layout is:
+Docker images listen on port `8080` inside the container. Windows-host desktop servers listen directly on their listed localhost ports. The smoke-test port layout is:
 
 | Server | Streamable HTTP | Legacy SSE |
 | --- | --- | --- |
@@ -47,6 +50,9 @@ Each image listens on port `8080` inside the container. The smoke-test port layo
 | `mcp-jira` | `http://localhost:8092/mcp` | `http://localhost:8092/sse` |
 | `mcp-loki` | `http://localhost:8093/mcp` | `http://localhost:8093/sse` |
 | `mcp-rhapsody` | `http://localhost:8094/mcp` | `http://localhost:8094/sse` |
+| `mcp-matlab` | `http://localhost:8095/mcp` | `http://localhost:8095/sse` |
+| `mcp-autocad` | `http://localhost:8096/mcp` | `http://localhost:8096/sse` |
+| `mcp-solidworks` | `http://localhost:8097/mcp` | `http://localhost:8097/sse` |
 
 ## MCP API Shape
 
@@ -87,6 +93,96 @@ Runtime images are designed to run without internet access. Build-time package r
 ```powershell
 .\mcp-rhapsody\scripts\publish-win.ps1
 ```
+
+The MATLAB, AutoCAD, and SolidWorks MCP servers are also Windows-host packages:
+
+```powershell
+.\mcp-matlab\scripts\publish-win.ps1
+.\mcp-autocad\scripts\publish-win.ps1
+.\mcp-solidworks\scripts\publish-win.ps1
+```
+
+For MATLAB, run `.\mcp-matlab\scripts\download-official-mcp.ps1` before publishing if you want the official MathWorks MCP server binary copied into the air-gap package under `official/`.
+
+To publish all Windows-host desktop servers at once:
+
+```powershell
+.\scripts\publish-windows-host.ps1 -Zip
+```
+
+The output folders contain a native Windows `.exe`, `run.ps1`, `start.cmd`, and an editable `.env` file. For example:
+
+```text
+windows-host-publish\mcp-matlab-win-x64\McpMatlab.exe
+windows-host-publish\mcp-matlab-win-x64\start.cmd
+windows-host-publish\mcp-matlab-win-x64\run.ps1
+```
+
+Default publish mode is self-contained `win-x64`, so the target air-gap PC does not need the .NET runtime installed. To make smaller packages for PCs that already have .NET installed, pass `-SelfContained $false`.
+
+## Windows Unified EXE Bundle
+
+You can also publish every MCP server, including the servers that normally default to Docker, as Windows `.exe` packages controlled by `mcp-manager`. This does not remove the Dockerfiles, air-gap tar workflow, or Kubernetes YAML; it adds a Windows-local process bundle.
+
+```powershell
+.\scripts\publish-mcp-bundle.ps1 -Zip
+```
+
+The output is `mcp-bundle`:
+
+```text
+mcp-bundle\McpManager.exe
+mcp-bundle\servers.json
+mcp-bundle\start-all.cmd
+mcp-bundle\stop-all.cmd
+mcp-bundle\status.cmd
+mcp-bundle\urls.cmd
+mcp-bundle\mcp-office-win-x64\McpOffice.exe
+mcp-bundle\mcp-filesystem-win-x64\McpFilesystem.exe
+mcp-bundle\mcp-git-win-x64\McpGit.exe
+...
+mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
+```
+
+The bundle `servers.json` registers all 18 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
+
+Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console menu. The menu supports start/stop/restart all, status, URLs, per-server start/stop, and logs.
+
+```powershell
+.\mcp-bundle\McpManager.exe list all
+.\mcp-bundle\McpManager.exe start mcp-filesystem
+.\mcp-bundle\McpManager.exe status all
+.\mcp-bundle\McpManager.exe urls all
+.\mcp-bundle\McpManager.exe stop all
+```
+
+The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. The default output is self-contained `win-x64`, so an air-gapped Windows PC does not need a separate .NET runtime.
+
+Check the bundle structure and external CLI availability with:
+
+```powershell
+.\scripts\test-mcp-bundle.ps1
+```
+
+The server executables are included, but tools that shell out to external programs still need those programs on the target PC. Items installed by Dockerfiles through `apt-get`, `curl`, or `pip` are not automatically embedded in the Windows exe bundle.
+
+| Server | Windows exe bundle status | Additional requirement |
+| --- | --- | --- |
+| `mcp-filesystem` | Self-contained | None |
+| `mcp-mssql`, `mcp-postgresql` | Server is self-contained | Real DB connection string |
+| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki` | Server is self-contained | Real API URL/token |
+| `mcp-shell` | Server is self-contained | Commands invoked by tools must exist on Windows |
+| `mcp-git` | Server is self-contained | `git.exe` |
+| `mcp-dotnet` | Server is self-contained | .NET SDK/CLI on the target PC |
+| `mcp-kubernetes` | Server is self-contained | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
+| `mcp-docker` | Server is self-contained | Docker CLI and Docker Desktop/daemon |
+| `mcp-office` | Bundles `officecli.exe` | `antiword` for legacy `.doc` is optional; OfficeCLI is used as fallback |
+| `mcp-hwp` | Built-in parser handles `.hwpx` and basic `.hwp` text extraction | Optional `hwp5txt` for fallback; LibreOffice `soffice` only for `docx/pdf/odt` conversion |
+| `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | Server is self-contained | Corresponding commercial software, COM/CLI, and license |
+
+The Office publish flow copies the downloaded OfficeCLI Windows binary from `mcp-office\vendor\officecli` into the bundle as `tools/officecli.exe`. If the vendor binary is missing, `publish-mcp-bundle.ps1` calls `mcp-office\scripts\download-officecli.ps1`.
+
+The MATLAB publish flow copies the downloaded official MathWorks MCP binary from `mcp-matlab\vendor\official` into the bundle's `official/` folder.
 
 ## Export For Air Gap
 
@@ -131,6 +227,12 @@ Copy the needed `airgap` folder or tar files to the air-gapped machine and load 
 
 The priority verification runner executes the Docker MCP smoke test, external API mock calls, PostgreSQL fixture smoke, SQL Server fixture smoke, and the Windows-host Rhapsody MCP smoke. On a Rhapsody-installed Windows PC, add `-RhapsodyProjectPath "C:\path\model.rpyx"` to include COM read smoke, and add `-RunRhapsodyWriteSmoke` only when it is safe to modify and save that model.
 
+For the Windows-host MATLAB, AutoCAD, and SolidWorks MCP servers:
+
+```powershell
+.\tests\desktop-host-smoke.ps1
+```
+
 For a faster Docker-only pass:
 
 ```powershell
@@ -138,6 +240,27 @@ For a faster Docker-only pass:
 ```
 
 The Docker smoke test restarts the containers, verifies `/healthz`, checks SSE, lists MCP tools, and calls representative tools. Prometheus, GitLab, Jira, and Loki are checked against local mock HTTP APIs. PostgreSQL and SQL Server live DB checks are covered by the fixture scripts in `tests/`.
+
+## MCP Manager
+
+`mcp-manager` is a small CLI that starts, stops, checks, and logs both Docker MCP servers and Windows-host MCP servers from one place.
+
+Development use:
+
+```powershell
+.\mcp-manager\scripts\run.ps1 list all
+.\mcp-manager\scripts\run.ps1 start all
+.\mcp-manager\scripts\run.ps1 status all
+.\mcp-manager\scripts\run.ps1 stop all
+```
+
+Publish a native Windows manager executable:
+
+```powershell
+.\mcp-manager\scripts\publish-win.ps1
+```
+
+The publish folder includes `McpManager.exe`, `mcp-manager.cmd`, `start-all.cmd`, `stop-all.cmd`, `status.cmd`, and `servers.json`.
 
 To start all servers without running the smoke calls:
 
@@ -198,6 +321,8 @@ Air-gapped clusters need the images loaded into the cluster runtime or pushed to
 
 `mcp-rhapsody` is also excluded from Kubernetes and Linux Docker because Rhapsody automation depends on a Windows installation, user session, license, COM automation, and local CLI tools.
 
+`mcp-matlab`, `mcp-autocad`, and `mcp-solidworks` are excluded for the same desktop-automation reason: they require installed Windows desktop applications, user/session context, licenses, and COM or local CLI automation.
+
 ## Per-Server Docs
 
 Each folder contains a dedicated `README.md` with implementation notes, tool lists, environment variables, and run examples:
@@ -217,3 +342,6 @@ Each folder contains a dedicated `README.md` with implementation notes, tool lis
 - `mcp-jira/README.md`
 - `mcp-loki/README.md`
 - `mcp-rhapsody/README.md`
+- `mcp-matlab/README.md`
+- `mcp-autocad/README.md`
+- `mcp-solidworks/README.md`

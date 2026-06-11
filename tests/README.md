@@ -9,6 +9,8 @@ Runs the current priority verification sequence:
 - SQL Server disposable fixture smoke
 - Rhapsody Windows-host MCP smoke
 
+MATLAB, AutoCAD, and SolidWorks are covered by `desktop-host-smoke.ps1` because they use separate Windows desktop host ports and are not Docker services.
+
 Run:
 
 ```powershell
@@ -78,4 +80,14 @@ On a Rhapsody-installed Windows PC, pass a project path to run actual COM read c
 ```powershell
 .\tests\rhapsody-smoke.ps1 -RhapsodyProjectPath "C:\path\model.rpyx"
 .\tests\rhapsody-smoke.ps1 -RhapsodyProjectPath "C:\path\model.rpyx" -RunWriteSmoke
+```
+
+## Desktop Host MCP
+
+`desktop-host-smoke.ps1` runs the Windows-host MATLAB, AutoCAD, and SolidWorks MCP servers and verifies `/healthz`, MCP startup, tool registration, and `config`. It also verifies the MATLAB official MCP bridge against `mock-stdio-mcp.ps1`, so `official_mcp_tools_list` and `official_mcp_tool_call` are exercised without requiring MATLAB.
+
+This smoke does not require MATLAB, AutoCAD, or SolidWorks to be installed. Product-specific COM/API tools still require the corresponding desktop application, license, and user session.
+
+```powershell
+.\tests\desktop-host-smoke.ps1
 ```

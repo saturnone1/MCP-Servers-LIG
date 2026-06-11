@@ -8,4 +8,14 @@ obj/
 
 mcp-*/airgap/*.tar
 mcp-rhapsody/publish/
+mcp-office/vendor/
+mcp-matlab/vendor/official/
+mcp-matlab/publish/
+mcp-autocad/publish/
+mcp-solidworks/publish/
+windows-host-publish/
+mcp-bundle/
+mcp-bundle.zip
+mcp-manager/publish/
+.mcp-manager/
 tests/fixtures/office-smoke-*

@@ -1,0 +1,157 @@
+{
+  "servers": [
+    {
+      "name": "mcp-office",
+      "kind": "docker",
+      "port": 8080,
+      "image": "local/mcp-office",
+      "groups": [ "docker", "office" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-filesystem",
+      "kind": "docker",
+      "port": 8081,
+      "image": "local/mcp-filesystem",
+      "groups": [ "docker", "files" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-git",
+      "kind": "docker",
+      "port": 8082,
+      "image": "local/mcp-git",
+      "groups": [ "docker", "devops" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-shell",
+      "kind": "docker",
+      "port": 8083,
+      "image": "local/mcp-shell",
+      "groups": [ "docker", "shell" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-dotnet",
+      "kind": "docker",
+      "port": 8084,
+      "image": "local/mcp-dotnet",
+      "groups": [ "docker", "dev" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-mssql",
+      "kind": "docker",
+      "port": 8085,
+      "image": "local/mcp-mssql",
+      "groups": [ "docker", "database" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-hwp",
+      "kind": "docker",
+      "port": 8086,
+      "image": "local/mcp-hwp",
+      "groups": [ "docker", "office" ],
+      "volumes": [ "{repo}:/workspace", "C:\\:/host/c" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c" }
+    },
+    {
+      "name": "mcp-kubernetes",
+      "kind": "docker",
+      "port": 8087,
+      "image": "local/mcp-kubernetes",
+      "groups": [ "docker", "kubernetes", "devops" ],
+      "volumes": [ "{repo}:/workspace", "{home}\\.kube:/root/.kube" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace" }
+    },
+    {
+      "name": "mcp-docker",
+      "kind": "docker",
+      "port": 8088,
+      "image": "local/mcp-docker",
+      "groups": [ "docker", "devops" ],
+      "volumes": [ "{repo}:/workspace", "/var/run/docker.sock:/var/run/docker.sock" ],
+      "env": { "MCP_PATH_MAPPINGS": "{repo}=/workspace" }
+    },
+    {
+      "name": "mcp-prometheus",
+      "kind": "docker",
+      "port": 8089,
+      "image": "local/mcp-prometheus",
+      "groups": [ "docker", "observability" ],
+      "volumes": [ "{repo}:/workspace" ]
+    },
+    {
+      "name": "mcp-postgresql",
+      "kind": "docker",
+      "port": 8090,
+      "image": "local/mcp-postgresql",
+      "groups": [ "docker", "database" ],
+      "volumes": [ "{repo}:/workspace" ]
+    },
+    {
+      "name": "mcp-gitlab",
+      "kind": "docker",
+      "port": 8091,
+      "image": "local/mcp-gitlab",
+      "groups": [ "docker", "devops" ],
+      "volumes": [ "{repo}:/workspace" ]
+    },
+    {
+      "name": "mcp-jira",
+      "kind": "docker",
+      "port": 8092,
+      "image": "local/mcp-jira",
+      "groups": [ "docker", "devops" ],
+      "volumes": [ "{repo}:/workspace" ]
+    },
+    {
+      "name": "mcp-loki",
+      "kind": "docker",
+      "port": 8093,
+      "image": "local/mcp-loki",
+      "groups": [ "docker", "observability" ],
+      "volumes": [ "{repo}:/workspace" ]
+    },
+    {
+      "name": "mcp-rhapsody",
+      "kind": "process",
+      "port": 8094,
+      "groups": [ "windows", "desktop", "modeling" ],
+      "workingDirectory": "{repo}\\windows-host-publish\\mcp-rhapsody-win-x64",
+      "executable": "McpRhapsody.exe"
+    },
+    {
+      "name": "mcp-matlab",
+      "kind": "process",
+      "port": 8095,
+      "groups": [ "windows", "desktop", "engineering" ],
+      "workingDirectory": "{repo}\\windows-host-publish\\mcp-matlab-win-x64",
+      "executable": "McpMatlab.exe"
+    },
+    {
+      "name": "mcp-autocad",
+      "kind": "process",
+      "port": 8096,
+      "groups": [ "windows", "desktop", "cad" ],
+      "workingDirectory": "{repo}\\windows-host-publish\\mcp-autocad-win-x64",
+      "executable": "McpAutoCad.exe"
+    },
+    {
+      "name": "mcp-solidworks",
+      "kind": "process",
+      "port": 8097,
+      "groups": [ "windows", "desktop", "cad" ],
+      "workingDirectory": "{repo}\\windows-host-publish\\mcp-solidworks-win-x64",
+      "executable": "McpSolidWorks.exe"
+    }
+  ]
+}
