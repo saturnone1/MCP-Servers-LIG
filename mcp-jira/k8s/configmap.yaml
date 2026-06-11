@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-jira-config
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: mcp-jira
+    app.kubernetes.io/component: mcp-server
+data:
+  JIRA_BASE_URL: "https://jira.example.local"
+  MCP_ENABLE_JIRA_WRITES: "true"
+

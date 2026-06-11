@@ -29,7 +29,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-office:lates
 docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 ```
 
-Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legacy SSE at `http://localhost:8080/sse`. Trusted-local images enable document creation, batch edits, render/export, and raw OfficeCLI calls by default.
+Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legacy SSE at `http://localhost:8080/sse`. Trusted-local images enable document creation, batch edits, text snapshot export, and raw OfficeCLI calls by default.
 
 ## Tools
 
@@ -40,7 +40,7 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legac
 | `extract_text` | Extracts readable text from `.doc`, `.docx`, `.xlsx`, or `.pptx`. |
 | `create_document` | Creates an Office document using OfficeCLI. |
 | `apply_batch` | Applies an OfficeCLI batch JSON file to a document. |
-| `render_document` | Renders or exports a document to an output path. |
+| `render_document` | Exports the document's OfficeCLI text view to an output path. |
 | `run_office_cli` | Runs raw OfficeCLI arguments for advanced operations. |
 
 ## API Reference
@@ -54,7 +54,7 @@ All tools return a command-style object: `{ "exitCode": number, "stdout": string
 | `extract_text` | `path` string, `maxLines` int = `200` | Uses OfficeCLI for modern Office files and `antiword` for legacy `.doc`. |
 | `create_document` | `path` string | Creates a document at the mapped path. |
 | `apply_batch` | `documentPath` string, `batchJsonPath` string | Applies an OfficeCLI batch JSON file. |
-| `render_document` | `documentPath` string, `outputPath` string | Renders or exports to the requested output path. |
+| `render_document` | `documentPath` string, `outputPath` string | Writes the OfficeCLI `view text --json` output to the requested path. This is a text snapshot, not PDF/HTML/image rendering. |
 | `run_office_cli` | `args` string array, `timeoutMs` int = `120000` | Advanced escape hatch for raw OfficeCLI arguments. |
 
 ## Environment

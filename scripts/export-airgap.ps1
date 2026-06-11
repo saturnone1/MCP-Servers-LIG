@@ -1,6 +1,6 @@
 param(
     [switch]$Build,
-    [string[]]$Servers = @('mcp-office', 'mcp-filesystem', 'mcp-git', 'mcp-shell', 'mcp-dotnet', 'mcp-mssql', 'mcp-hwp', 'mcp-kubernetes', 'mcp-docker', 'mcp-prometheus')
+    [string[]]$Servers = @('mcp-office', 'mcp-filesystem', 'mcp-git', 'mcp-shell', 'mcp-dotnet', 'mcp-mssql', 'mcp-hwp', 'mcp-kubernetes', 'mcp-docker', 'mcp-prometheus', 'mcp-postgresql', 'mcp-gitlab', 'mcp-jira', 'mcp-loki')
 )
 
 $ErrorActionPreference = 'Stop'

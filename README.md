@@ -2,7 +2,7 @@
 
 Korean version: [README.ko.md](README.ko.md)
 
-This workspace contains ten independent Docker-buildable remote MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, listens on container port `8080`, and provides `/healthz` for Docker health checks.
+This workspace contains fourteen independent Docker-buildable remote MCP servers plus one Windows-host Rhapsody MCP server. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
 
 These images are intended for trusted local testing. Write and execute capabilities are enabled by default, and allowed paths default to `/` inside the container. Host filesystem access is still limited by Docker volume mounts.
 
@@ -20,6 +20,11 @@ These images are intended for trusted local testing. Write and execute capabilit
 | `mcp-kubernetes` | 8087 | Local implementation | C# wrapper around `kubectl` | Cluster info, namespaces, pods, logs, deployments, YAML apply/delete/restart/scale/generate |
 | `mcp-docker` | 8088 | Local implementation | C# wrapper around Docker CLI and Docker socket | Containers, images, inspect, logs, run/start/stop/remove, pull/remove image |
 | `mcp-prometheus` | 8089 | Local implementation | C# Prometheus HTTP API client | Readiness, instant/range queries, labels, targets, alerts, series |
+| `mcp-postgresql` | 8090 | Local implementation | C# PostgreSQL tools using `Npgsql` | List databases/schemas/tables, describe tables, read queries, non-query SQL |
+| `mcp-gitlab` | 8091 | Local implementation | C# GitLab REST API client | Projects, issues, merge requests, repository files |
+| `mcp-jira` | 8092 | Local implementation | C# Jira REST API client | JQL search, issues, comments, transitions, projects |
+| `mcp-loki` | 8093 | Local implementation | C# Loki HTTP API client | LogQL queries, recent log search, labels, series, index stats |
+| `mcp-rhapsody` | 8094 | Local implementation | Windows-host C# server for Rhapsody COM/CLI/file automation | Detect Rhapsody, inspect model files, run configured CLI |
 
 ## Connections
 
@@ -37,6 +42,11 @@ Each image listens on port `8080` inside the container. The smoke-test port layo
 | `mcp-kubernetes` | `http://localhost:8087/mcp` | `http://localhost:8087/sse` |
 | `mcp-docker` | `http://localhost:8088/mcp` | `http://localhost:8088/sse` |
 | `mcp-prometheus` | `http://localhost:8089/mcp` | `http://localhost:8089/sse` |
+| `mcp-postgresql` | `http://localhost:8090/mcp` | `http://localhost:8090/sse` |
+| `mcp-gitlab` | `http://localhost:8091/mcp` | `http://localhost:8091/sse` |
+| `mcp-jira` | `http://localhost:8092/mcp` | `http://localhost:8092/sse` |
+| `mcp-loki` | `http://localhost:8093/mcp` | `http://localhost:8093/sse` |
+| `mcp-rhapsody` | `http://localhost:8094/mcp` | `http://localhost:8094/sse` |
 
 ## MCP API Shape
 
@@ -64,13 +74,19 @@ Each per-server README includes the exact tool names, parameters, defaults, and 
 ## Build All
 
 ```powershell
-$servers = 'mcp-office','mcp-filesystem','mcp-git','mcp-shell','mcp-mssql','mcp-dotnet','mcp-hwp','mcp-kubernetes','mcp-docker','mcp-prometheus'
+$servers = 'mcp-office','mcp-filesystem','mcp-git','mcp-shell','mcp-mssql','mcp-dotnet','mcp-hwp','mcp-kubernetes','mcp-docker','mcp-prometheus','mcp-postgresql','mcp-gitlab','mcp-jira','mcp-loki'
 foreach ($server in $servers) {
   docker build -t "local/$server" $server
 }
 ```
 
 Runtime images are designed to run without internet access. Build-time package restore and upstream downloads are allowed.
+
+`mcp-rhapsody` is not part of the Docker build list. It is published as a Windows host package:
+
+```powershell
+.\mcp-rhapsody\scripts\publish-win.ps1
+```
 
 ## Export For Air Gap
 
@@ -99,17 +115,29 @@ mcp-hwp\airgap\local-mcp-hwp.tar
 mcp-kubernetes\airgap\local-mcp-kubernetes.tar
 mcp-docker\airgap\local-mcp-docker.tar
 mcp-prometheus\airgap\local-mcp-prometheus.tar
+mcp-postgresql\airgap\local-mcp-postgresql.tar
+mcp-gitlab\airgap\local-mcp-gitlab.tar
+mcp-jira\airgap\local-mcp-jira.tar
+mcp-loki\airgap\local-mcp-loki.tar
 ```
 
 Copy the needed `airgap` folder or tar files to the air-gapped machine and load them with `docker load -i <tar-file>`. Each server folder has an `airgap/README.ko.md` with the exact load and run commands. Tar archives are ignored by Git.
 
-## Run All Smoke Containers
+## Verification
 
 ```powershell
-.\tests\mcp-smoke.ps1
+.\tests\verify-priority.ps1 -SkipBuild -SkipImagePull
 ```
 
-The smoke test builds the images, restarts the containers, verifies `/healthz`, checks SSE, lists MCP tools, and calls representative tools. `MSSQL_CONNECTION_STRING` is optional; without it, the MSSQL server is started and tool discovery is tested, but live SQL execution is skipped.
+The priority verification runner executes the Docker MCP smoke test, external API mock calls, PostgreSQL fixture smoke, SQL Server fixture smoke, and the Windows-host Rhapsody MCP smoke. On a Rhapsody-installed Windows PC, add `-RhapsodyProjectPath "C:\path\model.rpyx"` to include COM read smoke, and add `-RunRhapsodyWriteSmoke` only when it is safe to modify and save that model.
+
+For a faster Docker-only pass:
+
+```powershell
+.\tests\mcp-smoke.ps1 -SkipBuild
+```
+
+The Docker smoke test restarts the containers, verifies `/healthz`, checks SSE, lists MCP tools, and calls representative tools. Prometheus, GitLab, Jira, and Loki are checked against local mock HTTP APIs. PostgreSQL and SQL Server live DB checks are covered by the fixture scripts in `tests/`.
 
 To start all servers without running the smoke calls:
 
@@ -118,6 +146,22 @@ To start all servers without running the smoke calls:
 ```
 
 By default, this mounts the repository at `/workspace` and the Windows `C:\` drive at `/host/c`, then sets `MCP_PATH_MAPPINGS=C:\=/host/c`. That lets MCP clients pass normal Windows paths such as `C:\Users\taewon\Desktop\넥스원\2024 분산스위치 논문.hwp`.
+
+When you want the API-backed servers to connect to real internal services, pass the service endpoints and credentials at startup:
+
+```powershell
+.\scripts\run-all.ps1 `
+  -PostgresConnectionString "Host=postgres.internal;Port=5432;Database=app;Username=mcp;Password=secret" `
+  -MssqlConnectionString "Server=mssql.internal;Database=app;User Id=mcp;Password=secret;TrustServerCertificate=True" `
+  -PrometheusBaseUrl "http://prometheus.monitoring.svc:9090" `
+  -GitLabBaseUrl "https://gitlab.internal" `
+  -GitLabToken "glpat-..." `
+  -JiraBaseUrl "https://jira.internal" `
+  -JiraBearerToken "..." `
+  -LokiBaseUrl "http://loki.monitoring.svc:3100"
+```
+
+For air-gapped environments, point these values at internal services, internal DNS names, or local mock/fixture services. If a connection string or API URL is omitted, the corresponding server still starts, but tools that need that backend may return configuration errors.
 
 ## Path Mapping
 
@@ -136,7 +180,7 @@ The same mapping pattern is supported by path-based servers such as Office, file
 
 Kubernetes manifests are provided for the MCP servers that can reasonably run as Linux Kubernetes workloads:
 
-- Included: `mcp-filesystem`, `mcp-git`, `mcp-dotnet`, `mcp-kubernetes`, `mcp-prometheus`
+- Included: `mcp-filesystem`, `mcp-git`, `mcp-dotnet`, `mcp-kubernetes`, `mcp-prometheus`, `mcp-postgresql`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`
 - Excluded in this phase: `mcp-office`, `mcp-shell`, `mcp-hwp`, `mcp-mssql`, `mcp-docker`
 
 Each included server has a `k8s/` folder with namespace, Deployment, Service, and any required ConfigMap/PVC/RBAC files. Apply a server with:
@@ -146,10 +190,13 @@ kubectl apply -f .\<server>\k8s\
 ```
 
 The default namespace is `mcp-servers`, container port is `8080`, services are `ClusterIP`, and probes use `GET /healthz`. File/project/repo servers use `/workspace` backed by a PVC instead of broad host-path mounts.
+Servers that connect to external systems, such as PostgreSQL, GitLab, Jira, and Loki, include example Secret manifests. Edit those values or create equivalent Secrets before using the read/write API tools against real services.
 
 Air-gapped clusters need the images loaded into the cluster runtime or pushed to an internal registry. The manifests use `local/<server>:latest` by default. For single-node Docker-based clusters this may work after `docker load`; for containerd or multi-node clusters, import the image into each node runtime or rewrite the image reference to a private registry path.
 
 `mcp-docker` is excluded from the default Kubernetes manifests. It requires access to a Docker daemon socket, which is unavailable in many containerd-based clusters and is high-privilege when host-mounted.
+
+`mcp-rhapsody` is also excluded from Kubernetes and Linux Docker because Rhapsody automation depends on a Windows installation, user session, license, COM automation, and local CLI tools.
 
 ## Per-Server Docs
 
@@ -165,3 +212,8 @@ Each folder contains a dedicated `README.md` with implementation notes, tool lis
 - `mcp-kubernetes/README.md`
 - `mcp-docker/README.md`
 - `mcp-prometheus/README.md`
+- `mcp-postgresql/README.md`
+- `mcp-gitlab/README.md`
+- `mcp-jira/README.md`
+- `mcp-loki/README.md`
+- `mcp-rhapsody/README.md`

@@ -1,37 +1,81 @@
 # MCP Smoke Tests
 
-This folder contains smoke tests for the Docker MCP servers.
+## `verify-priority.ps1`
 
-## Run
+Runs the current priority verification sequence:
 
-```powershell
-.\tests\mcp-smoke.ps1
-```
+- Docker MCP smoke with external API mocks
+- PostgreSQL disposable fixture smoke
+- SQL Server disposable fixture smoke
+- Rhapsody Windows-host MCP smoke
 
-The script builds images, restarts the containers, verifies `/healthz`, verifies legacy SSE at `/sse`, lists MCP tools over Streamable HTTP, and calls one representative tool per server.
-
-## Host Path Mapping
-
-Windows host paths must be mounted into Docker before Linux containers can read them. The script mounts this folder when it exists:
-
-```text
-C:\Users\taewon\Desktop\가상화 -> /virtualization
-```
-
-It also sets:
-
-```text
-MCP_PATH_MAPPINGS=C:\Users\taewon\Desktop\가상화=/virtualization
-```
-
-That lets clients pass the original Windows path while the server transparently calls the mounted Linux path.
-
-The HWP smoke test reads an actual `.hwp` file from that folder when present and creates a small `.hwpx` fixture under `tests/fixtures`.
-
-## MSSQL
-
-Without a SQL connection string, the MSSQL smoke test verifies that the server no longer blocks writes by policy and reports the expected missing connection string error. To run a real SQL query:
+Run:
 
 ```powershell
-.\tests\mcp-smoke.ps1 -MssqlConnectionString "Server=host.docker.internal;Database=master;User Id=sa;Password=...;TrustServerCertificate=True"
+.\tests\verify-priority.ps1 -SkipBuild -SkipImagePull
+```
+
+On a Rhapsody-installed Windows PC, add a real project path to include COM read smoke. Add `-RunRhapsodyWriteSmoke` only when it is safe to modify and save that model.
+
+```powershell
+.\tests\verify-priority.ps1 -SkipBuild -SkipImagePull -RhapsodyProjectPath "C:\path\model.rpyx"
+.\tests\verify-priority.ps1 -SkipBuild -SkipImagePull -RhapsodyProjectPath "C:\path\model.rpyx" -RunRhapsodyWriteSmoke
+```
+
+## `mcp-smoke.ps1`
+
+Starts the Docker MCP servers, checks `/healthz`, verifies legacy SSE, initializes MCP over `/mcp`, lists tools, and calls representative tools.
+
+It also starts local mock HTTP APIs for:
+
+- Prometheus: `query`, `labels`
+- GitLab: `list_projects`
+- Jira: `list_projects`
+- Loki: `labels`, `recent_logs`
+
+Run:
+
+```powershell
+.\tests\mcp-smoke.ps1 -SkipBuild
+```
+
+## `db-fixture-smoke.ps1`
+
+Starts a disposable PostgreSQL container, creates a smoke table, then runs `mcp-smoke.ps1` with a real `POSTGRES_CONNECTION_STRING` so `mcp-postgresql` executes an actual read query.
+
+Run:
+
+```powershell
+.\tests\db-fixture-smoke.ps1
+```
+
+Use `-SkipImagePull` after `postgres:16-alpine` is already available locally.
+
+## SQL Server
+
+`mcp-smoke.ps1` accepts `-MssqlConnectionString` and will execute `select 1 as ok` through `mcp-mssql` when provided.
+
+`mssql-fixture-smoke.ps1` starts a disposable SQL Server Developer container, creates a smoke database/table, then runs `mcp-smoke.ps1` with a real `MSSQL_CONNECTION_STRING`.
+
+Run:
+
+```powershell
+.\tests\mssql-fixture-smoke.ps1
+```
+
+Use `-SkipImagePull` after `mcr.microsoft.com/mssql/server:2022-latest` is already available locally. This test accepts the SQL Server container EULA for the disposable fixture and can take a few minutes on the first run.
+
+## Rhapsody
+
+`rhapsody-smoke.ps1` runs the Windows-host `mcp-rhapsody` server and verifies MCP startup, tool registration, and `config`.
+
+```powershell
+.\tests\rhapsody-smoke.ps1
+```
+
+On a Rhapsody-installed Windows PC, pass a project path to run actual COM read calls. Add `-RunWriteSmoke` only when it is safe to create a smoke package/class and save the project.
+
+```powershell
+.\tests\rhapsody-smoke.ps1 -RhapsodyProjectPath "C:\path\model.rpyx"
+.\tests\rhapsody-smoke.ps1 -RhapsodyProjectPath "C:\path\model.rpyx" -RunWriteSmoke
 ```
