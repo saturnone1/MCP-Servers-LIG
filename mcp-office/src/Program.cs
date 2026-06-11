@@ -39,7 +39,11 @@ public sealed class OfficeTools
         var fullPath = Guard.RequireAllowedPath(path);
         var extension = Path.GetExtension(fullPath);
         if (string.Equals(extension, ".doc", StringComparison.OrdinalIgnoreCase))
-            return CommandRunner.Run(Environment.GetEnvironmentVariable("ANTIWORD_PATH") ?? "antiword", [fullPath], "/workspace", 60000, 2097152);
+        {
+            var antiword = Environment.GetEnvironmentVariable("ANTIWORD_PATH") ?? "antiword";
+            if (CommandRunner.CommandExists(antiword))
+                return CommandRunner.Run(antiword, [fullPath], "/workspace", 60000, 2097152);
+        }
 
         return OfficeCli(60000, "view", fullPath, "text", "--max-lines", Math.Clamp(maxLines, 1, 2000).ToString(), "--json");
     }
@@ -121,6 +125,27 @@ internal static class CommandRunner
     }
 
     private static string Trim(string value, int maxBytes) => value.Length <= maxBytes ? value : value[..maxBytes] + "\n[truncated]";
+    public static bool CommandExists(string fileName)
+    {
+        if (Path.IsPathRooted(fileName) || fileName.Contains(Path.DirectorySeparatorChar) || fileName.Contains(Path.AltDirectorySeparatorChar))
+            return File.Exists(fileName);
+
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        var extensions = OperatingSystem.IsWindows()
+            ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".COM;.EXE;.BAT;.CMD").Split(';', StringSplitOptions.RemoveEmptyEntries)
+            : [""];
+        foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            foreach (var extension in extensions)
+            {
+                var candidate = Path.Combine(directory, fileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase) ? fileName : fileName + extension);
+                if (File.Exists(candidate))
+                    return true;
+            }
+        }
+        return false;
+    }
+
     private static void TryKill(Process process)
     {
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }

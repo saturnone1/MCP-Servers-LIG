@@ -1,7 +1,9 @@
 using ModelContextProtocol.Server;
+using OpenMcdf;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 using System.Text;
 using System.Xml;
 
@@ -33,7 +35,7 @@ public sealed class HwpTools
         if (string.Equals(extension, ".hwpx", StringComparison.OrdinalIgnoreCase))
             return Trim(ExtractHwpxText(fullPath), maxChars);
         if (string.Equals(extension, ".hwp", StringComparison.OrdinalIgnoreCase))
-            return Trim(await ExtractHwpTextWithHwp5Txt(fullPath), maxChars);
+            return Trim(await ExtractHwpText(fullPath), maxChars);
         throw new NotSupportedException("Only .hwp and .hwpx files are supported.");
     }
 
@@ -94,8 +96,20 @@ public sealed class HwpTools
         return result with { Stdout = string.IsNullOrWhiteSpace(result.Stdout) ? $"Wrote {fallback ?? outputPath}" : result.Stdout };
     }
 
+    private static async Task<string> ExtractHwpText(string path)
+    {
+        var internalText = ExtractHwpTextInternal(path);
+        if (!string.IsNullOrWhiteSpace(internalText))
+            return internalText;
+
+        return await ExtractHwpTextWithHwp5Txt(path);
+    }
+
     private static async Task<string> ExtractHwpTextWithHwp5Txt(string path)
     {
+        if (!Guard.CommandExists(Guard.Hwp5TxtPath))
+            return await ExtractHwpTextWithLibreOffice(path, new CommandResult(127, "", $"hwp5txt not found: {Guard.Hwp5TxtPath}"));
+
         var result = await CommandRunner.Run(Guard.Hwp5TxtPath, [path], "/tmp", 120000, 2097152);
         if (result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.Stdout))
             return result.Stdout;
@@ -105,6 +119,9 @@ public sealed class HwpTools
 
     private static async Task<string> ExtractHwpTextWithLibreOffice(string path, CommandResult hwp5Result)
     {
+        if (!Guard.CommandExists(Guard.SofficePath))
+            throw new InvalidOperationException($"HWP extraction failed. Internal parser found no text. hwp5txt ExitCode={hwp5Result.ExitCode}; hwp5txt Stderr={hwp5Result.Stderr}; LibreOffice not found: {Guard.SofficePath}");
+
         var tempDir = Path.Combine(Path.GetTempPath(), "mcp-hwp-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         try
@@ -125,6 +142,97 @@ public sealed class HwpTools
             try { Directory.Delete(tempDir, recursive: true); } catch { }
         }
     }
+
+    private static string ExtractHwpTextInternal(string path)
+    {
+        try
+        {
+            using var file = RootStorage.OpenRead(path, StorageModeFlags.Transacted);
+            var compressed = IsCompressed(file);
+            var body = file.OpenStorage("BodyText");
+            var sectionNames = body
+                .EnumerateEntries()
+                .Where(entry => entry.Type == EntryType.Stream && entry.Name.StartsWith("Section", StringComparison.OrdinalIgnoreCase))
+                .Select(entry => entry.Name)
+                .OrderBy(SectionNumber)
+                .ToArray();
+
+            var builder = new StringBuilder();
+            foreach (var name in sectionNames)
+            {
+                var data = ReadAllBytes(body.OpenStream(name));
+                var bytes = compressed ? TryDeflate(data) ?? data : data;
+                var text = ExtractUtf16Runs(bytes);
+                if (!string.IsNullOrWhiteSpace(text))
+                    builder.AppendLine(text);
+            }
+            return builder.ToString();
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static bool IsCompressed(RootStorage file)
+    {
+        try
+        {
+            var header = ReadAllBytes(file.OpenStream("FileHeader"));
+            if (header.Length < 40)
+                return false;
+            var flags = BitConverter.ToUInt32(header, 36);
+            return (flags & 0x01) != 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static byte[] ReadAllBytes(Stream stream)
+    {
+        using (stream)
+        using (var output = new MemoryStream())
+        {
+            stream.CopyTo(output);
+            return output.ToArray();
+        }
+    }
+
+    private static byte[]? TryDeflate(byte[] bytes)
+    {
+        try
+        {
+            using var source = new MemoryStream(bytes);
+            using var deflate = new DeflateStream(source, CompressionMode.Decompress);
+            using var output = new MemoryStream();
+            deflate.CopyTo(output);
+            return output.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string ExtractUtf16Runs(byte[] bytes)
+    {
+        var text = Encoding.Unicode.GetString(bytes);
+        var matches = Regex.Matches(text, @"[\p{L}\p{N}\p{P}\p{S} \t가-힣]{2,}");
+        var lines = matches
+            .Select(match => NormalizeTextRun(match.Value))
+            .Where(value => value.Length > 1 && value.Any(char.IsLetterOrDigit))
+            .Distinct()
+            .ToArray();
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string NormalizeTextRun(string value) =>
+        Regex.Replace(value.Replace('\0', ' ').Trim(), @"\s+", " ");
+
+    private static int SectionNumber(string name) =>
+        int.TryParse(new string(name.Where(char.IsDigit).ToArray()), out var value) ? value : int.MaxValue;
 
     private static string ExtractHwpxText(string path)
     {
@@ -163,7 +271,7 @@ internal static class CommandRunner
         using var cts = new CancellationTokenSource(timeoutMs);
         var startInfo = new ProcessStartInfo(fileName)
         {
-            WorkingDirectory = workingDirectory,
+            WorkingDirectory = ResolveWorkingDirectory(workingDirectory),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false
@@ -186,6 +294,11 @@ internal static class CommandRunner
     }
 
     private static string Trim(string value, int maxBytes) => value.Length <= maxBytes ? value : value[..maxBytes] + "\n[truncated]";
+    private static string ResolveWorkingDirectory(string workingDirectory) =>
+        Directory.Exists(workingDirectory)
+            ? workingDirectory
+            : Path.GetTempPath();
+
     private static void TryKill(Process process)
     {
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
@@ -197,6 +310,27 @@ internal static class Guard
     private static readonly string[] AllowedRoots = ParseAllowedRoots();
     public static string SofficePath => Environment.GetEnvironmentVariable("SOFFICE_PATH") ?? "soffice";
     public static string Hwp5TxtPath => Environment.GetEnvironmentVariable("HWP5TXT_PATH") ?? "hwp5txt";
+
+    public static bool CommandExists(string fileName)
+    {
+        if (Path.IsPathRooted(fileName) || fileName.Contains(Path.DirectorySeparatorChar) || fileName.Contains(Path.AltDirectorySeparatorChar))
+            return File.Exists(fileName);
+
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        var extensions = OperatingSystem.IsWindows()
+            ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".COM;.EXE;.BAT;.CMD").Split(';', StringSplitOptions.RemoveEmptyEntries)
+            : [""];
+        foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            foreach (var extension in extensions)
+            {
+                var candidate = Path.Combine(directory, fileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase) ? fileName : fileName + extension);
+                if (File.Exists(candidate))
+                    return true;
+            }
+        }
+        return false;
+    }
 
     public static string RequireAllowedPath(string path)
     {

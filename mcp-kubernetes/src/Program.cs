@@ -155,7 +155,7 @@ internal static class CommandRunner
     public static async Task<CommandResult> Run(string fileName, string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes)
     {
         using var cts = new CancellationTokenSource(timeoutMs);
-        var startInfo = new ProcessStartInfo(fileName) { WorkingDirectory = workingDirectory, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        var startInfo = new ProcessStartInfo(fileName) { WorkingDirectory = ResolveWorkingDirectory(workingDirectory), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {fileName}.");
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
@@ -173,6 +173,11 @@ internal static class CommandRunner
     }
 
     private static string Trim(string value, int maxBytes) => Encoding.UTF8.GetByteCount(value) <= maxBytes ? value : value[..Math.Min(value.Length, maxBytes)] + "\n[truncated]";
+    private static string ResolveWorkingDirectory(string workingDirectory) =>
+        Directory.Exists(workingDirectory)
+            ? workingDirectory
+            : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
     private static void TryKill(Process process) { try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { } }
 }
 

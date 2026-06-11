@@ -79,7 +79,7 @@ internal static class CommandRunner
         using var cts = new CancellationTokenSource(timeoutMs);
         var startInfo = new ProcessStartInfo(fileName)
         {
-            WorkingDirectory = workingDirectory,
+            WorkingDirectory = ResolveWorkingDirectory(workingDirectory),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false
@@ -102,6 +102,11 @@ internal static class CommandRunner
     }
 
     private static string Trim(string value, int maxBytes) => value.Length <= maxBytes ? value : value[..maxBytes] + "\n[truncated]";
+    private static string ResolveWorkingDirectory(string workingDirectory) =>
+        Directory.Exists(workingDirectory)
+            ? workingDirectory
+            : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
     private static void TryKill(Process process)
     {
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }

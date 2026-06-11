@@ -8,7 +8,7 @@
 
 - 포팅 원본: 없음
 - 구현 방식: HWP/HWPX 처리를 위해 오픈 도구를 조합한 신규 C# MCP 서버입니다.
-- `.hwp`: `pyhwp`/`hwp5txt`로 먼저 텍스트를 추출하고, 실패하면 LibreOffice headless 변환으로 fallback합니다.
+- `.hwp`: 내장 C# OLE/BodyText 파서로 먼저 텍스트를 추출하고, 실패하면 선택적 `hwp5txt`, LibreOffice headless 변환 순서로 fallback합니다.
 - `.hwpx`: ZIP/XML 파일로 직접 열어 document XML의 text node를 읽습니다.
 - 변환: `txt` 출력은 텍스트 추출 결과로 직접 저장합니다. `docx`, `pdf`, `odt` 출력은 LibreOffice를 사용하고, LibreOffice가 실제 출력 파일을 만들지 못하면 오류로 처리합니다.
 
@@ -57,12 +57,12 @@ docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
 | --- | --- | --- |
 | `MCP_ALLOWED_DIRS` | `/` | 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
-| `HWP5TXT_PATH` | `/opt/pyhwp/bin/hwp5txt` | `hwp5txt` 실행 파일 경로를 바꿉니다. |
-| `SOFFICE_PATH` | `/usr/bin/soffice` | LibreOffice 실행 파일 경로를 바꿉니다. |
+| `HWP5TXT_PATH` | `hwp5txt` | 선택적 fallback `hwp5txt` 실행 파일 경로를 바꿉니다. |
+| `SOFFICE_PATH` | `soffice` | 선택적 LibreOffice 실행 파일 경로를 바꿉니다. |
 
 ## 참고
 
-`.hwp`는 `pyhwp`/`hwp5txt`를 우선 사용하고 LibreOffice를 fallback으로 사용합니다. `.hwpx`는 ZIP/XML로 직접 파싱합니다. `convert`의 `txt` 출력은 이 텍스트 추출 결과를 파일로 저장합니다. `docx`, `pdf`, `odt` 변환은 LibreOffice가 실제 출력 파일을 만들지 못하면 오류로 처리합니다.
+`.hwp`는 내장 C# 파서를 우선 사용합니다. 내장 파서가 텍스트를 찾지 못하면 `hwp5txt`, LibreOffice 순서로 fallback합니다. `.hwpx`는 ZIP/XML로 직접 파싱합니다. `convert`의 `txt` 출력은 이 텍스트 추출 결과를 파일로 저장합니다. `docx`, `pdf`, `odt` 변환은 LibreOffice가 실제 출력 파일을 만들지 못하면 오류로 처리합니다.
 
 ## Kubernetes
 

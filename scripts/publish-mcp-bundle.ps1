@@ -1,0 +1,144 @@
+param(
+    [string]$OutputRoot = (Join-Path $PSScriptRoot '..\mcp-bundle'),
+    [string]$Configuration = 'Release',
+    [string]$Runtime = 'win-x64',
+    [bool]$SelfContained = $true,
+    [bool]$SingleFile = $false,
+    [switch]$Zip
+)
+
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
+
+Write-Host "== Publishing manager"
+& (Join-Path $repoRoot 'mcp-manager\scripts\publish-win.ps1') `
+    -Output $OutputRoot `
+    -Configuration $Configuration `
+    -Runtime $Runtime `
+    -SelfContained $SelfContained `
+    -SingleFile $SingleFile
+
+Copy-Item -LiteralPath (Join-Path $repoRoot 'mcp-manager\config\servers.bundle.json') -Destination (Join-Path $OutputRoot 'servers.json') -Force
+
+$servers = @(
+    @{ Name = 'mcp-office'; Project = 'mcp-office\src\McpOffice.csproj'; Folder = 'mcp-office-win-x64'; Env = 'mcp-office\config\office.env.example' },
+    @{ Name = 'mcp-filesystem'; Project = 'mcp-filesystem\src\McpFilesystem.csproj'; Folder = 'mcp-filesystem-win-x64' },
+    @{ Name = 'mcp-git'; Project = 'mcp-git\src\McpGit.csproj'; Folder = 'mcp-git-win-x64' },
+    @{ Name = 'mcp-shell'; Project = 'mcp-shell\src\McpShell.csproj'; Folder = 'mcp-shell-win-x64' },
+    @{ Name = 'mcp-dotnet'; Project = 'mcp-dotnet\src\McpDotnet.csproj'; Folder = 'mcp-dotnet-win-x64' },
+    @{ Name = 'mcp-mssql'; Project = 'mcp-mssql\src\McpMssql.csproj'; Folder = 'mcp-mssql-win-x64' },
+    @{ Name = 'mcp-hwp'; Project = 'mcp-hwp\src\McpHwp.csproj'; Folder = 'mcp-hwp-win-x64' },
+    @{ Name = 'mcp-kubernetes'; Project = 'mcp-kubernetes\src\McpKubernetes.csproj'; Folder = 'mcp-kubernetes-win-x64' },
+    @{ Name = 'mcp-docker'; Project = 'mcp-docker\src\McpDocker.csproj'; Folder = 'mcp-docker-win-x64' },
+    @{ Name = 'mcp-prometheus'; Project = 'mcp-prometheus\src\McpPrometheus.csproj'; Folder = 'mcp-prometheus-win-x64' },
+    @{ Name = 'mcp-postgresql'; Project = 'mcp-postgresql\src\McpPostgresql.csproj'; Folder = 'mcp-postgresql-win-x64' },
+    @{ Name = 'mcp-gitlab'; Project = 'mcp-gitlab\src\McpGitLab.csproj'; Folder = 'mcp-gitlab-win-x64' },
+    @{ Name = 'mcp-jira'; Project = 'mcp-jira\src\McpJira.csproj'; Folder = 'mcp-jira-win-x64' },
+    @{ Name = 'mcp-loki'; Project = 'mcp-loki\src\McpLoki.csproj'; Folder = 'mcp-loki-win-x64' },
+    @{ Name = 'mcp-rhapsody'; Script = 'mcp-rhapsody\scripts\publish-win.ps1'; Folder = 'mcp-rhapsody-win-x64' },
+    @{ Name = 'mcp-matlab'; Script = 'mcp-matlab\scripts\publish-win.ps1'; Folder = 'mcp-matlab-win-x64' },
+    @{ Name = 'mcp-autocad'; Script = 'mcp-autocad\scripts\publish-win.ps1'; Folder = 'mcp-autocad-win-x64' },
+    @{ Name = 'mcp-solidworks'; Script = 'mcp-solidworks\scripts\publish-win.ps1'; Folder = 'mcp-solidworks-win-x64' }
+)
+
+foreach ($server in $servers) {
+    Write-Host ""
+    Write-Host "== Publishing $($server.Name)"
+    $output = Join-Path $OutputRoot $server.Folder
+    if ($server.Script) {
+        & (Join-Path $repoRoot $server.Script) `
+            -Output $output `
+            -Configuration $Configuration `
+            -Runtime $Runtime `
+            -SelfContained $SelfContained `
+            -SingleFile $SingleFile
+    }
+    else {
+        $project = Join-Path $repoRoot $server.Project
+        $publishArgs = @($project, '-c', $Configuration, '-r', $Runtime, '--self-contained', $SelfContained.ToString().ToLowerInvariant(), '-o', $output, '/p:UseAppHost=true')
+        if ($SingleFile) {
+            $publishArgs += '/p:PublishSingleFile=true'
+            $publishArgs += '/p:IncludeNativeLibrariesForSelfExtract=true'
+        }
+        dotnet publish @publishArgs
+        $exe = Get-ChildItem -LiteralPath $output -Filter '*.exe' | Where-Object { $_.Name -ne 'createdump.exe' } | Select-Object -First 1
+        @"
+@echo off
+setlocal
+"%~dp0$($exe.Name)" %*
+"@ | Set-Content -LiteralPath (Join-Path $output 'start.cmd') -Encoding ASCII
+    }
+
+    if ($server.Name -eq 'mcp-office') {
+        $officeCliVendor = Join-Path $repoRoot 'mcp-office\vendor\officecli\officecli.exe'
+        if (-not (Test-Path -LiteralPath $officeCliVendor)) {
+            Write-Host "Downloading OfficeCLI for Windows bundle"
+            & (Join-Path $repoRoot 'mcp-office\scripts\download-officecli.ps1')
+        }
+
+        $toolsDir = Join-Path $output 'tools'
+        New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+        Copy-Item -LiteralPath $officeCliVendor -Destination (Join-Path $toolsDir 'officecli.exe') -Force
+        foreach ($sidecar in @('officecli.sha256', 'README.txt')) {
+            $source = Join-Path $repoRoot "mcp-office\vendor\officecli\$sidecar"
+            if (Test-Path -LiteralPath $source) {
+                Copy-Item -LiteralPath $source -Destination (Join-Path $toolsDir $sidecar) -Force
+            }
+        }
+    }
+}
+
+@'
+@echo off
+setlocal
+"%~dp0McpManager.exe" start all
+pause
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'start-all.cmd') -Encoding ASCII
+@'
+@echo off
+setlocal
+"%~dp0McpManager.exe" stop all
+pause
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'stop-all.cmd') -Encoding ASCII
+@'
+@echo off
+setlocal
+"%~dp0McpManager.exe" status all
+pause
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'status.cmd') -Encoding ASCII
+@'
+@echo off
+setlocal
+"%~dp0McpManager.exe" urls all
+pause
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'urls.cmd') -Encoding ASCII
+
+$config = Get-Content -LiteralPath (Join-Path $OutputRoot 'servers.json') -Raw | ConvertFrom-Json
+foreach ($server in $config.servers) {
+@"
+@echo off
+setlocal
+"%~dp0McpManager.exe" start $($server.name)
+pause
+"@ | Set-Content -LiteralPath (Join-Path $OutputRoot "start-$($server.name).cmd") -Encoding ASCII
+@"
+@echo off
+setlocal
+"%~dp0McpManager.exe" stop $($server.name)
+pause
+"@ | Set-Content -LiteralPath (Join-Path $OutputRoot "stop-$($server.name).cmd") -Encoding ASCII
+}
+
+if ($Zip) {
+    $zipPath = "$OutputRoot.zip"
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
+    }
+    Compress-Archive -Path (Join-Path $OutputRoot '*') -DestinationPath $zipPath -Force
+    Write-Host "Created $zipPath"
+}
+
+Write-Host ""
+Write-Host "MCP bundle is ready in $OutputRoot"

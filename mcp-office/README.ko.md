@@ -8,7 +8,8 @@ OfficeCLI를 MCP 원격 서버로 감싼 C# 서버입니다. Streamable HTTP와 
 
 - 포팅 원본: `iOfficeAI/OfficeCLI`
 - 구현 방식: Linux x64 OfficeCLI 릴리스를 Docker 이미지에 포함하고 MCP tool로 노출합니다.
-- 추가 호환성: legacy `.doc` 텍스트 추출을 위해 `antiword`를 함께 설치합니다.
+- Windows exe 번들: Windows x64 OfficeCLI 릴리스를 `tools/officecli.exe`로 함께 포함합니다.
+- 추가 호환성: legacy `.doc` 텍스트 추출은 `antiword`가 있으면 우선 사용하고, 없으면 OfficeCLI로 fallback합니다.
 - 런타임 목표: headless, Office-free. 컨테이너 안에 Microsoft Office 설치가 필요 없습니다.
 
 ## 빌드
@@ -17,7 +18,9 @@ OfficeCLI를 MCP 원격 서버로 감싼 C# 서버입니다. Streamable HTTP와 
 docker build -t local/mcp-office .
 ```
 
-Dockerfile은 빌드 시점에 OfficeCLI Linux x64 릴리스를 다운로드해 최종 이미지에 포함합니다. 따라서 런타임에는 인터넷이 필요 없습니다.
+Dockerfile은 빌드 시점에 OfficeCLI Linux x64 릴리스를 다운로드해 최종 이미지에 포함합니다. 따라서 런타임에는 인터넷이 필요 없습니다. air gap 환경에서는 인터넷 되는 PC에서 이미지를 build/export한 뒤 `docker load`로 가져갑니다.
+
+Windows exe 번들은 `mcp-office\scripts\download-officecli.ps1`로 받은 OfficeCLI Windows x64 binary를 publish 시점에 함께 복사합니다.
 
 ## Air Gap 추출
 
@@ -68,11 +71,11 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_ENABLE_OFFICE_WRITES` | Dockerfile에서 `true` | `false`로 설정하면 문서 생성/편집/렌더 같은 변경 작업을 막습니다. |
 | `OFFICECLI_PATH` | 이미지에 포함된 OfficeCLI 경로 | OfficeCLI 실행 파일 경로를 바꿉니다. |
-| `ANTIWORD_PATH` | `antiword` | legacy `.doc` 추출기 경로를 바꿉니다. |
+| `ANTIWORD_PATH` | `antiword` | 선택적 legacy `.doc` 추출기 경로를 바꿉니다. 없으면 OfficeCLI로 fallback합니다. |
 
 ## 참고
 
-`extract_text`는 최신 Office 파일은 OfficeCLI로 읽고, legacy `.doc` 파일은 `antiword`로 읽습니다.
+`extract_text`는 최신 Office 파일은 OfficeCLI로 읽고, legacy `.doc` 파일은 `antiword`가 있으면 `antiword`를 우선 사용합니다. `antiword`가 없으면 OfficeCLI로 fallback합니다.
 
 ## Kubernetes
 

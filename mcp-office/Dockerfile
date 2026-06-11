@@ -6,7 +6,7 @@ COPY src/ ./
 RUN dotnet publish -c Release -o /app /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
-ARG OFFICECLI_VERSION=v1.0.103
+ARG OFFICECLI_VERSION=v1.0.110
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates antiword && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL "https://github.com/iOfficeAI/OfficeCLI/releases/download/${OFFICECLI_VERSION}/officecli-linux-x64" -o /usr/local/bin/officecli \

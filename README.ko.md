@@ -2,7 +2,7 @@
 
 영어 버전: [README.md](README.md)
 
-이 저장소는 Docker로 각각 빌드할 수 있는 원격 MCP 서버 14개와 Windows 호스트용 Rhapsody MCP 서버 1개를 담고 있습니다. 모든 서버는 C#/.NET ASP.NET Core 앱이며 `ModelContextProtocol.AspNetCore`를 사용합니다. 공통으로 Streamable HTTP는 `/mcp`, legacy SSE는 `/sse`와 `/message`를 제공하고 `/healthz`를 제공합니다.
+이 저장소는 Docker로 각각 빌드할 수 있는 원격 MCP 서버 14개와 Windows 호스트용 desktop 자동화 MCP 서버 4개를 담고 있습니다. 모든 서버는 C#/.NET ASP.NET Core 앱이며 `ModelContextProtocol.AspNetCore`를 사용합니다. 공통으로 Streamable HTTP는 `/mcp`, legacy SSE는 `/sse`와 `/message`를 제공하고 `/healthz`를 제공합니다.
 
 이 이미지들은 신뢰할 수 있는 로컬 테스트용입니다. 기본값은 쓰기/실행 기능을 열어 두고, 컨테이너 내부 허용 경로도 `/`로 둡니다. 다만 호스트 파일시스템 접근은 Docker 볼륨으로 마운트한 범위에만 한정됩니다.
 
@@ -25,10 +25,13 @@
 | `mcp-jira` | 8092 | 신규 로컬 구현 | Jira REST API C# client | JQL 검색, issue, comment, transition, project |
 | `mcp-loki` | 8093 | 신규 로컬 구현 | Loki HTTP API C# client | LogQL query, 최근 로그 검색, label, series, index stats |
 | `mcp-rhapsody` | 8094 | 신규 로컬 구현 | Rhapsody COM/CLI/file 자동화를 위한 Windows 호스트 C# 서버 | Rhapsody 탐지, 모델 파일 inspect, 설정된 CLI 실행 |
+| `mcp-matlab` | 8095 | 공식 `matlab/matlab-mcp-core-server` 계보 | MATLAB CLI/COM을 감싸고 공식 MCP bridge hook을 둔 Windows 호스트 C# 서버 | MATLAB 탐지, batch/script 실행, COM eval, workspace 요약 |
+| `mcp-autocad` | 8096 | 오픈소스 AutoCAD MCP COM 자동화 패턴 | AutoCAD COM을 감싸는 Windows 호스트 C# 서버 | drawing 열기, layer/entity 조회, command 전송, layer/line 생성, 저장 |
+| `mcp-solidworks` | 8097 | 오픈소스 SolidWorks MCP COM 자동화 패턴 | SolidWorks COM을 감싸는 Windows 호스트 C# 서버 | CAD 문서 열기, feature/component 조회, mass property, rebuild/save/export |
 
 ## 연결 주소
 
-각 이미지는 컨테이너 내부 `8080` 포트에서 실행됩니다. smoke test에서 사용하는 호스트 포트 배치는 다음과 같습니다.
+Docker 이미지는 컨테이너 내부 `8080` 포트에서 실행됩니다. Windows-host desktop 서버는 표에 적힌 localhost 포트에서 직접 실행됩니다. smoke test에서 사용하는 호스트 포트 배치는 다음과 같습니다.
 
 | 서버 | Streamable HTTP | Legacy SSE |
 | --- | --- | --- |
@@ -47,6 +50,9 @@
 | `mcp-jira` | `http://localhost:8092/mcp` | `http://localhost:8092/sse` |
 | `mcp-loki` | `http://localhost:8093/mcp` | `http://localhost:8093/sse` |
 | `mcp-rhapsody` | `http://localhost:8094/mcp` | `http://localhost:8094/sse` |
+| `mcp-matlab` | `http://localhost:8095/mcp` | `http://localhost:8095/sse` |
+| `mcp-autocad` | `http://localhost:8096/mcp` | `http://localhost:8096/sse` |
+| `mcp-solidworks` | `http://localhost:8097/mcp` | `http://localhost:8097/sse` |
 
 ## MCP API 형태
 
@@ -87,6 +93,96 @@ foreach ($server in $servers) {
 ```powershell
 .\mcp-rhapsody\scripts\publish-win.ps1
 ```
+
+MATLAB, AutoCAD, SolidWorks MCP 서버도 Windows 호스트 실행 패키지로 publish합니다.
+
+```powershell
+.\mcp-matlab\scripts\publish-win.ps1
+.\mcp-autocad\scripts\publish-win.ps1
+.\mcp-solidworks\scripts\publish-win.ps1
+```
+
+MATLAB의 경우 MathWorks 공식 MCP server binary까지 air-gap 패키지에 넣으려면 publish 전에 `.\mcp-matlab\scripts\download-official-mcp.ps1`을 실행합니다. 그러면 publish 폴더의 `official/` 아래로 같이 복사됩니다.
+
+Windows-host desktop 서버를 한 번에 publish하려면 다음을 사용합니다.
+
+```powershell
+.\scripts\publish-windows-host.ps1 -Zip
+```
+
+출력 폴더에는 Windows `.exe`, `run.ps1`, 더블클릭용 `start.cmd`, 수정 가능한 `.env` 파일이 들어갑니다. 예시는 다음과 같습니다.
+
+```text
+windows-host-publish\mcp-matlab-win-x64\McpMatlab.exe
+windows-host-publish\mcp-matlab-win-x64\start.cmd
+windows-host-publish\mcp-matlab-win-x64\run.ps1
+```
+
+기본 publish는 self-contained `win-x64`라서 대상 air-gap PC에 .NET runtime이 없어도 실행할 수 있습니다. 이미 .NET이 설치된 PC용으로 용량을 줄이고 싶으면 `-SelfContained $false`를 넘기면 됩니다.
+
+## Windows 통합 EXE 번들
+
+Docker가 기본 실행 방식이던 MCP 서버까지 모두 Windows `.exe`로 publish해서 `mcp-manager`로 한 번에 제어할 수도 있습니다. 기존 Dockerfile, airgap tar, Kubernetes YAML은 그대로 유지하고, Windows 로컬 실행용 번들을 추가로 만드는 방식입니다.
+
+```powershell
+.\scripts\publish-mcp-bundle.ps1 -Zip
+```
+
+출력은 `mcp-bundle` 폴더입니다.
+
+```text
+mcp-bundle\McpManager.exe
+mcp-bundle\servers.json
+mcp-bundle\start-all.cmd
+mcp-bundle\stop-all.cmd
+mcp-bundle\status.cmd
+mcp-bundle\urls.cmd
+mcp-bundle\mcp-office-win-x64\McpOffice.exe
+mcp-bundle\mcp-filesystem-win-x64\McpFilesystem.exe
+mcp-bundle\mcp-git-win-x64\McpGit.exe
+...
+mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
+```
+
+이 번들의 `servers.json`은 18개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
+
+`mcp-bundle\McpManager.exe`를 그냥 더블클릭하면 콘솔 메뉴가 열립니다. 메뉴에서 전체 시작/종료/재시작, 상태 확인, URL 확인, 서버별 시작/종료, 로그 확인을 선택할 수 있습니다.
+
+```powershell
+.\mcp-bundle\McpManager.exe list all
+.\mcp-bundle\McpManager.exe start mcp-filesystem
+.\mcp-bundle\McpManager.exe status all
+.\mcp-bundle\McpManager.exe urls all
+.\mcp-bundle\McpManager.exe stop all
+```
+
+더블클릭 실행용 `start-all.cmd`, `stop-all.cmd`, `status.cmd`와 서버별 `start-mcp-*.cmd`, `stop-mcp-*.cmd`도 함께 생성됩니다. 번들은 self-contained `win-x64` 기본값으로 만들어져서 air-gap Windows PC에 .NET runtime을 별도로 설치하지 않아도 됩니다.
+
+번들 구조와 외부 CLI 준비 상태는 다음 스크립트로 확인합니다.
+
+```powershell
+.\scripts\test-mcp-bundle.ps1
+```
+
+주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
+
+| 서버 | Windows exe 번들 상태 | 추가 필요 항목 |
+| --- | --- | --- |
+| `mcp-filesystem` | 자체 동작 | 없음 |
+| `mcp-mssql`, `mcp-postgresql` | 자체 동작 | 실제 DB 연결 문자열 |
+| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki` | 자체 동작 | 실제 API URL/토큰 |
+| `mcp-shell` | 자체 동작 | 실행할 명령이 Windows에 존재해야 함 |
+| `mcp-git` | 서버는 자체 동작 | `git.exe` |
+| `mcp-dotnet` | 서버는 자체 동작 | 대상 PC의 .NET SDK/CLI |
+| `mcp-kubernetes` | 서버는 자체 동작 | `kubectl.exe`, kubeconfig 또는 in-cluster 대체 환경 |
+| `mcp-docker` | 서버는 자체 동작 | Docker CLI와 Docker Desktop/daemon |
+| `mcp-office` | `officecli.exe`를 번들에 동봉 | legacy `.doc`용 `antiword`는 선택 사항. 없으면 OfficeCLI로 fallback |
+| `mcp-hwp` | `.hwpx`와 기본 `.hwp` 텍스트 추출은 내장 파서로 처리 | 고급 `.hwp` fallback은 선택적 `hwp5txt`, `docx/pdf/odt` 변환은 LibreOffice `soffice` |
+| `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | 서버는 자체 동작 | 해당 상용 프로그램, COM/CLI, 라이선스 |
+
+Office 서버는 `mcp-office\vendor\officecli`에 받아 둔 OfficeCLI Windows binary를 publish 시 `tools/officecli.exe`로 함께 복사합니다. vendor에 없으면 `publish-mcp-bundle.ps1`이 `mcp-office\scripts\download-officecli.ps1`을 호출해 내려받습니다.
+
+MATLAB 서버는 `mcp-matlab\vendor\official`에 받아 둔 MathWorks 공식 MCP binary를 publish 시 `official/` 폴더로 함께 복사합니다.
 
 ## Air Gap 이미지 추출
 
@@ -131,6 +227,12 @@ mcp-loki\airgap\local-mcp-loki.tar
 
 우선순위 검증 스크립트는 Docker MCP smoke, 외부 API mock 호출, PostgreSQL fixture, SQL Server fixture, Windows-host Rhapsody MCP smoke를 순서대로 실행합니다. Rhapsody가 설치된 Windows PC에서는 `-RhapsodyProjectPath "C:\path\model.rpyx"`를 추가하면 COM read smoke까지 실행하고, 모델 수정/저장이 안전할 때만 `-RunRhapsodyWriteSmoke`를 추가합니다.
 
+Windows-host MATLAB, AutoCAD, SolidWorks MCP 서버는 다음 smoke로 확인합니다.
+
+```powershell
+.\tests\desktop-host-smoke.ps1
+```
+
 Docker 서버만 빠르게 확인하려면 다음을 사용합니다.
 
 ```powershell
@@ -138,6 +240,27 @@ Docker 서버만 빠르게 확인하려면 다음을 사용합니다.
 ```
 
 Docker smoke test는 컨테이너를 재시작한 뒤 `/healthz`, SSE, MCP tool 목록, 대표 tool 호출을 확인합니다. Prometheus, GitLab, Jira, Loki는 로컬 mock HTTP API를 상대로 실제 HTTP 호출까지 확인합니다. PostgreSQL과 SQL Server의 실제 DB 호출은 `tests/`의 fixture 스크립트에서 확인합니다.
+
+## MCP Manager
+
+`mcp-manager`는 Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 시작/중지/상태확인/log 확인하는 CLI입니다.
+
+개발 상태에서:
+
+```powershell
+.\mcp-manager\scripts\run.ps1 list all
+.\mcp-manager\scripts\run.ps1 start all
+.\mcp-manager\scripts\run.ps1 status all
+.\mcp-manager\scripts\run.ps1 stop all
+```
+
+Windows native manager 실행 파일 생성:
+
+```powershell
+.\mcp-manager\scripts\publish-win.ps1
+```
+
+publish 폴더에는 `McpManager.exe`, `mcp-manager.cmd`, `start-all.cmd`, `stop-all.cmd`, `status.cmd`, `servers.json`가 들어갑니다.
 
 smoke 호출 없이 14개 서버를 모두 실행하려면 다음 스크립트를 사용합니다.
 
@@ -198,6 +321,8 @@ air gap 클러스터에서는 이미지를 클러스터 런타임에 직접 로�
 
 `mcp-rhapsody`도 Kubernetes와 Linux Docker 대상에서 제외합니다. Rhapsody 자동화는 Windows 설치, 사용자 세션, 라이선스, COM Automation, 로컬 CLI 도구에 의존하기 때문입니다.
 
+`mcp-matlab`, `mcp-autocad`, `mcp-solidworks`도 같은 desktop automation 이유로 제외합니다. 설치된 Windows desktop 앱, 사용자/session context, 라이선스, COM 또는 로컬 CLI 자동화가 필요합니다.
+
 ## 서버별 문서
 
 각 서버 폴더에는 영어 `README.md`와 한국어 `README.ko.md`가 있습니다.
@@ -217,3 +342,6 @@ air gap 클러스터에서는 이미지를 클러스터 런타임에 직접 로�
 - `mcp-jira/README.md`, `mcp-jira/README.ko.md`
 - `mcp-loki/README.md`, `mcp-loki/README.ko.md`
 - `mcp-rhapsody/README.md`, `mcp-rhapsody/README.ko.md`
+- `mcp-matlab/README.md`, `mcp-matlab/README.ko.md`
+- `mcp-autocad/README.md`, `mcp-autocad/README.ko.md`
+- `mcp-solidworks/README.md`, `mcp-solidworks/README.ko.md`

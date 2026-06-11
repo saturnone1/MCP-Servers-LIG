@@ -8,7 +8,8 @@ C# remote MCP wrapper for OfficeCLI over Streamable HTTP and legacy SSE.
 
 - Upstream / porting source: `iOfficeAI/OfficeCLI`
 - Strategy: bundle the Linux x64 OfficeCLI release into the Docker image and expose it as MCP tools.
-- Extra compatibility: install `antiword` for legacy `.doc` text extraction.
+- Windows exe bundle: include the Windows x64 OfficeCLI release as `tools/officecli.exe`.
+- Extra compatibility: use `antiword` first for legacy `.doc` text extraction when available; otherwise fall back to OfficeCLI.
 - Runtime target: headless and Office-free. Microsoft Office does not need to be installed in the container.
 
 ## Build
@@ -17,7 +18,9 @@ C# remote MCP wrapper for OfficeCLI over Streamable HTTP and legacy SSE.
 docker build -t local/mcp-office .
 ```
 
-The Dockerfile downloads the Linux x64 OfficeCLI release during build and embeds it in the final image, so runtime does not need internet access.
+The Dockerfile downloads the Linux x64 OfficeCLI release during build and embeds it in the final image, so runtime does not need internet access. For air-gap Docker use, build/export the image on an internet-connected PC and load it with `docker load`.
+
+The Windows exe bundle copies the OfficeCLI Windows x64 binary downloaded by `mcp-office\scripts\download-officecli.ps1`.
 
 ## Air Gap Export
 
@@ -51,7 +54,7 @@ All tools return a command-style object: `{ "exitCode": number, "stdout": string
 | --- | --- | --- |
 | `version` | none | Returns the bundled OfficeCLI version. |
 | `inspect_document` | `path` string, `mode` string = `text` | Runs OfficeCLI inspection for `.docx`, `.xlsx`, `.pptx`, and supported OfficeCLI formats. |
-| `extract_text` | `path` string, `maxLines` int = `200` | Uses OfficeCLI for modern Office files and `antiword` for legacy `.doc`. |
+| `extract_text` | `path` string, `maxLines` int = `200` | Uses OfficeCLI for modern Office files. For legacy `.doc`, `antiword` is used when available, otherwise OfficeCLI is used as fallback. |
 | `create_document` | `path` string | Creates a document at the mapped path. |
 | `apply_batch` | `documentPath` string, `batchJsonPath` string | Applies an OfficeCLI batch JSON file. |
 | `render_document` | `documentPath` string, `outputPath` string | Writes the OfficeCLI `view text --json` output to the requested path. This is a text snapshot, not PDF/HTML/image rendering. |
@@ -65,11 +68,11 @@ All tools return a command-style object: `{ "exitCode": number, "stdout": string
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_ENABLE_OFFICE_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block mutating Office tools. |
 | `OFFICECLI_PATH` | bundled OfficeCLI path | Override OfficeCLI executable path. |
-| `ANTIWORD_PATH` | `antiword` | Override legacy `.doc` extractor. |
+| `ANTIWORD_PATH` | `antiword` | Optional legacy `.doc` extractor. If missing, OfficeCLI is used as fallback. |
 
 ## Notes
 
-The `extract_text` tool reads modern Office files through OfficeCLI and legacy `.doc` files through `antiword`.
+The `extract_text` tool reads modern Office files through OfficeCLI. For legacy `.doc`, it uses `antiword` when available and falls back to OfficeCLI when it is not.
 
 ## Kubernetes
 
