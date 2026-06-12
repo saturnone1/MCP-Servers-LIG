@@ -449,8 +449,8 @@ internal sealed class McpManager
         var args = new List<string> { "run", "-d", "--name", server.ContainerName, "-p", $"{server.Port}:8080" };
         foreach (var volume in server.Volumes)
             args.AddRange(["-v", Expand(volume)]);
-        foreach (var env in server.Env)
-            args.AddRange(["-e", $"{env.Key}={Expand(env.Value)}"]);
+        foreach (var env in BuildEnvironment(server))
+            args.AddRange(["-e", $"{env.Key}={env.Value}"]);
         foreach (var extraArg in server.Args)
             args.Add(Expand(extraArg));
         args.Add(server.Image);
@@ -488,8 +488,8 @@ internal sealed class McpManager
             RedirectStandardError = true,
             CreateNoWindow = true
         };
-        foreach (var env in server.Env)
-            psi.Environment[env.Key] = Expand(env.Value);
+        foreach (var env in BuildEnvironment(server))
+            psi.Environment[env.Key] = env.Value;
         psi.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{server.Port}";
 
         var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start {server.Name}");
@@ -638,6 +638,73 @@ internal sealed class McpManager
 
     private string PidPath(ServerConfig server) => Path.Combine(_stateDir, $"{server.Name}.pid");
 
+    private Dictionary<string, string> BuildEnvironment(ServerConfig server)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var envFile in ResolveEnvFiles(server))
+        {
+            foreach (var env in ReadEnvFile(envFile))
+                result[env.Key] = Expand(env.Value);
+        }
+        foreach (var env in server.Env)
+            result[env.Key] = Expand(env.Value);
+        return result;
+    }
+
+    private IEnumerable<string> ResolveEnvFiles(ServerConfig server)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in CandidateEnvFiles(server))
+        {
+            var fullPath = Path.GetFullPath(Expand(path));
+            if (seen.Add(fullPath) && File.Exists(fullPath))
+                yield return fullPath;
+        }
+    }
+
+    private IEnumerable<string> CandidateEnvFiles(ServerConfig server)
+    {
+        var managerDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        yield return Path.Combine(managerDirectory, "common.env");
+        yield return Path.Combine(managerDirectory, $"{server.Name}.env");
+
+        if (!string.IsNullOrWhiteSpace(server.WorkingDirectory))
+        {
+            var workingDirectory = Expand(server.WorkingDirectory);
+            if (Directory.Exists(workingDirectory))
+            {
+                foreach (var envFile in Directory.GetFiles(workingDirectory, "*.env").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+                    yield return envFile;
+            }
+        }
+
+        foreach (var envFile in server.EnvFiles)
+            yield return envFile;
+    }
+
+    private static Dictionary<string, string> ReadEnvFile(string path)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rawLine in File.ReadLines(path))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+
+            var equals = line.IndexOf('=');
+            if (equals <= 0) continue;
+
+            var key = line[..equals].Trim();
+            var value = line[(equals + 1)..].Trim();
+            if (value.Length >= 2 &&
+                ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\''))))
+            {
+                value = value[1..^1];
+            }
+            result[key] = value;
+        }
+        return result;
+    }
+
     private static bool TryReadProcess(string pidPath, out Process process)
     {
         process = null!;
@@ -780,6 +847,7 @@ internal sealed class ServerConfig
     public List<string> Groups { get; set; } = [];
     public List<string> Volumes { get; set; } = [];
     public Dictionary<string, string> Env { get; set; } = [];
+    public List<string> EnvFiles { get; set; } = [];
     public List<string> Args { get; set; } = [];
 
     public void Normalize(string repoRoot)

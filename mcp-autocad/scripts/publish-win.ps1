@@ -14,6 +14,9 @@ if ($SingleFile) {
     $publishArgs += '/p:IncludeNativeLibrariesForSelfExtract=true'
 }
 dotnet publish @publishArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet publish failed with exit code $LASTEXITCODE."
+}
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'run.ps1') -Destination (Join-Path $Output 'run.ps1') -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\config\autocad.env.example') -Destination (Join-Path $Output 'autocad.env.example') -Force
 if (-not (Test-Path -LiteralPath (Join-Path $Output 'autocad.env'))) {

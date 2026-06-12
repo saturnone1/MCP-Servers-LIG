@@ -24,6 +24,8 @@ public sealed class AutoCadTools
     public static object Config()
     {
         var progId = AutoCad.ProgId;
+        var comRegistered = Com.IsRegistered(progId, out var registrationError);
+        var activeComAvailable = Com.TryGetActive(progId, out _, out var activeError);
         return new
         {
             server = "mcp-autocad",
@@ -33,21 +35,31 @@ public sealed class AutoCadTools
             allowedDirs = Guard.AllowedRoots,
             writesEnabled = Guard.WritesEnabled,
             progId,
-            comAvailable = Com.TryCreate(progId, out var error),
-            comError = error
+            comAvailable = comRegistered,
+            comRegistered,
+            activeComAvailable,
+            comError = registrationError ?? activeError
         };
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Detect AutoCAD COM ProgID and common install path hints.")]
-    public static object DetectInstallations() => new
+    public static object DetectInstallations()
     {
-        progId = AutoCad.ProgId,
-        comAvailable = Com.TryCreate(AutoCad.ProgId, out var error),
-        comError = error,
-        acadExe = Detection.FindOnPath("acad.exe"),
-        configuredExe = Environment.GetEnvironmentVariable("AUTOCAD_EXE_PATH")
-    };
+        var progId = AutoCad.ProgId;
+        var comRegistered = Com.IsRegistered(progId, out var registrationError);
+        var activeComAvailable = Com.TryGetActive(progId, out _, out var activeError);
+        return new
+        {
+            progId,
+            comAvailable = comRegistered,
+            comRegistered,
+            activeComAvailable,
+            comError = registrationError ?? activeError,
+            acadExe = Detection.FindOnPath("acad.exe"),
+            configuredExe = Environment.GetEnvironmentVariable("AUTOCAD_EXE_PATH")
+        };
+    }
 
     [McpServerTool]
     [Description("Open an AutoCAD drawing through COM Automation.")]
@@ -231,7 +243,7 @@ internal static class AutoCad
 
     public static object Application(bool visible)
     {
-        var app = Com.Create(ProgId);
+        var app = Com.GetOrCreate(ProgId);
         Com.SetSafe(app, "Visible", visible);
         return app;
     }
@@ -314,17 +326,51 @@ internal static class Guard
 
 internal static class Com
 {
-    public static bool TryCreate(string progId, out string? error)
+    public static bool IsRegistered(string progId, out string? error)
     {
-        try { _ = Create(progId); error = null; return true; }
+        try { _ = GetTypeFromProgId(progId); error = null; return true; }
         catch (Exception ex) { error = ex.Message; return false; }
+    }
+
+    public static object GetOrCreate(string progId)
+    {
+        if (TryGetActive(progId, out var activeApp, out _)) return activeApp;
+        return Create(progId);
+    }
+
+    public static bool TryGetActive(string progId, out object app, out string? error)
+    {
+        app = null!;
+        try
+        {
+            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("COM automation requires Windows.");
+            var clsIdResult = CLSIDFromProgID(progId, out var clsId);
+            if (clsIdResult != 0) Marshal.ThrowExceptionForHR(clsIdResult);
+
+            var activeResult = NativeGetActiveObject(ref clsId, IntPtr.Zero, out var activeObject);
+            if (activeResult != 0) Marshal.ThrowExceptionForHR(activeResult);
+            app = activeObject ?? throw new InvalidOperationException($"Active COM object is null: {progId}");
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
     }
 
     public static object Create(string progId)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("COM automation requires Windows.");
-        var type = Type.GetTypeFromProgID(progId, throwOnError: false) ?? throw new InvalidOperationException($"COM ProgID not registered: {progId}");
+        var type = GetTypeFromProgId(progId);
         return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Unable to create COM object: {progId}");
+    }
+
+    private static Type GetTypeFromProgId(string progId)
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("COM automation requires Windows.");
+        return Type.GetTypeFromProgID(progId, throwOnError: false) ?? throw new InvalidOperationException($"COM ProgID not registered: {progId}");
     }
 
     public static object? Invoke(object? target, string method, params object?[] args)
@@ -350,6 +396,15 @@ internal static class Com
     {
         try { target?.GetType().InvokeMember(property, BindingFlags.SetProperty, null, target, [value]); } catch { }
     }
+
+    [DllImport("ole32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
+    private static extern int CLSIDFromProgID(string progId, out Guid clsid);
+
+    [DllImport("oleaut32.dll", PreserveSig = true)]
+    private static extern int GetActiveObject(ref Guid clsid, IntPtr reserved, [MarshalAs(UnmanagedType.IUnknown)] out object? activeObject);
+
+    private static int NativeGetActiveObject(ref Guid clsid, IntPtr reserved, out object? activeObject) =>
+        GetActiveObject(ref clsid, reserved, out activeObject);
 }
 
 internal static class Detection

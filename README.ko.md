@@ -146,6 +146,10 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 이 번들의 `servers.json`은 18개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
 
+수정 가능한 환경변수는 각 서버 폴더의 `<server>.env`로 생성됩니다. 예를 들어 Jira는 `edit-env-mcp-jira.cmd`를 실행하거나 `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`를 직접 수정한 뒤 `McpManager.exe`로 해당 서버를 재시작하면 됩니다. `McpManager.exe`는 번들 루트의 `common.env`, `<server>.env`, 그리고 `servers.json`에 명시한 `envFiles`도 함께 읽습니다.
+
+기존 번들에 새 manager만 덮어쓴 경우에는 `sync-env-files.ps1`을 한 번 실행하면 `servers.json`의 env 값이 서버별 `.env` 파일로 분리되고 `edit-env-*.cmd`가 생성됩니다.
+
 `mcp-bundle\McpManager.exe`를 그냥 더블클릭하면 콘솔 메뉴가 열립니다. 메뉴에서 전체 시작/종료/재시작, 상태 확인, URL 확인, 서버별 시작/종료, 로그 확인을 선택할 수 있습니다.
 
 ```powershell
@@ -183,6 +187,12 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 Office 서버는 `mcp-office\vendor\officecli`에 받아 둔 OfficeCLI Windows binary를 publish 시 `tools/officecli.exe`로 함께 복사합니다. vendor에 없으면 `publish-mcp-bundle.ps1`이 `mcp-office\scripts\download-officecli.ps1`을 호출해 내려받습니다.
 
 MATLAB 서버는 `mcp-matlab\vendor\official`에 받아 둔 MathWorks 공식 MCP binary를 publish 시 `official/` 폴더로 함께 복사합니다.
+
+기존 전체 번들 안에 넣을 AutoCAD 교체 폴더만 publish하려면 다음을 사용합니다.
+
+```powershell
+.\scripts\publish-autocad-bundle-patch.ps1 -Zip
+```
 
 ## Air Gap 이미지 추출
 
