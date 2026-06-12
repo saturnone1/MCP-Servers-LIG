@@ -25,22 +25,30 @@ public sealed class MatlabTools
 {
     [McpServerTool(ReadOnly = true)]
     [Description("Return MATLAB MCP configuration, detected MATLAB executable, COM status, and official MathWorks MCP server path.")]
-    public static object Config() => new
+    public static object Config()
     {
-        server = "mcp-matlab",
-        mode = "windows-host",
-        lineage = "Official MathWorks MATLAB MCP Core Server plus local C# Windows host tools.",
-        http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8095",
-        allowedDirs = Guard.AllowedRoots,
-        writesEnabled = Guard.WritesEnabled,
-        officialMcpPath = Environment.GetEnvironmentVariable("MATLAB_MCP_CORE_SERVER_PATH"),
-        officialMcpArgs = OfficialMcp.ConfiguredArgs,
-        matlabExe = MatlabDetection.ResolveMatlabExe(),
-        matlabRoot = Environment.GetEnvironmentVariable("MATLAB_ROOT"),
-        comProgId = Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application",
-        comAvailable = Com.TryCreate(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application", out var error),
-        comError = error
-    };
+        var progId = Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application";
+        var comRegistered = Com.IsRegistered(progId, out var registrationError);
+        var activeComAvailable = Com.TryGetActive(progId, out _, out var activeError);
+        return new
+        {
+            server = "mcp-matlab",
+            mode = "windows-host",
+            lineage = "Official MathWorks MATLAB MCP Core Server plus local C# Windows host tools.",
+            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8095",
+            allowedDirs = Guard.AllowedRoots,
+            writesEnabled = Guard.WritesEnabled,
+            officialMcpPath = Environment.GetEnvironmentVariable("MATLAB_MCP_CORE_SERVER_PATH"),
+            officialMcpArgs = OfficialMcp.ConfiguredArgs,
+            matlabExe = MatlabDetection.ResolveMatlabExe(),
+            matlabRoot = Environment.GetEnvironmentVariable("MATLAB_ROOT"),
+            comProgId = progId,
+            comAvailable = comRegistered,
+            comRegistered,
+            activeComAvailable,
+            comError = registrationError ?? activeError
+        };
+    }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Detect MATLAB executable candidates from env vars, PATH, and common install folders.")]
@@ -67,7 +75,7 @@ public sealed class MatlabTools
     [Description("Evaluate MATLAB code through the Windows COM Automation server.")]
     public static object EvalCommand(string command)
     {
-        var matlab = Com.Create(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application");
+        var matlab = Com.GetOrCreate(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application");
         var output = Com.Invoke(matlab, "Execute", command);
         return new { command, output = output?.ToString() ?? "" };
     }
@@ -76,7 +84,7 @@ public sealed class MatlabTools
     [Description("Return variables from the active MATLAB COM workspace using whos.")]
     public static object ListWorkspace()
     {
-        var matlab = Com.Create(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application");
+        var matlab = Com.GetOrCreate(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application");
         var output = Com.Invoke(matlab, "Execute", "whos")?.ToString() ?? "";
         return new { output };
     }
@@ -381,21 +389,61 @@ internal static class OfficialMcp
 
 internal static class Com
 {
-    public static bool TryCreate(string progId, out string? error)
+    public static bool IsRegistered(string progId, out string? error)
     {
-        try { _ = Create(progId); error = null; return true; }
+        try { _ = GetTypeFromProgId(progId); error = null; return true; }
         catch (Exception ex) { error = ex.Message; return false; }
+    }
+
+    public static object GetOrCreate(string progId)
+    {
+        if (TryGetActive(progId, out var activeApp, out _)) return activeApp;
+        return Create(progId);
+    }
+
+    public static bool TryGetActive(string progId, out object app, out string? error)
+    {
+        app = null!;
+        try
+        {
+            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("COM automation requires Windows.");
+            var clsIdResult = CLSIDFromProgID(progId, out var clsId);
+            if (clsIdResult != 0) Marshal.ThrowExceptionForHR(clsIdResult);
+
+            var activeResult = GetActiveObject(ref clsId, IntPtr.Zero, out var activeObject);
+            if (activeResult != 0) Marshal.ThrowExceptionForHR(activeResult);
+            app = activeObject ?? throw new InvalidOperationException($"Active COM object is null: {progId}");
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
     }
 
     public static object Create(string progId)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("COM automation requires Windows.");
-        var type = Type.GetTypeFromProgID(progId, throwOnError: false) ?? throw new InvalidOperationException($"COM ProgID not registered: {progId}");
+        var type = GetTypeFromProgId(progId);
         return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Unable to create COM object: {progId}");
+    }
+
+    private static Type GetTypeFromProgId(string progId)
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("COM automation requires Windows.");
+        return Type.GetTypeFromProgID(progId, throwOnError: false) ?? throw new InvalidOperationException($"COM ProgID not registered: {progId}");
     }
 
     public static object? Invoke(object target, string method, params object?[] args) =>
         target.GetType().InvokeMember(method, BindingFlags.InvokeMethod, null, target, args);
+
+    [DllImport("ole32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
+    private static extern int CLSIDFromProgID(string progId, out Guid clsid);
+
+    [DllImport("oleaut32.dll", PreserveSig = true)]
+    private static extern int GetActiveObject(ref Guid clsid, IntPtr reserved, [MarshalAs(UnmanagedType.IUnknown)] out object? activeObject);
 }
 
 public sealed record CommandResult(int ExitCode, string Stdout, string Stderr);

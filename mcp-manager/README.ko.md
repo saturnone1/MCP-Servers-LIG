@@ -48,6 +48,10 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 
 번들 안의 `servers.json`은 모두 `process` 방식으로 구성되어 있습니다. 즉 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버 폴더의 `Mcp*.exe`를 직접 실행합니다.
 
+번들 환경변수는 서버별 폴더의 `<server>.env`에서 수정합니다. 예를 들어 `edit-env-mcp-jira.cmd`를 실행하거나 `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`를 수정하고 `McpManager.exe restart mcp-jira`를 실행하면 됩니다. 공통 값은 번들 루트의 `common.env`, 서버별 루트 override는 `mcp-jira.env`처럼 둘 수 있고, 고급 설정은 `servers.json`의 `envFiles` 배열로 추가할 수 있습니다.
+
+기존 번들에 새 manager만 덮어쓴 경우에는 `sync-env-files.ps1`을 한 번 실행해 `servers.json`의 env 값을 서버별 `.env` 파일로 분리합니다.
+
 ## 명령
 
 인자 없이 `McpManager.exe`를 더블클릭하면 콘솔 메뉴가 열립니다. 메뉴에서 전체 시작/종료/재시작, 상태 확인, URL 확인, 서버별 시작/종료, 로그 확인을 선택할 수 있습니다.
@@ -79,3 +83,9 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 - Windows process pid는 `.mcp-manager/*.pid`에 저장합니다.
 - Windows process 로그는 `.mcp-manager/logs/*.log`에 저장합니다.
 - 상태와 health는 `/healthz`로 확인합니다.
+
+기존 전체 번들에 AutoCAD MCP만 교체해서 넣을 때는 저장소 루트에서 다음 스크립트로 `mcp-autocad-win-x64` 교체 패키지를 만듭니다.
+
+```powershell
+.\scripts\publish-autocad-bundle-patch.ps1 -Zip
+```

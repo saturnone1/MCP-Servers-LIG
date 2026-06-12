@@ -146,6 +146,10 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 The bundle `servers.json` registers all 18 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
 
+Editable environment variables are written to each server folder as `<server>.env`, for example `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`. Use `edit-env-mcp-jira.cmd` or edit that file directly, then restart the server through `McpManager.exe`. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root when present, plus any explicit `envFiles` listed in `servers.json`.
+
+If you patch an existing bundle with the new manager, run `sync-env-files.ps1` once to split existing `servers.json` environment values into per-server `.env` files and create `edit-env-*.cmd` helpers.
+
 Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console menu. The menu supports start/stop/restart all, status, URLs, per-server start/stop, and logs.
 
 ```powershell
@@ -183,6 +187,12 @@ The server executables are included, but tools that shell out to external progra
 The Office publish flow copies the downloaded OfficeCLI Windows binary from `mcp-office\vendor\officecli` into the bundle as `tools/officecli.exe`. If the vendor binary is missing, `publish-mcp-bundle.ps1` calls `mcp-office\scripts\download-officecli.ps1`.
 
 The MATLAB publish flow copies the downloaded official MathWorks MCP binary from `mcp-matlab\vendor\official` into the bundle's `official/` folder.
+
+To publish only the AutoCAD replacement folder for an existing full bundle:
+
+```powershell
+.\scripts\publish-autocad-bundle-patch.ps1 -Zip
+```
 
 ## Export For Air Gap
 

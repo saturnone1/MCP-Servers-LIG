@@ -16,6 +16,8 @@ mcp-solidworks/publish/
 windows-host-publish/
 mcp-bundle/
 mcp-bundle.zip
+mcp-*-bundle-patch/
+mcp-*-bundle-patch.zip
 mcp-manager/publish/
 .mcp-manager/
 tests/fixtures/office-smoke-*

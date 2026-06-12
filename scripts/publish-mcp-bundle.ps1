@@ -90,6 +90,38 @@ setlocal
     }
 }
 
+$configPath = Join-Path $OutputRoot 'servers.json'
+$config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+foreach ($server in $config.servers) {
+    if (-not $server.env) {
+        continue
+    }
+
+    $envProperties = @($server.env.PSObject.Properties)
+    if ($envProperties.Count -eq 0) {
+        continue
+    }
+
+    $workingDirectory = $server.workingDirectory.Replace('{manager}', $OutputRoot)
+    New-Item -ItemType Directory -Force -Path $workingDirectory | Out-Null
+    $envPath = Join-Path $workingDirectory "$($server.name).env"
+    $envLines = @(
+        "# Editable environment variables for $($server.name).",
+        "# Restart the server through McpManager.exe after changing this file."
+    )
+    foreach ($property in $envProperties) {
+        $envLines += "$($property.Name)=$($property.Value)"
+    }
+    Set-Content -LiteralPath $envPath -Value $envLines -Encoding UTF8
+@"
+@echo off
+setlocal
+notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
+"@ | Set-Content -LiteralPath (Join-Path $OutputRoot "edit-env-$($server.name).cmd") -Encoding ASCII
+    $server.env = [pscustomobject]@{}
+}
+$config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configPath -Encoding UTF8
+
 @'
 @echo off
 setlocal
@@ -114,9 +146,25 @@ setlocal
 "%~dp0McpManager.exe" urls all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'urls.cmd') -Encoding ASCII
+@'
+@echo off
+setlocal
+explorer.exe "%~dp0"
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'edit-envs.cmd') -Encoding ASCII
 
 $config = Get-Content -LiteralPath (Join-Path $OutputRoot 'servers.json') -Raw | ConvertFrom-Json
 foreach ($server in $config.servers) {
+    $workingDirectory = $server.workingDirectory.Replace('{manager}', $OutputRoot)
+    $envPath = Join-Path $workingDirectory "$($server.name).env"
+@"
+@echo off
+setlocal
+if not exist "%~dp0$($server.name)-win-x64\$($server.name).env" (
+  echo # Editable environment variables for $($server.name).>"%~dp0$($server.name)-win-x64\$($server.name).env"
+  echo # Restart the server through McpManager.exe after changing this file.>>"%~dp0$($server.name)-win-x64\$($server.name).env"
+)
+notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
+"@ | Set-Content -LiteralPath (Join-Path $OutputRoot "edit-env-$($server.name).cmd") -Encoding ASCII
 @"
 @echo off
 setlocal
