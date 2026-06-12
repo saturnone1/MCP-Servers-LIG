@@ -1,5 +1,15 @@
 # MCP Smoke Tests
 
+## `static-side-effect-scan.ps1`
+
+Verifies that safe inspection paths such as `config`, `detect_installations`, and `/healthz` do not contain calls that can start desktop software or external child processes. It also checks that desktop COM servers keep registration checks, active-object reuse, and instance creation as separate helper paths.
+
+Run:
+
+```powershell
+.\tests\static-side-effect-scan.ps1
+```
+
 ## `verify-priority.ps1`
 
 Runs the current priority verification sequence:

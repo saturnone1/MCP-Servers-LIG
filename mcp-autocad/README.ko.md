@@ -42,6 +42,12 @@ publish 폴더에는 `McpAutoCad.exe`, `start.cmd`, `run.ps1`, `autocad.env`가 
 | `MCP_ALLOWED_DIRS` | drawing 접근을 허용할 Windows root 목록입니다. |
 | `MCP_ENABLE_AUTOCAD_WRITES` | `false`로 설정하면 drawing 수정 tool을 막습니다. |
 
+## COM 실행 정책
+
+`config`, `detect_installations`, `/healthz`는 AutoCAD를 새로 실행하지 않는 안전 조회 경로입니다. COM 등록 여부와 이미 실행 중인 AutoCAD 세션만 확인합니다.
+
+`open_drawing`, `active_drawing`, list/save/export 계열 tool은 실제 AutoCAD COM 세션이 필요합니다. 활성 AutoCAD가 없으면 현 정책상 AutoCAD가 새로 실행될 수 있습니다.
+
 ## 도구
 
 | Tool | 기능 |

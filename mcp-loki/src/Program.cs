@@ -119,9 +119,16 @@ public sealed class LokiTools
         var uri = BuildUri(path, parameters);
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         ApplyAuth(request);
-        using var response = await Client.SendAsync(request);
-        var body = await response.Content.ReadAsStringAsync();
-        return new LokiResult((int)response.StatusCode, response.IsSuccessStatusCode, body);
+        try
+        {
+            using var response = await Client.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            return new LokiResult((int)response.StatusCode, response.IsSuccessStatusCode, body);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            return new LokiResult(0, false, $"Loki request failed for {uri}: {ex.Message}");
+        }
     }
 
     private static Uri BuildUri(string path, Dictionary<string, string>? parameters)
@@ -179,4 +186,3 @@ internal static class Guard
 }
 
 public sealed record LokiResult(int StatusCode, bool Success, string Body);
-

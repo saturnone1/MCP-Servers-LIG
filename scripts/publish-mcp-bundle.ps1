@@ -12,6 +12,44 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
+function Stop-ExistingBundleProcesses {
+    param(
+        [Parameter(Mandatory = $true)] [string] $BundleRoot
+    )
+
+    $configPath = Join-Path $BundleRoot 'servers.json'
+    if (-not (Test-Path -LiteralPath $configPath)) {
+        return
+    }
+
+    Write-Host "== Stopping running bundle processes"
+    $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+    foreach ($server in $config.servers) {
+        if ($server.kind -ne 'process') {
+            continue
+        }
+
+        $workingDirectory = $server.workingDirectory.Replace('{manager}', $BundleRoot)
+        $exe = Join-Path $workingDirectory $server.executable
+        if (-not (Test-Path -LiteralPath $exe)) {
+            continue
+        }
+
+        $resolvedExe = (Resolve-Path -LiteralPath $exe).Path
+        $processes = Get-Process -ErrorAction SilentlyContinue | Where-Object {
+            try { $_.Path -and ([string]::Equals($_.Path, $resolvedExe, [StringComparison]::OrdinalIgnoreCase)) }
+            catch { $false }
+        }
+        foreach ($process in $processes) {
+            Write-Host ("Stopping {0} PID {1}" -f $server.name, $process.Id)
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            try { Wait-Process -Id $process.Id -Timeout 10 -ErrorAction SilentlyContinue } catch { }
+        }
+    }
+}
+
+Stop-ExistingBundleProcesses -BundleRoot $OutputRoot
+
 Write-Host "== Publishing manager"
 & (Join-Path $repoRoot 'mcp-manager\scripts\publish-win.ps1') `
     -Output $OutputRoot `
@@ -121,6 +159,12 @@ notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
     $server.env = [pscustomobject]@{}
 }
 $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configPath -Encoding UTF8
+
+@'
+@echo off
+setlocal
+"%~dp0McpManager.exe" %*
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'LIG-AI-MCP.cmd') -Encoding ASCII
 
 @'
 @echo off

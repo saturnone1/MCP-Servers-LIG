@@ -44,6 +44,12 @@ Copy `config/rhapsody.env.example` to `config/rhapsody.env` for development, or 
 | `MCP_ENABLE_RHAPSODY_WRITES` | Set `false` to block future write tools. |
 | `MCP_ENABLE_RHAPSODY_CLI` | Set `false` to block raw CLI execution. |
 
+## COM/CLI Launch Policy
+
+`config`, `detect_installations`, and `/healthz` are safe inspection paths and do not start Rhapsody. They only check COM registration, active Rhapsody availability, and install/CLI candidates.
+
+COM tools such as `open_project`, `current_project`, list/save/create/search tools require a real Rhapsody COM session. Under the current policy, they may start Rhapsody when no active session exists. `run_rhapsody_cli` starts the configured CLI only when explicitly called.
+
 ## Tools
 
 | Tool | What it does |

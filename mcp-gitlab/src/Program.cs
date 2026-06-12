@@ -112,9 +112,16 @@ public sealed class GitLabTools
             var json = JsonSerializer.Serialize(body, JsonOptions);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
         }
-        using var response = await Client.SendAsync(request);
-        var text = await response.Content.ReadAsStringAsync();
-        return new ApiResult((int)response.StatusCode, response.IsSuccessStatusCode, text);
+        try
+        {
+            using var response = await Client.SendAsync(request);
+            var text = await response.Content.ReadAsStringAsync();
+            return new ApiResult((int)response.StatusCode, response.IsSuccessStatusCode, text);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            return new ApiResult(0, false, $"GitLab request failed for {uri}: {ex.Message}");
+        }
     }
 
     private static Uri BuildUri(string path, Dictionary<string, string>? query)
@@ -144,4 +151,3 @@ internal static class Guard
 }
 
 public sealed record ApiResult(int StatusCode, bool Success, string Body);
-

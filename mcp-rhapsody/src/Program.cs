@@ -28,6 +28,9 @@ public sealed class RhapsodyTools
     public static object Config()
     {
         var detection = RhapsodyDetection.Detect();
+        var progId = RhapsodyCom.ResolveProgId();
+        var comRegistered = RhapsodyCom.IsRegistered(progId, out var registrationError);
+        var activeComAvailable = RhapsodyCom.TryGetActive(progId, out _, out var activeError);
         return new
         {
             server = "mcp-rhapsody",
@@ -43,6 +46,11 @@ public sealed class RhapsodyTools
                 cliPath = Environment.GetEnvironmentVariable("RHAPSODY_CLI_PATH"),
                 comProgId = Environment.GetEnvironmentVariable("RHAPSODY_COM_PROGID")
             },
+            comProgId = progId,
+            comAvailable = comRegistered,
+            comRegistered,
+            activeComAvailable,
+            comError = registrationError ?? activeError,
             detected = detection
         };
     }
@@ -219,19 +227,72 @@ public sealed class RhapsodyTools
 
 internal static class RhapsodyCom
 {
+    public static string ResolveProgId()
+    {
+        var progId = Environment.GetEnvironmentVariable("RHAPSODY_COM_PROGID");
+        return string.IsNullOrWhiteSpace(progId)
+            ? RhapsodyDetection.ResolveComProgId() ?? "rhapsody.Application"
+            : progId;
+    }
+
     public static object GetApplication()
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("Rhapsody COM Automation is only available on Windows.");
 
-        var progId = Environment.GetEnvironmentVariable("RHAPSODY_COM_PROGID");
-        if (string.IsNullOrWhiteSpace(progId))
-            progId = RhapsodyDetection.ResolveComProgId() ?? "rhapsody.Application";
+        return GetOrCreate(ResolveProgId());
+    }
 
-        var type = Type.GetTypeFromProgID(progId, throwOnError: false)
-            ?? throw new InvalidOperationException($"Rhapsody COM ProgID is not registered: {progId}. Set RHAPSODY_COM_PROGID if your installation uses a different ProgID.");
-        return Activator.CreateInstance(type)
-            ?? throw new InvalidOperationException($"Failed to create Rhapsody COM application: {progId}");
+    public static bool IsRegistered(string progId, out string? error)
+    {
+        try { _ = GetTypeFromProgId(progId); error = null; return true; }
+        catch (Exception ex) { error = ex.Message; return false; }
+    }
+
+    public static object GetOrCreate(string progId)
+    {
+        if (TryGetActive(progId, out var activeApp, out _)) return activeApp;
+        return Create(progId);
+    }
+
+    public static bool TryGetActive(string progId, out object app, out string? error)
+    {
+        app = null!;
+        try
+        {
+            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Rhapsody COM Automation is only available on Windows.");
+            var clsIdResult = CLSIDFromProgID(progId, out var clsId);
+            if (clsIdResult != 0) Marshal.ThrowExceptionForHR(clsIdResult);
+
+            var activeResult = GetActiveObject(ref clsId, IntPtr.Zero, out var activeObject);
+            if (activeResult != 0) Marshal.ThrowExceptionForHR(activeResult);
+            app = activeObject ?? throw new InvalidOperationException($"Active COM object is null: {progId}");
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    public static object Create(string progId)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Rhapsody COM Automation is only available on Windows.");
+
+        var type = GetTypeFromProgId(progId);
+        return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create Rhapsody COM application: {progId}");
+    }
+
+    private static Type GetTypeFromProgId(string progId)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Rhapsody COM Automation is only available on Windows.");
+
+        return Type.GetTypeFromProgID(progId, throwOnError: false)
+               ?? throw new InvalidOperationException($"Rhapsody COM ProgID is not registered: {progId}. Set RHAPSODY_COM_PROGID if your installation uses a different ProgID.");
     }
 
     public static object ActiveProject()
@@ -388,6 +449,12 @@ internal static class RhapsodyCom
             if (item is not null) yield return item;
         }
     }
+
+    [DllImport("ole32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
+    private static extern int CLSIDFromProgID(string progId, out Guid clsid);
+
+    [DllImport("oleaut32.dll", PreserveSig = true)]
+    private static extern int GetActiveObject(ref Guid clsid, IntPtr reserved, [MarshalAs(UnmanagedType.IUnknown)] out object? activeObject);
 }
 
 internal static class RhapsodyDetection
@@ -398,6 +465,8 @@ internal static class RhapsodyDetection
         var exePath = ResolveExePath(installDirs);
         var cliPath = ResolveCliPath(installDirs);
         var comProgId = ResolveComProgId();
+        string? activeComError = null;
+        var activeComAvailable = !string.IsNullOrWhiteSpace(comProgId) && RhapsodyCom.TryGetActive(comProgId, out _, out activeComError);
         return new
         {
             isWindows = OperatingSystem.IsWindows(),
@@ -405,7 +474,10 @@ internal static class RhapsodyDetection
             exePath,
             cliPath,
             comProgId,
-            comAvailable = IsComAvailable(comProgId)
+            comAvailable = IsComAvailable(comProgId),
+            comRegistered = IsComAvailable(comProgId),
+            activeComAvailable,
+            comError = activeComError
         };
     }
 
@@ -495,7 +567,7 @@ internal static class CommandRunner
         using var cts = new CancellationTokenSource(timeoutMs);
         var startInfo = new ProcessStartInfo(fileName) { WorkingDirectory = workingDirectory, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
-        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {fileName}.");
+        using var process = StartProcess(fileName, startInfo);
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
         var stderrTask = process.StandardError.ReadToEndAsync(cts.Token);
         try
@@ -511,6 +583,18 @@ internal static class CommandRunner
     }
 
     private static string Trim(string value, int maxBytes) => Encoding.UTF8.GetByteCount(value) <= maxBytes ? value : value[..Math.Min(value.Length, maxBytes)] + "\n[truncated]";
+    private static Process StartProcess(string fileName, ProcessStartInfo startInfo)
+    {
+        try
+        {
+            return Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start external command: {fileName}.");
+        }
+        catch (Win32Exception ex)
+        {
+            throw new FileNotFoundException($"External command not found or not executable: {fileName}. Install it or set PATH/configuration for this MCP server. {ex.Message}", fileName, ex);
+        }
+    }
+
     private static void TryKill(Process process) { try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { } }
 }
 

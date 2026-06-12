@@ -44,6 +44,12 @@ airgap Windows 배포 폴더 생성:
 | `MCP_ENABLE_RHAPSODY_WRITES` | `false`로 설정하면 향후 write tool을 막습니다. |
 | `MCP_ENABLE_RHAPSODY_CLI` | `false`로 설정하면 raw CLI 실행을 막습니다. |
 
+## COM/CLI 실행 정책
+
+`config`, `detect_installations`, `/healthz`는 Rhapsody를 새로 실행하지 않는 안전 조회 경로입니다. COM 등록 여부, 이미 실행 중인 Rhapsody 세션, 설치/CLI 후보만 확인합니다.
+
+`open_project`, `current_project`, list/save/create/search 계열 COM tool은 실제 Rhapsody COM 세션이 필요합니다. 활성 Rhapsody가 없으면 현 정책상 Rhapsody가 새로 실행될 수 있습니다. `run_rhapsody_cli`는 명시적으로 호출했을 때만 설정된 CLI를 실행합니다.
+
 ## 도구
 
 | Tool | 기능 |

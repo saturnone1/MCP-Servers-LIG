@@ -19,10 +19,45 @@ dotnet publish @publishArgs
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\config\servers.json') -Destination (Join-Path $Output 'servers.json') -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'run.ps1') -Destination (Join-Path $Output 'run.ps1') -Force
 @'
+param(
+    [string]$FontName = 'Noto Sans KR'
+)
+
+$ErrorActionPreference = 'Stop'
+$fontSource = Join-Path $PSScriptRoot 'fonts\NotoSansKR[wght].ttf'
+if (-not (Test-Path -LiteralPath $fontSource)) {
+    throw "Font file not found: $fontSource"
+}
+
+$fontInstallDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+New-Item -ItemType Directory -Force -Path $fontInstallDir | Out-Null
+$fontFileName = Split-Path -Leaf $fontSource
+$fontTarget = Join-Path $fontInstallDir $fontFileName
+Copy-Item -LiteralPath $fontSource -Destination $fontTarget -Force
+
+$registryPath = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+New-Item -Path $registryPath -Force | Out-Null
+New-ItemProperty -Path $registryPath -Name "$FontName (TrueType)" -Value $fontFileName -PropertyType String -Force | Out-Null
+
+Write-Host "$FontName installed for the current user."
+Write-Host "Restart Windows Terminal/CMD, then select '$FontName' in the terminal font settings if needed."
+'@ | Set-Content -LiteralPath (Join-Path $Output 'install-fonts.ps1') -Encoding UTF8
+@'
+@echo off
+setlocal
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-fonts.ps1"
+pause
+'@ | Set-Content -LiteralPath (Join-Path $Output 'install-fonts.cmd') -Encoding ASCII
+@'
 @echo off
 setlocal
 "%~dp0McpManager.exe" %*
 '@ | Set-Content -LiteralPath (Join-Path $Output 'mcp-manager.cmd') -Encoding ASCII
+@'
+@echo off
+setlocal
+"%~dp0McpManager.exe" %*
+'@ | Set-Content -LiteralPath (Join-Path $Output 'LIG-AI-MCP.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal

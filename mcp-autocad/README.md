@@ -42,6 +42,12 @@ Connections:
 | `MCP_ALLOWED_DIRS` | Semicolon-separated Windows roots allowed for drawings. |
 | `MCP_ENABLE_AUTOCAD_WRITES` | Set `false` to block drawing modification tools. |
 
+## COM Launch Policy
+
+`config`, `detect_installations`, and `/healthz` are safe inspection paths and do not start AutoCAD. They only check COM registration and whether an AutoCAD session is already active.
+
+Tools that operate on drawings, such as `open_drawing`, `active_drawing`, list/save/export tools, require a real AutoCAD COM session. Under the current policy, they may start AutoCAD when no active session exists.
+
 ## Tools
 
 | Tool | Capability |

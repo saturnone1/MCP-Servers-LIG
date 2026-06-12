@@ -1,6 +1,6 @@
-# mcp-manager
+# LIG AI MCP
 
-Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 켜고 끄는 CLI 관리자입니다. 개발 중에는 Docker 컨테이너와 Windows 프로세스를 함께 제어할 수 있고, 통합 배포 번들에서는 Docker 기본 서버까지 모두 `.exe`로 실행하도록 제어할 수 있습니다.
+Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 켜고 끄는 CLI 관리자입니다. 배포명은 `LIG AI MCP`이며, 개발 중에는 Docker 컨테이너와 Windows 프로세스를 함께 제어할 수 있고, 통합 배포 번들에서는 Docker 기본 서버까지 모두 `.exe`로 실행하도록 제어할 수 있습니다.
 
 ## 실행
 
@@ -21,11 +21,16 @@ Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 켜고 끄는 CLI 
 배포 폴더에는 다음 파일이 들어갑니다.
 
 - `McpManager.exe`
+- `LIG-AI-MCP.cmd`
 - `mcp-manager.cmd`
+- `install-fonts.cmd`
+- `fonts\NotoSansKR[wght].ttf`
 - `start-all.cmd`
 - `stop-all.cmd`
 - `status.cmd`
 - `servers.json`
+
+`install-fonts.cmd`는 현재 Windows 사용자 영역에 Noto Sans KR을 설치합니다. 설치 후 터미널을 재시작하고 Windows Terminal/CMD의 폰트 설정에서 Noto Sans KR을 선택하면 LIG AI MCP의 한글 표시를 같은 폰트로 볼 수 있습니다. 프로그램이 터미널 폰트를 직접 강제하지는 않습니다.
 
 전체 MCP 서버를 Windows `.exe` 번들로 묶어 배포하려면 저장소 루트에서 다음을 실행합니다.
 
@@ -54,7 +59,26 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 
 ## 명령
 
-인자 없이 `McpManager.exe`를 더블클릭하면 콘솔 메뉴가 열립니다. 메뉴에서 전체 시작/종료/재시작, 상태 확인, URL 확인, 서버별 시작/종료, 로그 확인을 선택할 수 있습니다.
+인자 없이 `McpManager.exe` 또는 `LIG-AI-MCP.cmd`를 더블클릭하면 대시보드형 콘솔 UI가 열립니다. 첫 화면은 전체 서버 요약, 서버 목록, 선택 서버 상태를 보여주며 서버는 자동 시작하지 않습니다.
+
+대시보드 조작:
+
+| 키 | 동작 |
+| --- | --- |
+| `↑` / `↓` | 서버 선택 이동 |
+| `Enter` | 선택 서버 상세 보기 |
+| `S` | 선택 서버 시작 |
+| `T` | 선택 서버 중지 |
+| `R` | 선택 서버 재시작 |
+| `A` | 전체 서버 시작 |
+| `X` | 전체 서버 중지 |
+| `U` | 선택 서버 HTTP/SSE URL 보기 |
+| `L` | 선택 서버 로그 보기 |
+| `E` | 선택 서버 `.env` 파일 편집 |
+| `F5` 또는 `Space` | 상태 새로고침 |
+| `Q` 또는 `Esc` | 종료 |
+
+숫자키 `1`~`9`는 기존 메뉴 호환용 단축키로 계속 사용할 수 있습니다.
 
 ```powershell
 .\McpManager.exe list all
@@ -65,7 +89,12 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 .\McpManager.exe health all
 .\McpManager.exe logs mcp-filesystem
 .\McpManager.exe urls all
+.\LIG-AI-MCP.cmd env mcp-filesystem
+.\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
+.\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
 ```
+
+대시보드에서 서버를 선택하고 `E`를 누르면 환경변수 설정 화면이 열립니다. `A`로 추가, `Enter`로 수정, `D`로 삭제, `N`으로 메모장 열기, `B`로 뒤로가기를 할 수 있습니다. 변경 후 서버를 재시작하면 적용됩니다.
 
 ## 대상 선택
 

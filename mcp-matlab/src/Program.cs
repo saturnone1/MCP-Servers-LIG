@@ -324,7 +324,14 @@ internal static class OfficialMcp
         };
         foreach (var arg in leadingArgs) psi.ArgumentList.Add(arg);
         foreach (var arg in ConfiguredArgs) psi.ArgumentList.Add(arg);
-        return Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start official MATLAB MCP server: {path}");
+        try
+        {
+            return Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start official MATLAB MCP server: {path}");
+        }
+        catch (Win32Exception ex)
+        {
+            throw new FileNotFoundException($"Unable to start official MATLAB MCP server: {path}. Verify the bundled command/script exists and is executable. {ex.Message}", path, ex);
+        }
     }
 
     private static void Stop(Process process)
@@ -460,7 +467,7 @@ internal static class CommandRunner
             UseShellExecute = false
         };
         foreach (var arg in args) psi.ArgumentList.Add(arg);
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start {fileName}");
+        using var process = StartProcess(fileName, psi);
         var stdoutTask = ReadLimited(process.StandardOutput, maxOutputBytes);
         var stderrTask = ReadLimited(process.StandardError, maxOutputBytes);
         var exitTask = process.WaitForExitAsync();
@@ -486,5 +493,17 @@ internal static class CommandRunner
             builder.Append(buffer, 0, read);
         }
         return builder.ToString();
+    }
+
+    private static Process StartProcess(string fileName, ProcessStartInfo startInfo)
+    {
+        try
+        {
+            return Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start external command: {fileName}.");
+        }
+        catch (Win32Exception ex)
+        {
+            throw new FileNotFoundException($"External command not found or not executable: {fileName}. Install it or set PATH/configuration for this MCP server. {ex.Message}", fileName, ex);
+        }
     }
 }

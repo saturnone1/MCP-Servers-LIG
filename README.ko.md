@@ -158,7 +158,12 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 .\mcp-bundle\McpManager.exe status all
 .\mcp-bundle\McpManager.exe urls all
 .\mcp-bundle\McpManager.exe stop all
+.\mcp-bundle\LIG-AI-MCP.cmd env mcp-filesystem
+.\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
+.\mcp-bundle\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
 ```
+
+대시보드에서는 서버를 선택한 뒤 `E`를 누르면 텍스트 편집기 없이 환경변수를 수정할 수 있습니다. `A` 추가, `Enter` 수정, `D` 삭제, `N` 메모장 열기, `B` 뒤로가기를 지원합니다. 환경변수를 바꾼 뒤에는 해당 서버를 재시작해야 적용됩니다.
 
 더블클릭 실행용 `start-all.cmd`, `stop-all.cmd`, `status.cmd`와 서버별 `start-mcp-*.cmd`, `stop-mcp-*.cmd`도 함께 생성됩니다. 번들은 self-contained `win-x64` 기본값으로 만들어져서 air-gap Windows PC에 .NET runtime을 별도로 설치하지 않아도 됩니다.
 
@@ -251,7 +256,7 @@ Docker 서버만 빠르게 확인하려면 다음을 사용합니다.
 
 Docker smoke test는 컨테이너를 재시작한 뒤 `/healthz`, SSE, MCP tool 목록, 대표 tool 호출을 확인합니다. Prometheus, GitLab, Jira, Loki는 로컬 mock HTTP API를 상대로 실제 HTTP 호출까지 확인합니다. PostgreSQL과 SQL Server의 실제 DB 호출은 `tests/`의 fixture 스크립트에서 확인합니다.
 
-## MCP Manager
+## LIG AI MCP
 
 `mcp-manager`는 Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 시작/중지/상태확인/log 확인하는 CLI입니다.
 
@@ -270,7 +275,9 @@ Windows native manager 실행 파일 생성:
 .\mcp-manager\scripts\publish-win.ps1
 ```
 
-publish 폴더에는 `McpManager.exe`, `mcp-manager.cmd`, `start-all.cmd`, `stop-all.cmd`, `status.cmd`, `servers.json`가 들어갑니다.
+publish 폴더에는 `McpManager.exe`, `LIG-AI-MCP.cmd`, `mcp-manager.cmd`, `start-all.cmd`, `stop-all.cmd`, `status.cmd`, `servers.json`가 들어갑니다.
+
+번들에는 `fonts\NotoSansKR[wght].ttf`와 `install-fonts.cmd`도 포함됩니다. `install-fonts.cmd`를 한 번 실행하면 현재 Windows 사용자 폰트로 Noto Sans KR이 설치됩니다. 이후 터미널을 재시작하고 Windows Terminal/CMD 설정에서 해당 폰트를 선택하면 한글 UI 폰트를 맞출 수 있습니다. 콘솔 앱 자체가 터미널 폰트를 안정적으로 강제하는 것은 Windows 콘솔 제약 때문에 권장하지 않습니다.
 
 smoke 호출 없이 14개 서버를 모두 실행하려면 다음 스크립트를 사용합니다.
 

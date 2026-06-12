@@ -71,6 +71,12 @@ Copy `config/matlab.env.example` to `config/matlab.env` for development, or edit
 | `MCP_ALLOWED_DIRS` | Semicolon-separated Windows roots allowed for script files. |
 | `MCP_ENABLE_MATLAB_WRITES` | Set `false` to block future write-oriented tools. |
 
+## Launch Policy
+
+`config`, `detect_installations`, and `/healthz` are safe inspection paths and do not start MATLAB. They only check COM registration, active MATLAB availability, executable candidates, and the configured official MCP path.
+
+`run_batch`, `run_script`, and Simulink batch tools start `matlab.exe`. `eval_command` and `list_workspace` require a MATLAB COM session and, under the current policy, may start MATLAB when no active session exists. Official MCP bridge tools start the configured MathWorks MCP child process for each call.
+
 ## Tools
 
 | Tool | Capability |

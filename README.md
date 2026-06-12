@@ -158,7 +158,12 @@ Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console m
 .\mcp-bundle\McpManager.exe status all
 .\mcp-bundle\McpManager.exe urls all
 .\mcp-bundle\McpManager.exe stop all
+.\mcp-bundle\LIG-AI-MCP.cmd env mcp-filesystem
+.\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
+.\mcp-bundle\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
 ```
+
+In the interactive dashboard, select a server and press `E` to edit its environment variables without opening a text editor. Use `A` to add, `Enter` to edit, `D` to delete, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
 
 The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. The default output is self-contained `win-x64`, so an air-gapped Windows PC does not need a separate .NET runtime.
 
@@ -251,7 +256,7 @@ For a faster Docker-only pass:
 
 The Docker smoke test restarts the containers, verifies `/healthz`, checks SSE, lists MCP tools, and calls representative tools. Prometheus, GitLab, Jira, and Loki are checked against local mock HTTP APIs. PostgreSQL and SQL Server live DB checks are covered by the fixture scripts in `tests/`.
 
-## MCP Manager
+## LIG AI MCP
 
 `mcp-manager` is a small CLI that starts, stops, checks, and logs both Docker MCP servers and Windows-host MCP servers from one place.
 
@@ -270,7 +275,9 @@ Publish a native Windows manager executable:
 .\mcp-manager\scripts\publish-win.ps1
 ```
 
-The publish folder includes `McpManager.exe`, `mcp-manager.cmd`, `start-all.cmd`, `stop-all.cmd`, `status.cmd`, and `servers.json`.
+The publish folder includes `McpManager.exe`, `LIG-AI-MCP.cmd`, `mcp-manager.cmd`, `start-all.cmd`, `stop-all.cmd`, `status.cmd`, and `servers.json`.
+
+The bundle also includes `fonts\NotoSansKR[wght].ttf` and `install-fonts.cmd`. Run `install-fonts.cmd` once to install Noto Sans KR for the current Windows user, then restart the terminal and select that font in Windows Terminal/CMD settings if you want a consistent Korean UI font. The console app cannot reliably force a terminal font by itself.
 
 To start all servers without running the smoke calls:
 
