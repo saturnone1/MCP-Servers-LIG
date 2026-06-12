@@ -71,6 +71,12 @@ publish 폴더에서 실행:
 | `MCP_ALLOWED_DIRS` | script 파일 접근을 허용할 Windows root 목록입니다. |
 | `MCP_ENABLE_MATLAB_WRITES` | `false`로 설정하면 향후 write 계열 tool을 막습니다. |
 
+## 실행 정책
+
+`config`, `detect_installations`, `/healthz`는 MATLAB을 새로 실행하지 않는 안전 조회 경로입니다. COM 등록 여부, 이미 실행 중인 MATLAB 세션, 실행 파일 후보, 공식 MCP 경로만 확인합니다.
+
+`run_batch`, `run_script`, Simulink batch 계열 tool은 `matlab.exe`를 실행합니다. `eval_command`, `list_workspace`는 MATLAB COM 세션이 필요하며, 활성 MATLAB이 없으면 현 정책상 MATLAB이 새로 실행될 수 있습니다. 공식 MCP bridge tool은 호출마다 설정된 MathWorks 공식 MCP child process를 실행합니다.
+
 ## 도구
 
 | Tool | 기능 |

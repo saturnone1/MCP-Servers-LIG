@@ -19,6 +19,13 @@ app.Run();
 public sealed class MssqlTools
 {
     [McpServerTool(ReadOnly = true)]
+    [Description("Return this MCP server's SQL Server configuration status.")]
+    public static object Config() => new
+    {
+        hasConnectionString = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MSSQL_CONNECTION_STRING"))
+    };
+
+    [McpServerTool(ReadOnly = true)]
     [Description("List databases visible to the configured SQL Server login.")]
     public static Task<object[]> ListDatabases(string? connectionString = null) =>
         Query(connectionString, "select name, database_id, create_date from sys.databases order by name", 200);

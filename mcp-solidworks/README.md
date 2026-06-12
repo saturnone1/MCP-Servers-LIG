@@ -41,6 +41,12 @@ Connections:
 | `MCP_ALLOWED_DIRS` | Semicolon-separated Windows roots allowed for CAD files and exports. |
 | `MCP_ENABLE_SOLIDWORKS_WRITES` | Set `false` to block modification/export tools. |
 
+## COM Launch Policy
+
+`config`, `detect_installations`, and `/healthz` are safe inspection paths and do not start SolidWorks. They only check COM registration and whether a SolidWorks session is already active.
+
+Tools that operate on documents, such as `open_document`, `active_document`, list/save/export tools, require a real SolidWorks COM session. Under the current policy, they may start SolidWorks when no active session exists.
+
 ## Tools
 
 | Tool | Capability |

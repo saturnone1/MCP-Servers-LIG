@@ -125,7 +125,7 @@ internal static class CommandRunner
         using var cts = new CancellationTokenSource(timeoutMs);
         var startInfo = new ProcessStartInfo(fileName) { WorkingDirectory = ResolveWorkingDirectory(workingDirectory), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
-        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {fileName}.");
+        using var process = StartProcess(fileName, startInfo);
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
         var stderrTask = process.StandardError.ReadToEndAsync(cts.Token);
         try
@@ -141,6 +141,18 @@ internal static class CommandRunner
     }
 
     private static string Trim(string value, int maxBytes) => Encoding.UTF8.GetByteCount(value) <= maxBytes ? value : value[..Math.Min(value.Length, maxBytes)] + "\n[truncated]";
+    private static Process StartProcess(string fileName, ProcessStartInfo startInfo)
+    {
+        try
+        {
+            return Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start external command: {fileName}.");
+        }
+        catch (Win32Exception ex)
+        {
+            throw new FileNotFoundException($"External command not found or not executable: {fileName}. Install it or set PATH/configuration for this MCP server. {ex.Message}", fileName, ex);
+        }
+    }
+
     private static string ResolveWorkingDirectory(string workingDirectory) =>
         Directory.Exists(workingDirectory)
             ? workingDirectory

@@ -211,10 +211,13 @@ internal static class Guard
         return values.Select(NormalizeRoot).ToArray();
     }
 
-    private static bool IsInside(string path, string root) =>
-        root == Path.GetPathRoot(root) ||
-        path.Equals(root, StringComparison.Ordinal) ||
-        path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+    private static bool IsInside(string path, string root)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return root == Path.GetPathRoot(root) ||
+               path.Equals(root, comparison) ||
+               path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
+    }
 
     private static string TranslateHostPath(string path)
     {

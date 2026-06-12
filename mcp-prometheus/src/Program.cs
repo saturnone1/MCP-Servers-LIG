@@ -95,9 +95,16 @@ public sealed class PrometheusTools
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         if (!string.IsNullOrWhiteSpace(Guard.BearerToken))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Guard.BearerToken);
-        using var response = await Client.SendAsync(request);
-        var body = await response.Content.ReadAsStringAsync();
-        return new PrometheusResult((int)response.StatusCode, response.IsSuccessStatusCode, body);
+        try
+        {
+            using var response = await Client.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            return new PrometheusResult((int)response.StatusCode, response.IsSuccessStatusCode, body);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            return new PrometheusResult(0, false, $"Prometheus request failed for {uri}: {ex.Message}");
+        }
     }
 
     private static Uri BuildUri(string path, Dictionary<string, string>? parameters)
