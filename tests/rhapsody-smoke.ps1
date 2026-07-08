@@ -1,5 +1,5 @@
 param(
-    [int]$Port = 8094,
+    [int]$Port = 42194,
     [string]$Project = (Join-Path $PSScriptRoot '..\mcp-rhapsody\src\McpRhapsody.csproj'),
     [string]$RhapsodyProjectPath = '',
     [switch]$RunWriteSmoke

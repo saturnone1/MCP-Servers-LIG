@@ -12,6 +12,12 @@ param(
     [string]$JiraBearerToken = '',
     [string]$JiraEmail = '',
     [string]$JiraApiToken = '',
+    [string]$ConfluenceBaseUrl = '',
+    [string]$ConfluenceBearerToken = '',
+    [string]$ConfluencePat = '',
+    [string]$ConfluenceUsername = '',
+    [string]$ConfluenceApiToken = '',
+    [string]$ConfluenceCookie = '',
     [string]$LokiBaseUrl = '',
     [string]$LokiBearerToken = '',
     [string]$LokiUsername = '',
@@ -23,20 +29,21 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $servers = @(
-    @{ Name = 'mcp-office'; Port = 8080 },
-    @{ Name = 'mcp-filesystem'; Port = 8081 },
-    @{ Name = 'mcp-git'; Port = 8082 },
-    @{ Name = 'mcp-shell'; Port = 8083 },
-    @{ Name = 'mcp-dotnet'; Port = 8084 },
-    @{ Name = 'mcp-mssql'; Port = 8085 },
-    @{ Name = 'mcp-hwp'; Port = 8086 },
-    @{ Name = 'mcp-kubernetes'; Port = 8087 },
-    @{ Name = 'mcp-docker'; Port = 8088 },
-    @{ Name = 'mcp-prometheus'; Port = 8089 },
-    @{ Name = 'mcp-postgresql'; Port = 8090 },
-    @{ Name = 'mcp-gitlab'; Port = 8091 },
-    @{ Name = 'mcp-jira'; Port = 8092 },
-    @{ Name = 'mcp-loki'; Port = 8093 }
+    @{ Name = 'mcp-office'; Port = 42180 },
+    @{ Name = 'mcp-filesystem'; Port = 42181 },
+    @{ Name = 'mcp-git'; Port = 42182 },
+    @{ Name = 'mcp-shell'; Port = 42183 },
+    @{ Name = 'mcp-dotnet'; Port = 42184 },
+    @{ Name = 'mcp-mssql'; Port = 42185 },
+    @{ Name = 'mcp-hwp'; Port = 42186 },
+    @{ Name = 'mcp-kubernetes'; Port = 42187 },
+    @{ Name = 'mcp-docker'; Port = 42188 },
+    @{ Name = 'mcp-prometheus'; Port = 42189 },
+    @{ Name = 'mcp-postgresql'; Port = 42190 },
+    @{ Name = 'mcp-gitlab'; Port = 42191 },
+    @{ Name = 'mcp-jira'; Port = 42192 },
+    @{ Name = 'mcp-loki'; Port = 42193 },
+    @{ Name = 'mcp-confluence'; Port = 42198 }
 )
 
 if ($Build) {
@@ -114,6 +121,26 @@ foreach ($server in $servers) {
         }
         if (-not [string]::IsNullOrWhiteSpace($LokiTenantId)) {
             $args += @('-e', "LOKI_TENANT_ID=$LokiTenantId")
+        }
+    }
+    if ($server.Name -eq 'mcp-confluence') {
+        if (-not [string]::IsNullOrWhiteSpace($ConfluenceBaseUrl)) {
+            $args += @('-e', "CONFLUENCE_BASE_URL=$ConfluenceBaseUrl")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ConfluenceBearerToken)) {
+            $args += @('-e', "CONFLUENCE_BEARER_TOKEN=$ConfluenceBearerToken")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ConfluencePat)) {
+            $args += @('-e', "CONFLUENCE_PAT=$ConfluencePat")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ConfluenceUsername)) {
+            $args += @('-e', "CONFLUENCE_USERNAME=$ConfluenceUsername")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ConfluenceApiToken)) {
+            $args += @('-e', "CONFLUENCE_API_TOKEN=$ConfluenceApiToken")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ConfluenceCookie)) {
+            $args += @('-e', "CONFLUENCE_COOKIE=$ConfluenceCookie")
         }
     }
     if ($server.Name -eq 'mcp-docker') {

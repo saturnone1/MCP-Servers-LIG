@@ -1,6 +1,7 @@
 using ModelContextProtocol.Server;
 using Npgsql;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080");
@@ -119,6 +120,8 @@ internal static class Guard
         var allowed = new[] { "select", "with", "show", "explain" };
         if (!allowed.Any(prefix => trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             throw new UnauthorizedAccessException("Read query must start with SELECT, WITH, SHOW, or EXPLAIN. Use ExecuteNonQuery for writes.");
+        if (HasMultipleStatements(trimmed) || ContainsWriteKeyword(trimmed))
+            throw new UnauthorizedAccessException("Read query must be a single read-only SELECT/WITH/SHOW/EXPLAIN statement.");
     }
 
     public static void RequireSqlWrites()
@@ -126,5 +129,9 @@ internal static class Guard
         if (string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_POSTGRES_WRITES"), "false", StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException("PostgreSQL write tools are disabled because MCP_ENABLE_POSTGRES_WRITES=false.");
     }
-}
 
+    private static bool HasMultipleStatements(string sql) => sql.TrimEnd().TrimEnd(';').Contains(';', StringComparison.Ordinal);
+
+    private static bool ContainsWriteKeyword(string sql) =>
+        Regex.IsMatch(sql, @"\b(insert|update|delete|merge|drop|alter|create|truncate|copy|call|grant|revoke|vacuum|analyze)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+}

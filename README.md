@@ -2,7 +2,7 @@
 
 Korean version: [README.ko.md](README.ko.md)
 
-This workspace contains fourteen independent Docker-buildable remote MCP servers plus four Windows-host desktop automation MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
+This workspace contains fifteen independent Docker-buildable remote MCP servers plus four Windows-host desktop automation MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
 
 These images are intended for trusted local testing. Write and execute capabilities are enabled by default, and allowed paths default to `/` inside the container. Host filesystem access is still limited by Docker volume mounts.
 
@@ -10,24 +10,25 @@ These images are intended for trusted local testing. Write and execute capabilit
 
 | Server | Port | Upstream / lineage | Implementation strategy | Main capabilities |
 | --- | ---: | --- | --- | --- |
-| `mcp-office` | 8080 | `iOfficeAI/OfficeCLI` | Wrap bundled OfficeCLI plus `antiword` for legacy `.doc` | Inspect/read Office docs, extract text, create docs, apply batch edits, render/export, raw OfficeCLI |
-| `mcp-filesystem` | 8081 | `mark3labs/mcp-filesystem-server` security model | C# reimplementation with `System.IO` | Read/write/copy/move/delete files, stat, list/search directories, allowed-root handling |
-| `mcp-git` | 8082 | `modelcontextprotocol/servers` Git server behavior | C# wrapper around the `git` CLI | Status, log, diff, show, branch list, blame, grep, init/add/commit/checkout |
-| `mcp-shell` | 8083 | New local implementation | C# `ProcessStartInfo` command runner | Run local container commands with timeout, output limit, optional command/env allowlists |
-| `mcp-dotnet` | 8084 | Inspired by `jongalloway/dotnet-mcp` | C# wrapper around the `dotnet` CLI | SDK info, project discovery, restore/build/test, add package, format |
-| `mcp-mssql` | 8085 | Based on `little-fort/mcp-dotnet-mssql` behavior | C# SQL Server tools using `Microsoft.Data.SqlClient` | List databases/schemas/tables, describe tables, read queries, non-query SQL |
-| `mcp-hwp` | 8086 | Local implementation using open tooling | C# server using `pyhwp`/`hwp5txt`, LibreOffice, and ZIP/XML parsing | Extract `.hwp`/`.hwpx` text, inspect files, convert to `txt/docx/pdf/odt` |
-| `mcp-kubernetes` | 8087 | Local implementation | C# wrapper around `kubectl` | Cluster info, namespaces, pods, logs, deployments, YAML apply/delete/restart/scale/generate |
-| `mcp-docker` | 8088 | Local implementation | C# wrapper around Docker CLI and Docker socket | Containers, images, inspect, logs, run/start/stop/remove, pull/remove image |
-| `mcp-prometheus` | 8089 | Local implementation | C# Prometheus HTTP API client | Readiness, instant/range queries, labels, targets, alerts, series |
-| `mcp-postgresql` | 8090 | Local implementation | C# PostgreSQL tools using `Npgsql` | List databases/schemas/tables, describe tables, read queries, non-query SQL |
-| `mcp-gitlab` | 8091 | Local implementation | C# GitLab REST API client | Projects, issues, merge requests, repository files |
-| `mcp-jira` | 8092 | Local implementation | C# Jira REST API client | JQL search, issues, comments, transitions, projects |
-| `mcp-loki` | 8093 | Local implementation | C# Loki HTTP API client | LogQL queries, recent log search, labels, series, index stats |
-| `mcp-rhapsody` | 8094 | Local implementation | Windows-host C# server for Rhapsody COM/CLI/file automation | Detect Rhapsody, inspect model files, run configured CLI |
-| `mcp-matlab` | 8095 | Official `matlab/matlab-mcp-core-server` lineage | Windows-host C# wrapper around MATLAB CLI/COM plus official MCP bridge hook | Detect MATLAB, run batch/script, COM eval, workspace summary |
-| `mcp-autocad` | 8096 | Open-source AutoCAD MCP COM automation pattern | Windows-host C# AutoCAD COM wrapper | Open drawings, list layers/entities, send commands, create layer/line, save |
-| `mcp-solidworks` | 8097 | Open-source SolidWorks MCP COM automation pattern | Windows-host C# SolidWorks COM wrapper | Open CAD docs, list features/components, mass properties, rebuild/save/export |
+| `mcp-office` | 42180 | `iOfficeAI/OfficeCLI` | Wrap bundled OfficeCLI plus `antiword` for legacy `.doc` | Inspect/read Office docs, extract text, create docs, apply batch edits, render/export, raw OfficeCLI |
+| `mcp-filesystem` | 42181 | `mark3labs/mcp-filesystem-server` security model | C# reimplementation with `System.IO` | Read/write/copy/move/delete files, stat, list/search directories, allowed-root handling |
+| `mcp-git` | 42182 | `modelcontextprotocol/servers` Git server behavior | C# wrapper around the `git` CLI | Status, log, diff, show, branch list, blame, grep, init/add/commit/checkout |
+| `mcp-shell` | 42183 | New local implementation | C# `ProcessStartInfo` command runner | Run local container commands with timeout, output limit, optional command/env allowlists |
+| `mcp-dotnet` | 42184 | Inspired by `jongalloway/dotnet-mcp` | C# wrapper around the `dotnet` CLI | SDK info, project discovery, restore/build/test, add package, format |
+| `mcp-mssql` | 42185 | Based on `little-fort/mcp-dotnet-mssql` behavior | C# SQL Server tools using `Microsoft.Data.SqlClient` | List databases/schemas/tables, describe tables, read queries, non-query SQL |
+| `mcp-hwp` | 42186 | Local implementation using open tooling | C# server using `pyhwp`/`hwp5txt`, LibreOffice, and ZIP/XML parsing | Extract `.hwp`/`.hwpx` text, inspect files, convert to `txt/docx/pdf/odt` |
+| `mcp-kubernetes` | 42187 | Local implementation | C# wrapper around `kubectl` | Cluster info, namespaces, pods, logs, deployments, YAML apply/delete/restart/scale/generate |
+| `mcp-docker` | 42188 | Local implementation | C# wrapper around Docker CLI and Docker socket | Containers, images, inspect, logs, run/start/stop/remove, pull/remove image |
+| `mcp-prometheus` | 42189 | Local implementation | C# Prometheus HTTP API client | Readiness, instant/range queries, labels, targets, alerts, series |
+| `mcp-postgresql` | 42190 | Local implementation | C# PostgreSQL tools using `Npgsql` | List databases/schemas/tables, describe tables, read queries, non-query SQL |
+| `mcp-gitlab` | 42191 | Local implementation | C# GitLab REST API client | Projects, issues, merge requests, repository files |
+| `mcp-jira` | 42192 | Local implementation | C# Jira REST API client | JQL search, issues, comments, transitions, projects |
+| `mcp-loki` | 42193 | Local implementation | C# Loki HTTP API client | LogQL queries, recent log search, labels, series, index stats |
+| `mcp-confluence` | 42198 | Local implementation | C# Confluence Data Center REST API v1 client | Spaces, CQL content search, pages, child pages, create/update/delete pages |
+| `mcp-rhapsody` | 42194 | Local implementation | Windows-host C# server for Rhapsody COM/CLI/file automation | Detect Rhapsody, inspect model files, run configured CLI |
+| `mcp-matlab` | 42195 | Official `matlab/matlab-mcp-core-server` lineage | Windows-host C# wrapper around MATLAB CLI/COM plus official MCP bridge hook | Detect MATLAB, run batch/script, COM eval, workspace summary |
+| `mcp-autocad` | 42196 | Open-source AutoCAD MCP COM automation pattern | Windows-host C# AutoCAD COM wrapper | Open drawings, list layers/entities, send commands, create layer/line, save |
+| `mcp-solidworks` | 42197 | Open-source SolidWorks MCP COM automation pattern | Windows-host C# SolidWorks COM wrapper | Open CAD docs, list features/components, mass properties, rebuild/save/export |
 
 ## Connections
 
@@ -35,24 +36,25 @@ Docker images listen on port `8080` inside the container. Windows-host desktop s
 
 | Server | Streamable HTTP | Legacy SSE |
 | --- | --- | --- |
-| `mcp-office` | `http://localhost:8080/mcp` | `http://localhost:8080/sse` |
-| `mcp-filesystem` | `http://localhost:8081/mcp` | `http://localhost:8081/sse` |
-| `mcp-git` | `http://localhost:8082/mcp` | `http://localhost:8082/sse` |
-| `mcp-shell` | `http://localhost:8083/mcp` | `http://localhost:8083/sse` |
-| `mcp-dotnet` | `http://localhost:8084/mcp` | `http://localhost:8084/sse` |
-| `mcp-mssql` | `http://localhost:8085/mcp` | `http://localhost:8085/sse` |
-| `mcp-hwp` | `http://localhost:8086/mcp` | `http://localhost:8086/sse` |
-| `mcp-kubernetes` | `http://localhost:8087/mcp` | `http://localhost:8087/sse` |
-| `mcp-docker` | `http://localhost:8088/mcp` | `http://localhost:8088/sse` |
-| `mcp-prometheus` | `http://localhost:8089/mcp` | `http://localhost:8089/sse` |
-| `mcp-postgresql` | `http://localhost:8090/mcp` | `http://localhost:8090/sse` |
-| `mcp-gitlab` | `http://localhost:8091/mcp` | `http://localhost:8091/sse` |
-| `mcp-jira` | `http://localhost:8092/mcp` | `http://localhost:8092/sse` |
-| `mcp-loki` | `http://localhost:8093/mcp` | `http://localhost:8093/sse` |
-| `mcp-rhapsody` | `http://localhost:8094/mcp` | `http://localhost:8094/sse` |
-| `mcp-matlab` | `http://localhost:8095/mcp` | `http://localhost:8095/sse` |
-| `mcp-autocad` | `http://localhost:8096/mcp` | `http://localhost:8096/sse` |
-| `mcp-solidworks` | `http://localhost:8097/mcp` | `http://localhost:8097/sse` |
+| `mcp-office` | `http://localhost:42180/mcp` | `http://localhost:42180/sse` |
+| `mcp-filesystem` | `http://localhost:42181/mcp` | `http://localhost:42181/sse` |
+| `mcp-git` | `http://localhost:42182/mcp` | `http://localhost:42182/sse` |
+| `mcp-shell` | `http://localhost:42183/mcp` | `http://localhost:42183/sse` |
+| `mcp-dotnet` | `http://localhost:42184/mcp` | `http://localhost:42184/sse` |
+| `mcp-mssql` | `http://localhost:42185/mcp` | `http://localhost:42185/sse` |
+| `mcp-hwp` | `http://localhost:42186/mcp` | `http://localhost:42186/sse` |
+| `mcp-kubernetes` | `http://localhost:42187/mcp` | `http://localhost:42187/sse` |
+| `mcp-docker` | `http://localhost:42188/mcp` | `http://localhost:42188/sse` |
+| `mcp-prometheus` | `http://localhost:42189/mcp` | `http://localhost:42189/sse` |
+| `mcp-postgresql` | `http://localhost:42190/mcp` | `http://localhost:42190/sse` |
+| `mcp-gitlab` | `http://localhost:42191/mcp` | `http://localhost:42191/sse` |
+| `mcp-jira` | `http://localhost:42192/mcp` | `http://localhost:42192/sse` |
+| `mcp-loki` | `http://localhost:42193/mcp` | `http://localhost:42193/sse` |
+| `mcp-confluence` | `http://localhost:42198/mcp` | `http://localhost:42198/sse` |
+| `mcp-rhapsody` | `http://localhost:42194/mcp` | `http://localhost:42194/sse` |
+| `mcp-matlab` | `http://localhost:42195/mcp` | `http://localhost:42195/sse` |
+| `mcp-autocad` | `http://localhost:42196/mcp` | `http://localhost:42196/sse` |
+| `mcp-solidworks` | `http://localhost:42197/mcp` | `http://localhost:42197/sse` |
 
 ## MCP API Shape
 
@@ -80,7 +82,7 @@ Each per-server README includes the exact tool names, parameters, defaults, and 
 ## Build All
 
 ```powershell
-$servers = 'mcp-office','mcp-filesystem','mcp-git','mcp-shell','mcp-mssql','mcp-dotnet','mcp-hwp','mcp-kubernetes','mcp-docker','mcp-prometheus','mcp-postgresql','mcp-gitlab','mcp-jira','mcp-loki'
+$servers = 'mcp-office','mcp-filesystem','mcp-git','mcp-shell','mcp-mssql','mcp-dotnet','mcp-hwp','mcp-kubernetes','mcp-docker','mcp-prometheus','mcp-postgresql','mcp-gitlab','mcp-jira','mcp-loki','mcp-confluence'
 foreach ($server in $servers) {
   docker build -t "local/$server" $server
 }
@@ -118,7 +120,7 @@ windows-host-publish\mcp-matlab-win-x64\start.cmd
 windows-host-publish\mcp-matlab-win-x64\run.ps1
 ```
 
-Default publish mode is self-contained `win-x64`, so the target air-gap PC does not need the .NET runtime installed. To make smaller packages for PCs that already have .NET installed, pass `-SelfContained $false`.
+Default bundle publish mode is framework-dependent `win-x64` to keep packages small. The target PC needs the matching .NET runtime. To make a larger bundle that does not need a preinstalled runtime, pass `-SelfContained $true`.
 
 ## Windows Unified EXE Bundle
 
@@ -144,7 +146,7 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-The bundle `servers.json` registers all 18 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
+The bundle `servers.json` registers all 19 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
 
 Editable environment variables are written to each server folder as `<server>.env`, for example `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`. Use `edit-env-mcp-jira.cmd` or edit that file directly, then restart the server through `McpManager.exe`. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root when present, plus any explicit `envFiles` listed in `servers.json`.
 
@@ -165,7 +167,7 @@ Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console m
 
 In the interactive dashboard, select a server and press `E` to edit its environment variables without opening a text editor. Use `A` to add, `Enter` to edit, `D` to delete, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
 
-The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. The default output is self-contained `win-x64`, so an air-gapped Windows PC does not need a separate .NET runtime.
+The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. The default output is framework-dependent `win-x64` to keep the bundle small, so the target PC needs the matching .NET runtime. Use `.\scripts\publish-mcp-bundle.ps1 -SelfContained $true -Zip` only when you explicitly want a larger no-runtime-prerequisite bundle.
 
 Check the bundle structure and external CLI availability with:
 
@@ -178,16 +180,16 @@ The server executables are included, but tools that shell out to external progra
 | Server | Windows exe bundle status | Additional requirement |
 | --- | --- | --- |
 | `mcp-filesystem` | Self-contained | None |
-| `mcp-mssql`, `mcp-postgresql` | Server is self-contained | Real DB connection string |
-| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki` | Server is self-contained | Real API URL/token |
-| `mcp-shell` | Server is self-contained | Commands invoked by tools must exist on Windows |
-| `mcp-git` | Server is self-contained | `git.exe` |
-| `mcp-dotnet` | Server is self-contained | .NET SDK/CLI on the target PC |
-| `mcp-kubernetes` | Server is self-contained | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
-| `mcp-docker` | Server is self-contained | Docker CLI and Docker Desktop/daemon |
+| `mcp-mssql`, `mcp-postgresql` | Framework-dependent Windows app by default | Real DB connection string |
+| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | Framework-dependent Windows app by default | Real API URL/token |
+| `mcp-shell` | Framework-dependent Windows app by default | Commands invoked by tools must exist on Windows |
+| `mcp-git` | Framework-dependent Windows app by default | `git.exe` |
+| `mcp-dotnet` | Framework-dependent Windows app by default | .NET SDK/CLI on the target PC |
+| `mcp-kubernetes` | Framework-dependent Windows app by default | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
+| `mcp-docker` | Framework-dependent Windows app by default | Docker CLI and Docker Desktop/daemon |
 | `mcp-office` | Bundles `officecli.exe` | `antiword` for legacy `.doc` is optional; OfficeCLI is used as fallback |
 | `mcp-hwp` | Built-in parser handles `.hwpx` and basic `.hwp` text extraction | Optional `hwp5txt` for fallback; LibreOffice `soffice` only for `docx/pdf/odt` conversion |
-| `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | Server is self-contained | Corresponding commercial software, COM/CLI, and license |
+| `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | Framework-dependent Windows app by default | Corresponding commercial software, COM/CLI, and license |
 
 The Office publish flow copies the downloaded OfficeCLI Windows binary from `mcp-office\vendor\officecli` into the bundle as `tools/officecli.exe`. If the vendor binary is missing, `publish-mcp-bundle.ps1` calls `mcp-office\scripts\download-officecli.ps1`.
 
@@ -230,6 +232,7 @@ mcp-postgresql\airgap\local-mcp-postgresql.tar
 mcp-gitlab\airgap\local-mcp-gitlab.tar
 mcp-jira\airgap\local-mcp-jira.tar
 mcp-loki\airgap\local-mcp-loki.tar
+mcp-confluence\airgap\local-mcp-confluence.tar
 ```
 
 Copy the needed `airgap` folder or tar files to the air-gapped machine and load them with `docker load -i <tar-file>`. Each server folder has an `airgap/README.ko.md` with the exact load and run commands. Tar archives are ignored by Git.
@@ -308,7 +311,7 @@ For air-gapped environments, point these values at internal services, internal D
 For Linux containers to accept Windows host paths from MCP clients, the matching host folder must be mounted with Docker and listed in `MCP_PATH_MAPPINGS`:
 
 ```powershell
-docker run --rm -p 8081:8080 `
+docker run --rm -p 42181:8080 `
   -v C:\:/host/c `
   -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
   local/mcp-filesystem
@@ -320,7 +323,7 @@ The same mapping pattern is supported by path-based servers such as Office, file
 
 Kubernetes manifests are provided for the MCP servers that can reasonably run as Linux Kubernetes workloads:
 
-- Included: `mcp-filesystem`, `mcp-git`, `mcp-dotnet`, `mcp-kubernetes`, `mcp-prometheus`, `mcp-postgresql`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`
+- Included: `mcp-filesystem`, `mcp-git`, `mcp-dotnet`, `mcp-kubernetes`, `mcp-prometheus`, `mcp-postgresql`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence`
 - Excluded in this phase: `mcp-office`, `mcp-shell`, `mcp-hwp`, `mcp-mssql`, `mcp-docker`
 
 Each included server has a `k8s/` folder with namespace, Deployment, Service, and any required ConfigMap/PVC/RBAC files. Apply a server with:
@@ -358,7 +361,9 @@ Each folder contains a dedicated `README.md` with implementation notes, tool lis
 - `mcp-gitlab/README.md`
 - `mcp-jira/README.md`
 - `mcp-loki/README.md`
+- `mcp-confluence/README.md`
 - `mcp-rhapsody/README.md`
 - `mcp-matlab/README.md`
 - `mcp-autocad/README.md`
 - `mcp-solidworks/README.md`
+

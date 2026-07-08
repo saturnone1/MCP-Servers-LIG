@@ -38,7 +38,7 @@ Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 켜고 끄는 CLI 
 .\scripts\publish-mcp-bundle.ps1 -Zip
 ```
 
-이 방식은 Docker가 기본이던 서버들도 모두 `win-x64` self-contained 실행 파일로 publish해서 `mcp-bundle` 아래에 넣습니다.
+이 방식은 Docker가 기본이던 서버들도 모두 `win-x64` framework-dependent 실행 파일로 publish해서 `mcp-bundle` 아래에 넣습니다. 용량을 줄이는 기본값이며, 대상 PC에는 맞는 .NET runtime이 필요합니다.
 
 ```text
 mcp-bundle\McpManager.exe

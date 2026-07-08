@@ -2,7 +2,7 @@
 
 영어 버전: [README.md](README.md)
 
-이 저장소는 Docker로 각각 빌드할 수 있는 원격 MCP 서버 14개와 Windows 호스트용 desktop 자동화 MCP 서버 4개를 담고 있습니다. 모든 서버는 C#/.NET ASP.NET Core 앱이며 `ModelContextProtocol.AspNetCore`를 사용합니다. 공통으로 Streamable HTTP는 `/mcp`, legacy SSE는 `/sse`와 `/message`를 제공하고 `/healthz`를 제공합니다.
+이 저장소는 Docker로 각각 빌드할 수 있는 원격 MCP 서버 15개와 Windows 호스트용 desktop 자동화 MCP 서버 4개를 담고 있습니다. 모든 서버는 C#/.NET ASP.NET Core 앱이며 `ModelContextProtocol.AspNetCore`를 사용합니다. 공통으로 Streamable HTTP는 `/mcp`, legacy SSE는 `/sse`와 `/message`를 제공하고 `/healthz`를 제공합니다.
 
 이 이미지들은 신뢰할 수 있는 로컬 테스트용입니다. 기본값은 쓰기/실행 기능을 열어 두고, 컨테이너 내부 허용 경로도 `/`로 둡니다. 다만 호스트 파일시스템 접근은 Docker 볼륨으로 마운트한 범위에만 한정됩니다.
 
@@ -10,24 +10,25 @@
 
 | 서버 | 포트 | 원본 / 계보 | 구현 방식 | 주요 기능 |
 | --- | ---: | --- | --- | --- |
-| `mcp-office` | 8080 | `iOfficeAI/OfficeCLI` | OfficeCLI를 이미지에 포함하고 legacy `.doc`용 `antiword` 추가 | Office 문서 검사/읽기, 텍스트 추출, 문서 생성, batch 편집, 렌더/내보내기, raw OfficeCLI |
-| `mcp-filesystem` | 8081 | `mark3labs/mcp-filesystem-server` 보안 모델 | `System.IO` 기반 C# 재구현 | 파일 읽기/쓰기/복사/이동/삭제, stat, 디렉터리 목록/검색, 허용 root 처리 |
-| `mcp-git` | 8082 | `modelcontextprotocol/servers` Git 서버 동작 | `git` CLI를 감싸는 C# 래퍼 | status, log, diff, show, branch list, blame, grep, init/add/commit/checkout |
-| `mcp-shell` | 8083 | 신규 로컬 구현 | C# `ProcessStartInfo` 명령 실행기 | 컨테이너 내부 명령 실행, timeout, 출력 제한, 선택적 command/env allowlist |
-| `mcp-dotnet` | 8084 | `jongalloway/dotnet-mcp`에서 아이디어 차용 | `dotnet` CLI를 감싸는 C# 래퍼 | SDK 정보, 프로젝트 탐색, restore/build/test, add package, format |
-| `mcp-mssql` | 8085 | `little-fort/mcp-dotnet-mssql` 동작 기반 | `Microsoft.Data.SqlClient` 기반 C# SQL Server 도구 | DB/schema/table 목록, table describe, read query, non-query SQL |
-| `mcp-hwp` | 8086 | 오픈 도구 기반 신규 구현 | `pyhwp`/`hwp5txt`, LibreOffice, ZIP/XML 파싱 | `.hwp`/`.hwpx` 텍스트 추출, 파일 검사, `txt/docx/pdf/odt` 변환 |
-| `mcp-kubernetes` | 8087 | 신규 로컬 구현 | `kubectl` CLI를 감싸는 C# 래퍼 | cluster 정보, namespace, pod, log, deployment, YAML 적용/삭제/재시작/scale/생성 |
-| `mcp-docker` | 8088 | 신규 로컬 구현 | Docker CLI와 Docker socket을 사용하는 C# 래퍼 | container, image, inspect, logs, run/start/stop/remove, pull/remove image |
-| `mcp-prometheus` | 8089 | 신규 로컬 구현 | Prometheus HTTP API C# client | readiness, instant/range query, label, target, alert, series |
-| `mcp-postgresql` | 8090 | 신규 로컬 구현 | `Npgsql` 기반 C# PostgreSQL 도구 | DB/schema/table 목록, table describe, read query, non-query SQL |
-| `mcp-gitlab` | 8091 | 신규 로컬 구현 | GitLab REST API C# client | project, issue, merge request, repository file |
-| `mcp-jira` | 8092 | 신규 로컬 구현 | Jira REST API C# client | JQL 검색, issue, comment, transition, project |
-| `mcp-loki` | 8093 | 신규 로컬 구현 | Loki HTTP API C# client | LogQL query, 최근 로그 검색, label, series, index stats |
-| `mcp-rhapsody` | 8094 | 신규 로컬 구현 | Rhapsody COM/CLI/file 자동화를 위한 Windows 호스트 C# 서버 | Rhapsody 탐지, 모델 파일 inspect, 설정된 CLI 실행 |
-| `mcp-matlab` | 8095 | 공식 `matlab/matlab-mcp-core-server` 계보 | MATLAB CLI/COM을 감싸고 공식 MCP bridge hook을 둔 Windows 호스트 C# 서버 | MATLAB 탐지, batch/script 실행, COM eval, workspace 요약 |
-| `mcp-autocad` | 8096 | 오픈소스 AutoCAD MCP COM 자동화 패턴 | AutoCAD COM을 감싸는 Windows 호스트 C# 서버 | drawing 열기, layer/entity 조회, command 전송, layer/line 생성, 저장 |
-| `mcp-solidworks` | 8097 | 오픈소스 SolidWorks MCP COM 자동화 패턴 | SolidWorks COM을 감싸는 Windows 호스트 C# 서버 | CAD 문서 열기, feature/component 조회, mass property, rebuild/save/export |
+| `mcp-office` | 42180 | `iOfficeAI/OfficeCLI` | OfficeCLI를 이미지에 포함하고 legacy `.doc`용 `antiword` 추가 | Office 문서 검사/읽기, 텍스트 추출, 문서 생성, batch 편집, 렌더/내보내기, raw OfficeCLI |
+| `mcp-filesystem` | 42181 | `mark3labs/mcp-filesystem-server` 보안 모델 | `System.IO` 기반 C# 재구현 | 파일 읽기/쓰기/복사/이동/삭제, stat, 디렉터리 목록/검색, 허용 root 처리 |
+| `mcp-git` | 42182 | `modelcontextprotocol/servers` Git 서버 동작 | `git` CLI를 감싸는 C# 래퍼 | status, log, diff, show, branch list, blame, grep, init/add/commit/checkout |
+| `mcp-shell` | 42183 | 신규 로컬 구현 | C# `ProcessStartInfo` 명령 실행기 | 컨테이너 내부 명령 실행, timeout, 출력 제한, 선택적 command/env allowlist |
+| `mcp-dotnet` | 42184 | `jongalloway/dotnet-mcp`에서 아이디어 차용 | `dotnet` CLI를 감싸는 C# 래퍼 | SDK 정보, 프로젝트 탐색, restore/build/test, add package, format |
+| `mcp-mssql` | 42185 | `little-fort/mcp-dotnet-mssql` 동작 기반 | `Microsoft.Data.SqlClient` 기반 C# SQL Server 도구 | DB/schema/table 목록, table describe, read query, non-query SQL |
+| `mcp-hwp` | 42186 | 오픈 도구 기반 신규 구현 | `pyhwp`/`hwp5txt`, LibreOffice, ZIP/XML 파싱 | `.hwp`/`.hwpx` 텍스트 추출, 파일 검사, `txt/docx/pdf/odt` 변환 |
+| `mcp-kubernetes` | 42187 | 신규 로컬 구현 | `kubectl` CLI를 감싸는 C# 래퍼 | cluster 정보, namespace, pod, log, deployment, YAML 적용/삭제/재시작/scale/생성 |
+| `mcp-docker` | 42188 | 신규 로컬 구현 | Docker CLI와 Docker socket을 사용하는 C# 래퍼 | container, image, inspect, logs, run/start/stop/remove, pull/remove image |
+| `mcp-prometheus` | 42189 | 신규 로컬 구현 | Prometheus HTTP API C# client | readiness, instant/range query, label, target, alert, series |
+| `mcp-postgresql` | 42190 | 신규 로컬 구현 | `Npgsql` 기반 C# PostgreSQL 도구 | DB/schema/table 목록, table describe, read query, non-query SQL |
+| `mcp-gitlab` | 42191 | 신규 로컬 구현 | GitLab REST API C# client | project, issue, merge request, repository file |
+| `mcp-jira` | 42192 | 신규 로컬 구현 | Jira REST API C# client | JQL 검색, issue, comment, transition, project |
+| `mcp-loki` | 42193 | 신규 로컬 구현 | Loki HTTP API C# client | LogQL query, 최근 로그 검색, label, series, index stats |
+| `mcp-confluence` | 42198 | 신규 로컬 구현 | Confluence Data Center REST API v1 C# client | space, CQL content search, page, child page, page create/update/delete |
+| `mcp-rhapsody` | 42194 | 신규 로컬 구현 | Rhapsody COM/CLI/file 자동화를 위한 Windows 호스트 C# 서버 | Rhapsody 탐지, 모델 파일 inspect, 설정된 CLI 실행 |
+| `mcp-matlab` | 42195 | 공식 `matlab/matlab-mcp-core-server` 계보 | MATLAB CLI/COM을 감싸고 공식 MCP bridge hook을 둔 Windows 호스트 C# 서버 | MATLAB 탐지, batch/script 실행, COM eval, workspace 요약 |
+| `mcp-autocad` | 42196 | 오픈소스 AutoCAD MCP COM 자동화 패턴 | AutoCAD COM을 감싸는 Windows 호스트 C# 서버 | drawing 열기, layer/entity 조회, command 전송, layer/line 생성, 저장 |
+| `mcp-solidworks` | 42197 | 오픈소스 SolidWorks MCP COM 자동화 패턴 | SolidWorks COM을 감싸는 Windows 호스트 C# 서버 | CAD 문서 열기, feature/component 조회, mass property, rebuild/save/export |
 
 ## 연결 주소
 
@@ -35,24 +36,25 @@ Docker 이미지는 컨테이너 내부 `8080` 포트에서 실행됩니다. Win
 
 | 서버 | Streamable HTTP | Legacy SSE |
 | --- | --- | --- |
-| `mcp-office` | `http://localhost:8080/mcp` | `http://localhost:8080/sse` |
-| `mcp-filesystem` | `http://localhost:8081/mcp` | `http://localhost:8081/sse` |
-| `mcp-git` | `http://localhost:8082/mcp` | `http://localhost:8082/sse` |
-| `mcp-shell` | `http://localhost:8083/mcp` | `http://localhost:8083/sse` |
-| `mcp-dotnet` | `http://localhost:8084/mcp` | `http://localhost:8084/sse` |
-| `mcp-mssql` | `http://localhost:8085/mcp` | `http://localhost:8085/sse` |
-| `mcp-hwp` | `http://localhost:8086/mcp` | `http://localhost:8086/sse` |
-| `mcp-kubernetes` | `http://localhost:8087/mcp` | `http://localhost:8087/sse` |
-| `mcp-docker` | `http://localhost:8088/mcp` | `http://localhost:8088/sse` |
-| `mcp-prometheus` | `http://localhost:8089/mcp` | `http://localhost:8089/sse` |
-| `mcp-postgresql` | `http://localhost:8090/mcp` | `http://localhost:8090/sse` |
-| `mcp-gitlab` | `http://localhost:8091/mcp` | `http://localhost:8091/sse` |
-| `mcp-jira` | `http://localhost:8092/mcp` | `http://localhost:8092/sse` |
-| `mcp-loki` | `http://localhost:8093/mcp` | `http://localhost:8093/sse` |
-| `mcp-rhapsody` | `http://localhost:8094/mcp` | `http://localhost:8094/sse` |
-| `mcp-matlab` | `http://localhost:8095/mcp` | `http://localhost:8095/sse` |
-| `mcp-autocad` | `http://localhost:8096/mcp` | `http://localhost:8096/sse` |
-| `mcp-solidworks` | `http://localhost:8097/mcp` | `http://localhost:8097/sse` |
+| `mcp-office` | `http://localhost:42180/mcp` | `http://localhost:42180/sse` |
+| `mcp-filesystem` | `http://localhost:42181/mcp` | `http://localhost:42181/sse` |
+| `mcp-git` | `http://localhost:42182/mcp` | `http://localhost:42182/sse` |
+| `mcp-shell` | `http://localhost:42183/mcp` | `http://localhost:42183/sse` |
+| `mcp-dotnet` | `http://localhost:42184/mcp` | `http://localhost:42184/sse` |
+| `mcp-mssql` | `http://localhost:42185/mcp` | `http://localhost:42185/sse` |
+| `mcp-hwp` | `http://localhost:42186/mcp` | `http://localhost:42186/sse` |
+| `mcp-kubernetes` | `http://localhost:42187/mcp` | `http://localhost:42187/sse` |
+| `mcp-docker` | `http://localhost:42188/mcp` | `http://localhost:42188/sse` |
+| `mcp-prometheus` | `http://localhost:42189/mcp` | `http://localhost:42189/sse` |
+| `mcp-postgresql` | `http://localhost:42190/mcp` | `http://localhost:42190/sse` |
+| `mcp-gitlab` | `http://localhost:42191/mcp` | `http://localhost:42191/sse` |
+| `mcp-jira` | `http://localhost:42192/mcp` | `http://localhost:42192/sse` |
+| `mcp-loki` | `http://localhost:42193/mcp` | `http://localhost:42193/sse` |
+| `mcp-confluence` | `http://localhost:42198/mcp` | `http://localhost:42198/sse` |
+| `mcp-rhapsody` | `http://localhost:42194/mcp` | `http://localhost:42194/sse` |
+| `mcp-matlab` | `http://localhost:42195/mcp` | `http://localhost:42195/sse` |
+| `mcp-autocad` | `http://localhost:42196/mcp` | `http://localhost:42196/sse` |
+| `mcp-solidworks` | `http://localhost:42197/mcp` | `http://localhost:42197/sse` |
 
 ## MCP API 형태
 
@@ -80,7 +82,7 @@ Streamable HTTP 호출 예시:
 ## 전체 빌드
 
 ```powershell
-$servers = 'mcp-office','mcp-filesystem','mcp-git','mcp-shell','mcp-mssql','mcp-dotnet','mcp-hwp','mcp-kubernetes','mcp-docker','mcp-prometheus','mcp-postgresql','mcp-gitlab','mcp-jira','mcp-loki'
+$servers = 'mcp-office','mcp-filesystem','mcp-git','mcp-shell','mcp-mssql','mcp-dotnet','mcp-hwp','mcp-kubernetes','mcp-docker','mcp-prometheus','mcp-postgresql','mcp-gitlab','mcp-jira','mcp-loki','mcp-confluence'
 foreach ($server in $servers) {
   docker build -t "local/$server" $server
 }
@@ -118,7 +120,7 @@ windows-host-publish\mcp-matlab-win-x64\start.cmd
 windows-host-publish\mcp-matlab-win-x64\run.ps1
 ```
 
-기본 publish는 self-contained `win-x64`라서 대상 air-gap PC에 .NET runtime이 없어도 실행할 수 있습니다. 이미 .NET이 설치된 PC용으로 용량을 줄이고 싶으면 `-SelfContained $false`를 넘기면 됩니다.
+기본 번들 publish는 용량을 줄이기 위해 framework-dependent `win-x64`로 생성합니다. 대상 PC에는 맞는 .NET runtime이 필요합니다. 별도 runtime 없이 실행되는 더 큰 번들이 필요할 때만 `-SelfContained $true`를 넘기면 됩니다.
 
 ## Windows 통합 EXE 번들
 
@@ -144,7 +146,7 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-이 번들의 `servers.json`은 18개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
+이 번들의 `servers.json`은 19개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
 
 수정 가능한 환경변수는 각 서버 폴더의 `<server>.env`로 생성됩니다. 예를 들어 Jira는 `edit-env-mcp-jira.cmd`를 실행하거나 `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`를 직접 수정한 뒤 `McpManager.exe`로 해당 서버를 재시작하면 됩니다. `McpManager.exe`는 번들 루트의 `common.env`, `<server>.env`, 그리고 `servers.json`에 명시한 `envFiles`도 함께 읽습니다.
 
@@ -165,7 +167,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 대시보드에서는 서버를 선택한 뒤 `E`를 누르면 텍스트 편집기 없이 환경변수를 수정할 수 있습니다. `A` 추가, `Enter` 수정, `D` 삭제, `N` 메모장 열기, `B` 뒤로가기를 지원합니다. 환경변수를 바꾼 뒤에는 해당 서버를 재시작해야 적용됩니다.
 
-더블클릭 실행용 `start-all.cmd`, `stop-all.cmd`, `status.cmd`와 서버별 `start-mcp-*.cmd`, `stop-mcp-*.cmd`도 함께 생성됩니다. 번들은 self-contained `win-x64` 기본값으로 만들어져서 air-gap Windows PC에 .NET runtime을 별도로 설치하지 않아도 됩니다.
+더블클릭 실행용 `start-all.cmd`, `stop-all.cmd`, `status.cmd`와 서버별 `start-mcp-*.cmd`, `stop-mcp-*.cmd`도 함께 생성됩니다. 기본 번들은 framework-dependent `win-x64`라서 작지만, 대상 Windows PC에 맞는 .NET runtime이 필요합니다. 별도 runtime 없는 배포본은 `.\scripts\publish-mcp-bundle.ps1 -SelfContained $true -Zip`로 만들 수 있습니다.
 
 번들 구조와 외부 CLI 준비 상태는 다음 스크립트로 확인합니다.
 
@@ -179,7 +181,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 | --- | --- | --- |
 | `mcp-filesystem` | 자체 동작 | 없음 |
 | `mcp-mssql`, `mcp-postgresql` | 자체 동작 | 실제 DB 연결 문자열 |
-| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki` | 자체 동작 | 실제 API URL/토큰 |
+| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | 자체 동작 | 실제 API URL/토큰 |
 | `mcp-shell` | 자체 동작 | 실행할 명령이 Windows에 존재해야 함 |
 | `mcp-git` | 서버는 자체 동작 | `git.exe` |
 | `mcp-dotnet` | 서버는 자체 동작 | 대상 PC의 .NET SDK/CLI |
@@ -230,6 +232,7 @@ mcp-postgresql\airgap\local-mcp-postgresql.tar
 mcp-gitlab\airgap\local-mcp-gitlab.tar
 mcp-jira\airgap\local-mcp-jira.tar
 mcp-loki\airgap\local-mcp-loki.tar
+mcp-confluence\airgap\local-mcp-confluence.tar
 ```
 
 필요한 `airgap` 폴더 또는 tar 파일을 air gap PC로 옮긴 뒤 `docker load -i <tar-file>`로 로드하면 됩니다. 각 서버 폴더의 `airgap/README.ko.md`에는 해당 서버의 정확한 load/run 명령이 들어 있습니다. tar archive는 Git에 커밋되지 않도록 제외했습니다.
@@ -279,7 +282,7 @@ publish 폴더에는 `McpManager.exe`, `LIG-AI-MCP.cmd`, `mcp-manager.cmd`, `sta
 
 번들에는 `fonts\NotoSansKR[wght].ttf`와 `install-fonts.cmd`도 포함됩니다. `install-fonts.cmd`를 한 번 실행하면 현재 Windows 사용자 폰트로 Noto Sans KR이 설치됩니다. 이후 터미널을 재시작하고 Windows Terminal/CMD 설정에서 해당 폰트를 선택하면 한글 UI 폰트를 맞출 수 있습니다. 콘솔 앱 자체가 터미널 폰트를 안정적으로 강제하는 것은 Windows 콘솔 제약 때문에 권장하지 않습니다.
 
-smoke 호출 없이 14개 서버를 모두 실행하려면 다음 스크립트를 사용합니다.
+smoke 호출 없이 15개 Docker 서버를 모두 실행하려면 다음 스크립트를 사용합니다.
 
 ```powershell
 .\scripts\run-all.ps1
@@ -308,7 +311,7 @@ air gap 환경에서는 이 값들을 내부 서비스, 내부 DNS, 또는 로�
 Linux 컨테이너 안에서 MCP 클라이언트가 넘긴 Windows 호스트 경로를 쓰려면 해당 호스트 폴더를 Docker로 마운트하고 `MCP_PATH_MAPPINGS`에 등록해야 합니다.
 
 ```powershell
-docker run --rm -p 8081:8080 `
+docker run --rm -p 42181:8080 `
   -v C:\:/host/c `
   -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
   local/mcp-filesystem
@@ -320,7 +323,7 @@ docker run --rm -p 8081:8080 `
 
 Linux Kubernetes workload로 자연스럽게 실행할 수 있는 MCP 서버에만 Kubernetes 매니페스트를 제공합니다.
 
-- 포함: `mcp-filesystem`, `mcp-git`, `mcp-dotnet`, `mcp-kubernetes`, `mcp-prometheus`, `mcp-postgresql`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`
+- 포함: `mcp-filesystem`, `mcp-git`, `mcp-dotnet`, `mcp-kubernetes`, `mcp-prometheus`, `mcp-postgresql`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence`
 - 이번 단계 제외: `mcp-office`, `mcp-shell`, `mcp-hwp`, `mcp-mssql`, `mcp-docker`
 
 포함된 서버는 각 폴더 아래 `k8s/`에 namespace, Deployment, Service, 필요한 ConfigMap/PVC/RBAC 파일을 갖고 있습니다. 서버별 적용 예시는 다음과 같습니다.
@@ -358,7 +361,9 @@ air gap 클러스터에서는 이미지를 클러스터 런타임에 직접 로�
 - `mcp-gitlab/README.md`, `mcp-gitlab/README.ko.md`
 - `mcp-jira/README.md`, `mcp-jira/README.ko.md`
 - `mcp-loki/README.md`, `mcp-loki/README.ko.md`
+- `mcp-confluence/README.md`, `mcp-confluence/README.ko.md`
 - `mcp-rhapsody/README.md`, `mcp-rhapsody/README.ko.md`
 - `mcp-matlab/README.md`, `mcp-matlab/README.ko.md`
 - `mcp-autocad/README.md`, `mcp-autocad/README.ko.md`
 - `mcp-solidworks/README.md`, `mcp-solidworks/README.ko.md`
+

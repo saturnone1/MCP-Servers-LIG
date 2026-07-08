@@ -40,6 +40,15 @@ $defaultEnv = @{
         LOKI_PASSWORD = ''
         LOKI_TENANT_ID = ''
     }
+    'mcp-confluence' = [ordered]@{
+        CONFLUENCE_BASE_URL = 'http://localhost'
+        CONFLUENCE_BEARER_TOKEN = ''
+        CONFLUENCE_PAT = ''
+        CONFLUENCE_USERNAME = ''
+        CONFLUENCE_API_TOKEN = ''
+        CONFLUENCE_COOKIE = ''
+        MCP_ENABLE_CONFLUENCE_WRITES = 'true'
+    }
     'mcp-prometheus' = [ordered]@{
         PROMETHEUS_BASE_URL = 'http://localhost:9090'
         PROMETHEUS_BEARER_TOKEN = ''

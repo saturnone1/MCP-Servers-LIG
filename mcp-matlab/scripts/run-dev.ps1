@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot '..\config\matlab.env'),
-    [int]$Port = 8095
+    [int]$Port = 42195
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,3 +42,4 @@ if (-not [string]::IsNullOrWhiteSpace($env:MATLAB_MCP_CORE_SERVER_PATH)) {
 }
 
 dotnet run --project (Join-Path $PSScriptRoot '..\src\McpMatlab.csproj')
+

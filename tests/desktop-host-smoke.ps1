@@ -6,12 +6,12 @@ $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 $servers = @(
-    @{ Name = 'mcp-matlab'; ProcessName = 'McpMatlab'; Port = 8095; Script = 'mcp-matlab\scripts\run-dev.ps1'; ExpectedTools = @('config', 'official_mcp_tools_list', 'official_mcp_tool_call', 'simulink_find_system', 'simulink_simulate'); ExtraCalls = @(
+    @{ Name = 'mcp-matlab'; ProcessName = 'McpMatlab'; Port = 42195; Script = 'mcp-matlab\scripts\run-dev.ps1'; ExpectedTools = @('config', 'official_mcp_tools_list', 'official_mcp_tool_call', 'simulink_find_system', 'simulink_simulate'); ExtraCalls = @(
         @{ Tool = 'official_mcp_tools_list'; Args = @{} },
         @{ Tool = 'official_mcp_tool_call'; Args = @{ name = 'mock_echo'; arguments = @{ text = 'bridge-ok' } } }
     ) },
-    @{ Name = 'mcp-autocad'; ProcessName = 'McpAutoCad'; Port = 8096; Script = 'mcp-autocad\scripts\run-dev.ps1'; ExpectedTools = @('config', 'list_blocks', 'list_texts', 'list_dimensions', 'export_drawing') },
-    @{ Name = 'mcp-solidworks'; ProcessName = 'McpSolidWorks'; Port = 8097; Script = 'mcp-solidworks\scripts\run-dev.ps1'; ExpectedTools = @('config', 'list_configurations', 'list_custom_properties', 'export_step', 'close_active_document') }
+    @{ Name = 'mcp-autocad'; ProcessName = 'McpAutoCad'; Port = 42196; Script = 'mcp-autocad\scripts\run-dev.ps1'; ExpectedTools = @('config', 'list_blocks', 'list_texts', 'list_dimensions', 'export_drawing') },
+    @{ Name = 'mcp-solidworks'; ProcessName = 'McpSolidWorks'; Port = 42197; Script = 'mcp-solidworks\scripts\run-dev.ps1'; ExpectedTools = @('config', 'list_configurations', 'list_custom_properties', 'export_step', 'close_active_document') }
 )
 
 function Write-Step([string]$Message) {

@@ -26,9 +26,9 @@ airgap Windows 배포 폴더 생성:
 
 연결 주소:
 
-- HTTP: `http://localhost:8094/mcp`
-- SSE: `http://localhost:8094/sse`
-- Health: `http://localhost:8094/healthz`
+- HTTP: `http://localhost:42194/mcp`
+- SSE: `http://localhost:42194/sse`
+- Health: `http://localhost:42194/healthz`
 
 ## 설정
 
@@ -98,3 +98,4 @@ Rhapsody가 설치된 Windows PC에서는 실제 project 파일을 넘기면 COM
 ```powershell
 .\tests\rhapsody-smoke.ps1 -RhapsodyProjectPath "C:\path\model.rpyx" -RunWriteSmoke
 ```
+

@@ -91,19 +91,20 @@ public sealed class PrometheusTools
 
     private static async Task<PrometheusResult> Get(string path, Dictionary<string, string>? parameters = null)
     {
-        var uri = BuildUri(path, parameters);
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        if (!string.IsNullOrWhiteSpace(Guard.BearerToken))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Guard.BearerToken);
+        Uri? uri = null;
         try
         {
+            uri = BuildUri(path, parameters);
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            if (!string.IsNullOrWhiteSpace(Guard.BearerToken))
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Guard.BearerToken);
             using var response = await Client.SendAsync(request);
             var body = await response.Content.ReadAsStringAsync();
             return new PrometheusResult((int)response.StatusCode, response.IsSuccessStatusCode, body);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or UriFormatException)
         {
-            return new PrometheusResult(0, false, $"Prometheus request failed for {uri}: {ex.Message}");
+            return new PrometheusResult(0, false, $"Prometheus request failed for {uri?.ToString() ?? Guard.BaseUrl}: {ex.Message}");
         }
     }
 

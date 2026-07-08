@@ -28,9 +28,9 @@ publish 폴더에는 `McpSolidWorks.exe`, `start.cmd`, `run.ps1`, `solidworks.en
 
 연결 주소:
 
-- HTTP: `http://localhost:8097/mcp`
-- SSE: `http://localhost:8097/sse`
-- Health: `http://localhost:8097/healthz`
+- HTTP: `http://localhost:42197/mcp`
+- SSE: `http://localhost:42197/sse`
+- Health: `http://localhost:42197/healthz`
 
 ## 설정
 
@@ -69,3 +69,4 @@ publish 폴더에는 `McpSolidWorks.exe`, `start.cmd`, `run.ps1`, `solidworks.en
 | `export_stl` | STL로 export합니다. |
 | `export_pdf` | PDF로 export합니다. |
 | `close_active_document` | active document를 닫습니다. |
+

@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot '..\config\autocad.env'),
-    [int]$Port = 8096
+    [int]$Port = 42196
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,3 +28,4 @@ Write-Host "SSE:    $($env:ASPNETCORE_URLS)/sse"
 Write-Host "Health: $($env:ASPNETCORE_URLS)/healthz"
 
 dotnet run --project (Join-Path $PSScriptRoot '..\src\McpAutoCad.csproj')
+

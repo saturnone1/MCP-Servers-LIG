@@ -29,9 +29,9 @@ publish 폴더에는 `McpAutoCad.exe`, `start.cmd`, `run.ps1`, `autocad.env`가 
 
 연결 주소:
 
-- HTTP: `http://localhost:8096/mcp`
-- SSE: `http://localhost:8096/sse`
-- Health: `http://localhost:8096/healthz`
+- HTTP: `http://localhost:42196/mcp`
+- SSE: `http://localhost:42196/sse`
+- Health: `http://localhost:42196/healthz`
 
 ## 설정
 
@@ -71,3 +71,4 @@ publish 폴더에는 `McpAutoCad.exe`, `start.cmd`, `run.ps1`, `autocad.env`가 
 | `save_drawing` | active drawing을 저장합니다. |
 | `export_drawing` | AutoCAD `Export`로 active drawing을 export합니다. |
 | `save_as_drawing` | target path에 drawing 사본을 저장합니다. |
+

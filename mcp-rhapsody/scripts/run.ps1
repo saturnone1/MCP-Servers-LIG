@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot 'rhapsody.env'),
-    [int]$Port = 8094
+    [int]$Port = 42194
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,3 +45,4 @@ if (Test-Path -LiteralPath $exe) {
 else {
     dotnet $dll
 }
+

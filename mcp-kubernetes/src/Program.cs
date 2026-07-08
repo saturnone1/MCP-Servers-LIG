@@ -136,6 +136,7 @@ metadata:
     [Description("Run raw kubectl arguments.")]
     public static Task<CommandResult> RunKubectl(string[] args, int timeoutMs = 120000)
     {
+        Guard.RequireKubernetesWrites();
         Guard.RequireRawKubectl();
         return Kubectl(args, timeoutMs: Math.Clamp(timeoutMs, 1000, 300000), maxOutputBytes: 4194304);
     }
