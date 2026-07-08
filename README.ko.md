@@ -120,7 +120,7 @@ windows-host-publish\mcp-matlab-win-x64\start.cmd
 windows-host-publish\mcp-matlab-win-x64\run.ps1
 ```
 
-기본 번들 publish는 용량을 줄이기 위해 framework-dependent `win-x64`로 생성합니다. 대상 PC에는 맞는 .NET runtime이 필요합니다. 별도 runtime 없이 실행되는 더 큰 번들이 필요할 때만 `-SelfContained $true`를 넘기면 됩니다.
+기본 번들 publish는 framework-dependent `win-x64` 서버들과 공유 .NET/ASP.NET Core 런타임 1벌을 `mcp-bundle\dotnet` 아래에 함께 넣습니다. 대상 PC에 .NET 10 또는 ASP.NET Core 10을 별도로 설치하지 않아도 됩니다. 이미 설치된 런타임에 의존하려면 `-BundleDotnetRuntime $false`, 서버마다 런타임을 각각 포함하는 큰 번들이 필요하면 `-SelfContained $true`를 넘기면 됩니다.
 
 ## Windows 통합 EXE 번들
 
@@ -167,7 +167,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 대시보드에서는 서버를 선택한 뒤 `E`를 누르면 텍스트 편집기 없이 환경변수를 수정할 수 있습니다. `A` 추가, `Enter` 수정, `D` 삭제, `N` 메모장 열기, `B` 뒤로가기를 지원합니다. 환경변수를 바꾼 뒤에는 해당 서버를 재시작해야 적용됩니다.
 
-더블클릭 실행용 `start-all.cmd`, `stop-all.cmd`, `status.cmd`와 서버별 `start-mcp-*.cmd`, `stop-mcp-*.cmd`도 함께 생성됩니다. 기본 번들은 framework-dependent `win-x64`라서 작지만, 대상 Windows PC에 맞는 .NET runtime이 필요합니다. 별도 runtime 없는 배포본은 `.\scripts\publish-mcp-bundle.ps1 -SelfContained $true -Zip`로 만들 수 있습니다.
+더블클릭 실행용 `start-all.cmd`, `stop-all.cmd`, `status.cmd`와 서버별 `start-mcp-*.cmd`, `stop-mcp-*.cmd`도 함께 생성됩니다. 이 런처들은 `runtime-env.cmd`를 통해 번들 내부 공유 런타임을 자동으로 사용하므로 대상 Windows PC에 전역 .NET 설치가 필요하지 않습니다.
 
 번들 구조와 외부 CLI 준비 상태는 다음 스크립트로 확인합니다.
 

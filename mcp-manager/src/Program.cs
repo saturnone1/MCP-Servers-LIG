@@ -1202,6 +1202,7 @@ internal sealed class McpManager
         };
         foreach (var env in BuildEnvironment(server))
             psi.Environment[env.Key] = env.Value;
+        ApplyBundledDotnetEnvironment(psi.Environment);
         psi.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{server.Port}";
 
         var process = StartManagedProcess(server.Name, executable, psi);
@@ -1361,6 +1362,19 @@ internal sealed class McpManager
         foreach (var env in server.Env)
             result[env.Key] = Expand(env.Value);
         return result;
+    }
+
+    private static void ApplyBundledDotnetEnvironment(IDictionary<string, string?> environment)
+    {
+        var bundleDotnet = Path.Combine(AppContext.BaseDirectory, "dotnet");
+        var dotnetExe = Path.Combine(bundleDotnet, "dotnet.exe");
+        if (!File.Exists(dotnetExe))
+            return;
+
+        environment["DOTNET_ROOT"] = bundleDotnet;
+        environment["DOTNET_MULTILEVEL_LOOKUP"] = "0";
+        var path = environment.TryGetValue("PATH", out var currentPath) ? currentPath : Environment.GetEnvironmentVariable("PATH");
+        environment["PATH"] = string.IsNullOrWhiteSpace(path) ? bundleDotnet : bundleDotnet + Path.PathSeparator + path;
     }
 
     private IEnumerable<string> ResolveEnvFiles(ServerConfig server)

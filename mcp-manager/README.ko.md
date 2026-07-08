@@ -38,7 +38,7 @@ Docker MCP 서버와 Windows-host MCP 서버를 한 곳에서 켜고 끄는 CLI 
 .\scripts\publish-mcp-bundle.ps1 -Zip
 ```
 
-이 방식은 Docker가 기본이던 서버들도 모두 `win-x64` framework-dependent 실행 파일로 publish해서 `mcp-bundle` 아래에 넣습니다. 용량을 줄이는 기본값이며, 대상 PC에는 맞는 .NET runtime이 필요합니다.
+이 방식은 Docker가 기본이던 서버들도 모두 `win-x64` framework-dependent 실행 파일로 publish하고, 공유 .NET/ASP.NET Core 런타임 1벌을 `mcp-bundle\dotnet` 아래에 함께 넣습니다. 대상 PC에 .NET 10 또는 ASP.NET Core 10을 별도로 설치하지 않아도 됩니다.
 
 ```text
 mcp-bundle\McpManager.exe
