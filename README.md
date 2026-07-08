@@ -120,7 +120,7 @@ windows-host-publish\mcp-matlab-win-x64\start.cmd
 windows-host-publish\mcp-matlab-win-x64\run.ps1
 ```
 
-Default bundle publish mode is framework-dependent `win-x64` to keep packages small. The target PC needs the matching .NET runtime. To make a larger bundle that does not need a preinstalled runtime, pass `-SelfContained $true`.
+Default bundle publish mode is framework-dependent `win-x64` plus one shared bundled .NET/ASP.NET Core runtime under `mcp-bundle\dotnet`. The target PC does not need .NET 10 or ASP.NET Core 10 installed. Use `-BundleDotnetRuntime $false` only when you deliberately want to rely on a preinstalled runtime, or `-SelfContained $true` when you want each server to carry its own runtime.
 
 ## Windows Unified EXE Bundle
 
@@ -167,7 +167,7 @@ Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console m
 
 In the interactive dashboard, select a server and press `E` to edit its environment variables without opening a text editor. Use `A` to add, `Enter` to edit, `D` to delete, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
 
-The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. The default output is framework-dependent `win-x64` to keep the bundle small, so the target PC needs the matching .NET runtime. Use `.\scripts\publish-mcp-bundle.ps1 -SelfContained $true -Zip` only when you explicitly want a larger no-runtime-prerequisite bundle.
+The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. These launchers call `runtime-env.cmd`, so the bundled shared runtime is used automatically and the target Windows PC does not need .NET installed globally.
 
 Check the bundle structure and external CLI availability with:
 

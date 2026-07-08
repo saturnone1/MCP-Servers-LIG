@@ -4,6 +4,7 @@ param(
     [string]$Runtime = 'win-x64',
     [bool]$SelfContained = $false,
     [bool]$SingleFile = $false,
+    [bool]$BundleDotnetRuntime = $true,
     [switch]$Zip
 )
 
@@ -49,6 +50,63 @@ function Stop-ExistingBundleProcesses {
 }
 
 Stop-ExistingBundleProcesses -BundleRoot $OutputRoot
+
+function Copy-BundledDotnetRuntime {
+    param(
+        [Parameter(Mandatory = $true)] [string] $BundleRoot,
+        [Parameter(Mandatory = $true)] [string] $Runtime
+    )
+
+    if ($Runtime -ne 'win-x64') {
+        throw "Bundled shared .NET runtime copy currently supports win-x64 only. Runtime was '$Runtime'."
+    }
+
+    $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
+    $dotnetRoot = Split-Path -Parent $dotnet
+    $runtimeRoot = Join-Path $BundleRoot 'dotnet'
+    if (Test-Path -LiteralPath $runtimeRoot) {
+        Remove-Item -LiteralPath $runtimeRoot -Recurse -Force
+    }
+
+    $netCoreVersion = Get-ChildItem -LiteralPath (Join-Path $dotnetRoot 'shared\Microsoft.NETCore.App') -Directory |
+        Sort-Object { [version]$_.Name } -Descending |
+        Select-Object -First 1
+    $aspNetVersion = Get-ChildItem -LiteralPath (Join-Path $dotnetRoot 'shared\Microsoft.AspNetCore.App') -Directory |
+        Sort-Object { [version]$_.Name } -Descending |
+        Select-Object -First 1
+    $hostFxrVersion = Get-ChildItem -LiteralPath (Join-Path $dotnetRoot 'host\fxr') -Directory |
+        Sort-Object { [version]$_.Name } -Descending |
+        Select-Object -First 1
+
+    if ($null -eq $netCoreVersion -or $null -eq $aspNetVersion -or $null -eq $hostFxrVersion) {
+        throw "Could not locate installed Microsoft.NETCore.App, Microsoft.AspNetCore.App, or host/fxr runtime under $dotnetRoot."
+    }
+
+    Write-Host ""
+    Write-Host "== Copying shared .NET runtime once"
+    New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
+    Copy-Item -LiteralPath (Join-Path $dotnetRoot 'dotnet.exe') -Destination (Join-Path $runtimeRoot 'dotnet.exe') -Force
+    foreach ($notice in @('LICENSE.txt', 'ThirdPartyNotices.txt')) {
+        $source = Join-Path $dotnetRoot $notice
+        if (Test-Path -LiteralPath $source) {
+            Copy-Item -LiteralPath $source -Destination (Join-Path $runtimeRoot $notice) -Force
+        }
+    }
+
+    New-Item -ItemType Directory -Force -Path (Join-Path $runtimeRoot 'host\fxr') | Out-Null
+    Copy-Item -LiteralPath $hostFxrVersion.FullName -Destination (Join-Path $runtimeRoot 'host\fxr') -Recurse -Force
+    New-Item -ItemType Directory -Force -Path (Join-Path $runtimeRoot 'shared\Microsoft.NETCore.App') | Out-Null
+    Copy-Item -LiteralPath $netCoreVersion.FullName -Destination (Join-Path $runtimeRoot 'shared\Microsoft.NETCore.App') -Recurse -Force
+    New-Item -ItemType Directory -Force -Path (Join-Path $runtimeRoot 'shared\Microsoft.AspNetCore.App') | Out-Null
+    Copy-Item -LiteralPath $aspNetVersion.FullName -Destination (Join-Path $runtimeRoot 'shared\Microsoft.AspNetCore.App') -Recurse -Force
+
+    @"
+@echo off
+set "DOTNET_ROOT=%~dp0dotnet"
+set "DOTNET_MULTILEVEL_LOOKUP=0"
+set "PATH=%DOTNET_ROOT%;%PATH%"
+"@ | Set-Content -LiteralPath (Join-Path $BundleRoot 'runtime-env.cmd') -Encoding ASCII
+}
 
 Write-Host "== Publishing manager"
 & (Join-Path $repoRoot 'mcp-manager\scripts\publish-win.ps1') `
@@ -102,7 +160,19 @@ foreach ($server in $servers) {
             $publishArgs += '/p:IncludeNativeLibrariesForSelfExtract=true'
         }
         dotnet publish @publishArgs
-        $exe = Get-ChildItem -LiteralPath $output -Filter '*.exe' | Where-Object { $_.Name -ne 'createdump.exe' } | Select-Object -First 1
+    }
+
+    $exe = Get-ChildItem -LiteralPath $output -Filter '*.exe' | Where-Object { $_.Name -ne 'createdump.exe' } | Select-Object -First 1
+    $dll = if ($null -ne $exe) { Get-ChildItem -LiteralPath $output -Filter "$($exe.BaseName).dll" | Select-Object -First 1 } else { $null }
+    if ($null -ne $exe -and $null -ne $dll -and $BundleDotnetRuntime -and -not $SelfContained) {
+        @"
+@echo off
+setlocal
+if exist "%~dp0..\runtime-env.cmd" call "%~dp0..\runtime-env.cmd"
+"%~dp0$($exe.Name)" %*
+"@ | Set-Content -LiteralPath (Join-Path $output 'start.cmd') -Encoding ASCII
+    }
+    elseif ($null -ne $exe) {
         @"
 @echo off
 setlocal
@@ -161,33 +231,49 @@ notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
 }
 $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
+if ($BundleDotnetRuntime -and -not $SelfContained) {
+    Copy-BundledDotnetRuntime -BundleRoot $OutputRoot -Runtime $Runtime
+}
+
 @'
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
+"%~dp0McpManager.exe" %*
+'@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'mcp-manager.cmd') -Encoding ASCII
+
+@'
+@echo off
+setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" %*
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'LIG-AI-MCP.cmd') -Encoding ASCII
 
 @'
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" start all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'start-all.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" stop all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'stop-all.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" status all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'status.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" urls all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'urls.cmd') -Encoding ASCII
@@ -213,12 +299,14 @@ notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
 @"
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" start $($server.name)
 pause
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "start-$($server.name).cmd") -Encoding ASCII
 @"
 @echo off
 setlocal
+if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
 "%~dp0McpManager.exe" stop $($server.name)
 pause
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "stop-$($server.name).cmd") -Encoding ASCII
