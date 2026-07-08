@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8097");
+builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:42197");
 #pragma warning disable MCP9004
 builder.Services.AddMcpServer()
     .WithHttpTransport(options => options.EnableLegacySse = true)
@@ -31,7 +31,7 @@ public sealed class SolidWorksTools
             server = "mcp-solidworks",
             mode = "windows-host",
             lineage = "C# Windows host implementation based on open-source SolidWorks MCP COM automation patterns.",
-            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8097",
+            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:42197",
             allowedDirs = Guard.AllowedRoots,
             writesEnabled = Guard.WritesEnabled,
             progId,
@@ -324,7 +324,7 @@ internal static class Guard
     {
         var full = Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
         if (!File.Exists(full)) throw new FileNotFoundException("File not found.", full);
-        if (!AllowedRoots.Any(root => full.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase)))
+        if (!AllowedRoots.Any(root => IsInside(full, Path.GetFullPath(root))))
             throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {full}");
         return full;
     }
@@ -333,9 +333,20 @@ internal static class Guard
         var full = Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
         var dir = Path.GetDirectoryName(full) ?? throw new ArgumentException("Output path must include a directory.");
         Directory.CreateDirectory(dir);
-        if (!AllowedRoots.Any(root => full.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase)))
+        if (!AllowedRoots.Any(root => IsInside(full, Path.GetFullPath(root))))
             throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {full}");
         return full;
+    }
+
+    private static bool IsInside(string path, string root)
+    {
+        var normalizedRoot = root == Path.GetPathRoot(root)
+            ? root
+            : root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (normalizedRoot == Path.GetPathRoot(normalizedRoot))
+            return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+        return path.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
+               path.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -431,3 +442,4 @@ internal static class Detection
         return null;
     }
 }
+

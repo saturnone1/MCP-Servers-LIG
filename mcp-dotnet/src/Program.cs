@@ -34,20 +34,29 @@ public sealed class DotnetTools
             .ToArray();
     }
 
-    [McpServerTool(ReadOnly = true)]
+    [McpServerTool]
     [Description("Run dotnet restore. This can populate package caches inside the container.")]
-    public static Task<CommandResult> Restore(string projectOrSolutionPath, int timeoutMs = 120000) =>
-        Dotnet(projectOrSolutionPath, timeoutMs, "restore", Guard.RequireAllowedPath(projectOrSolutionPath));
+    public static Task<CommandResult> Restore(string projectOrSolutionPath, int timeoutMs = 120000)
+    {
+        Guard.RequireDotnetWrites();
+        return Dotnet(projectOrSolutionPath, timeoutMs, "restore", Guard.RequireAllowedPath(projectOrSolutionPath));
+    }
 
-    [McpServerTool(ReadOnly = true)]
+    [McpServerTool]
     [Description("Run dotnet build --no-restore.")]
-    public static Task<CommandResult> Build(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 120000) =>
-        Dotnet(projectOrSolutionPath, timeoutMs, "build", Guard.RequireAllowedPath(projectOrSolutionPath), "--no-restore", "-c", configuration);
+    public static Task<CommandResult> Build(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 120000)
+    {
+        Guard.RequireDotnetWrites();
+        return Dotnet(projectOrSolutionPath, timeoutMs, "build", Guard.RequireAllowedPath(projectOrSolutionPath), "--no-restore", "-c", configuration);
+    }
 
-    [McpServerTool(ReadOnly = true)]
+    [McpServerTool]
     [Description("Run dotnet test --no-build.")]
-    public static Task<CommandResult> Test(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 180000) =>
-        Dotnet(projectOrSolutionPath, timeoutMs, "test", Guard.RequireAllowedPath(projectOrSolutionPath), "--no-build", "-c", configuration);
+    public static Task<CommandResult> Test(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 180000)
+    {
+        Guard.RequireDotnetWrites();
+        return Dotnet(projectOrSolutionPath, timeoutMs, "test", Guard.RequireAllowedPath(projectOrSolutionPath), "--no-build", "-c", configuration);
+    }
 
     [McpServerTool]
     [Description("Run dotnet add package.")]

@@ -2,7 +2,7 @@ param(
     [string]$OutputRoot = (Join-Path $PSScriptRoot '..\mcp-bundle'),
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64',
-    [bool]$SelfContained = $true,
+    [bool]$SelfContained = $false,
     [bool]$SingleFile = $false,
     [switch]$Zip
 )
@@ -75,6 +75,7 @@ $servers = @(
     @{ Name = 'mcp-gitlab'; Project = 'mcp-gitlab\src\McpGitLab.csproj'; Folder = 'mcp-gitlab-win-x64' },
     @{ Name = 'mcp-jira'; Project = 'mcp-jira\src\McpJira.csproj'; Folder = 'mcp-jira-win-x64' },
     @{ Name = 'mcp-loki'; Project = 'mcp-loki\src\McpLoki.csproj'; Folder = 'mcp-loki-win-x64' },
+    @{ Name = 'mcp-confluence'; Project = 'mcp-confluence\src\McpConfluence.csproj'; Folder = 'mcp-confluence-win-x64' },
     @{ Name = 'mcp-rhapsody'; Script = 'mcp-rhapsody\scripts\publish-win.ps1'; Folder = 'mcp-rhapsody-win-x64' },
     @{ Name = 'mcp-matlab'; Script = 'mcp-matlab\scripts\publish-win.ps1'; Folder = 'mcp-matlab-win-x64' },
     @{ Name = 'mcp-autocad'; Script = 'mcp-autocad\scripts\publish-win.ps1'; Folder = 'mcp-autocad-win-x64' },

@@ -22,31 +22,38 @@ $mockApiBase = 'http://host.docker.internal'
 $mockApiProcesses = @()
 
 $servers = @(
-    @{ Name = 'mcp-office'; Port = 8080; Tool = 'create_document'; Args = @{ path = $officeFixturePath }; ExtraCalls = @(
+    @{ Name = 'mcp-office'; Port = 42180; Tool = 'create_document'; Args = @{ path = $officeFixturePath }; ExtraCalls = @(
         @{ Tool = 'run_office_cli'; Args = @{ args = @('add', $officeContainerPath, '/body', '--type', 'paragraph', '--prop', 'text=Office smoke', '--json'); timeoutMs = 60000 } },
         @{ Tool = 'render_document'; Args = @{ documentPath = $officeFixturePath; outputPath = $officeSnapshotPath } },
         @{ Tool = 'extract_text'; Args = @{ path = $officeFixturePath; maxLines = 20 } },
         @{ Tool = 'extract_text'; Args = @{ path = $docPath; maxLines = 20 }; PathMustExist = $docPath; Label = 'extract_text legacy .doc fixture' }
     ) },
-    @{ Name = 'mcp-filesystem'; Port = 8081; Tool = 'list_directory'; Args = @{ path = $Workspace; limit = 20 } },
-    @{ Name = 'mcp-git'; Port = 8082; Tool = 'status'; Args = @{ repositoryPath = $Workspace } },
-    @{ Name = 'mcp-shell'; Port = 8083; Tool = 'run_command'; Args = @{ command = 'pwd'; args = @(); workingDirectory = $Workspace; timeoutMs = 10000 } },
-    @{ Name = 'mcp-dotnet'; Port = 8084; Tool = 'sdk_info'; Args = @{} },
-    @{ Name = 'mcp-mssql'; Port = 8085; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } },
-    @{ Name = 'mcp-hwp'; Port = 8086; Tool = 'extract_text'; Args = @{ path = $hwpxFixturePath; maxChars = 4000 }; ExtraCalls = @(
+    @{ Name = 'mcp-filesystem'; Port = 42181; Tool = 'list_directory'; Args = @{ path = $Workspace; limit = 20 } },
+    @{ Name = 'mcp-git'; Port = 42182; Tool = 'status'; Args = @{ repositoryPath = $Workspace } },
+    @{ Name = 'mcp-shell'; Port = 42183; Tool = 'run_command'; Args = @{ command = 'pwd'; args = @(); workingDirectory = $Workspace; timeoutMs = 10000 } },
+    @{ Name = 'mcp-dotnet'; Port = 42184; Tool = 'sdk_info'; Args = @{} },
+    @{ Name = 'mcp-mssql'; Port = 42185; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } },
+    @{ Name = 'mcp-hwp'; Port = 42186; Tool = 'extract_text'; Args = @{ path = $hwpxFixturePath; maxChars = 4000 }; ExtraCalls = @(
         @{ Tool = 'extract_text'; Args = @{ path = $hwpPath; maxChars = 4000 }; PathMustExist = $hwpPath; Label = 'extract_text legacy .hwp fixture' },
         @{ Tool = 'convert'; Args = @{ path = $hwpPath; outputDirectory = '/tmp/hwp-output'; format = 'txt' }; PathMustExist = $hwpPath; Label = 'convert legacy .hwp fixture' }
     ) },
-    @{ Name = 'mcp-kubernetes'; Port = 8087; Tool = 'version'; Args = @{ clientOnly = $true } },
-    @{ Name = 'mcp-docker'; Port = 8088; Tool = 'version'; Args = @{} },
-    @{ Name = 'mcp-prometheus'; Port = 8089; Tool = 'query'; Args = @{ query = 'up'; timeoutSeconds = 5 }; ExtraCalls = @(
+    @{ Name = 'mcp-kubernetes'; Port = 42187; Tool = 'version'; Args = @{ clientOnly = $true } },
+    @{ Name = 'mcp-docker'; Port = 42188; Tool = 'version'; Args = @{} },
+    @{ Name = 'mcp-prometheus'; Port = 42189; Tool = 'query'; Args = @{ query = 'up'; timeoutSeconds = 5 }; ExtraCalls = @(
         @{ Tool = 'labels'; Args = @{} }
     ) },
-    @{ Name = 'mcp-postgresql'; Port = 8090; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } },
-    @{ Name = 'mcp-gitlab'; Port = 8091; Tool = 'list_projects'; Args = @{ perPage = 5 } },
-    @{ Name = 'mcp-jira'; Port = 8092; Tool = 'list_projects'; Args = @{} },
-    @{ Name = 'mcp-loki'; Port = 8093; Tool = 'labels'; Args = @{}; ExtraCalls = @(
+    @{ Name = 'mcp-postgresql'; Port = 42190; Tool = 'execute_read_query'; Args = @{ sql = 'select 1 as ok'; maxRows = 5 } },
+    @{ Name = 'mcp-gitlab'; Port = 42191; Tool = 'list_projects'; Args = @{ perPage = 5 } },
+    @{ Name = 'mcp-jira'; Port = 42192; Tool = 'list_projects'; Args = @{} },
+    @{ Name = 'mcp-loki'; Port = 42193; Tool = 'labels'; Args = @{}; ExtraCalls = @(
         @{ Tool = 'recent_logs'; Args = @{ selector = '{job="smoke"}'; sinceMinutes = 5; limit = 5 } }
+    ) },
+    @{ Name = 'mcp-confluence'; Port = 42198; Tool = 'list_spaces'; Args = @{ limit = 5 }; ExtraCalls = @(
+        @{ Tool = 'get_space'; Args = @{ spaceKey = 'SMK' } },
+        @{ Tool = 'list_content'; Args = @{ spaceKey = 'SMK'; limit = 5 } },
+        @{ Tool = 'search_content'; Args = @{ cql = 'type=page'; limit = 5 } },
+        @{ Tool = 'current_user'; Args = @{} },
+        @{ Tool = 'server_info'; Args = @{} }
     ) }
 )
 
@@ -57,6 +64,9 @@ function Write-Step([string]$Message) {
 
 function Assert-Docker {
     docker info *> $null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Docker is not available. Start Docker Desktop with the Linux engine before running mcp-smoke.ps1.'
+    }
 }
 
 function Start-MockApiServer([string]$Kind, [int]$Port) {
@@ -100,6 +110,7 @@ function Start-MockApiServers {
         $script:mockApiProcesses += Start-MockApiServer 'gitlab' 19101
         $script:mockApiProcesses += Start-MockApiServer 'jira' 19102
         $script:mockApiProcesses += Start-MockApiServer 'loki' 19103
+        $script:mockApiProcesses += Start-MockApiServer 'confluence' 19104
     }
     catch {
         Stop-MockApiServers
@@ -177,7 +188,9 @@ function Restart-Containers {
     $existing = docker ps -a --filter 'name=mcp-' --format '{{.Names}}'
     if ($existing) {
         docker stop $existing *> $null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to stop existing MCP containers: $existing" }
         docker rm $existing *> $null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to remove existing MCP containers: $existing" }
     }
 
     foreach ($server in $servers) {
@@ -210,6 +223,9 @@ function Restart-Containers {
         if ($server.Name -eq 'mcp-loki') {
             $args += @('-e', "LOKI_BASE_URL=$mockApiBase`:19103")
         }
+        if ($server.Name -eq 'mcp-confluence') {
+            $args += @('-e', "CONFLUENCE_BASE_URL=$mockApiBase`:19104/confluence", '-e', 'CONFLUENCE_BEARER_TOKEN=smoke-token')
+        }
         if ($server.Name -eq 'mcp-docker') {
             $args += @('-v', '/var/run/docker.sock:/var/run/docker.sock')
         }
@@ -218,6 +234,7 @@ function Restart-Containers {
         }
         $args += "local/$($server.Name)"
         docker @args | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to start container for $($server.Name)." }
     }
 }
 
@@ -248,6 +265,7 @@ if (-not $SkipBuild) {
     Write-Step 'Building images'
     foreach ($server in $servers.Name) {
         docker build -t "local/$server" (Join-Path $Workspace $server)
+        if ($LASTEXITCODE -ne 0) { throw "Failed to build image local/$server." }
     }
 }
 

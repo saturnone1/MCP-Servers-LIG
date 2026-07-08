@@ -71,6 +71,7 @@ public sealed class FilesystemTools
         }
         if (!Directory.Exists(source))
             throw new FileNotFoundException("Source does not exist.", source);
+        Guard.RequireNotNestedDirectoryOperation(source, destination, "copy");
         CopyDirectory(source, destination, overwrite);
         return Info(destination);
     }
@@ -90,6 +91,7 @@ public sealed class FilesystemTools
         }
         if (!Directory.Exists(source))
             throw new FileNotFoundException("Source does not exist.", source);
+        Guard.RequireNotNestedDirectoryOperation(source, destination, "move");
         if (overwrite && Directory.Exists(destination))
             Directory.Delete(destination, recursive: true);
         Directory.Move(source, destination);
@@ -200,6 +202,17 @@ internal static class Guard
     {
         if (string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_WRITES"), "false", StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException("Writes are disabled because MCP_ENABLE_WRITES=false.");
+    }
+
+    public static void RequireNotNestedDirectoryOperation(string source, string destination, string operation)
+    {
+        if (!Directory.Exists(source))
+            return;
+
+        var normalizedSource = NormalizeRoot(source);
+        var normalizedDestination = NormalizeRoot(destination);
+        if (IsInside(normalizedDestination, normalizedSource))
+            throw new IOException($"Cannot {operation} a directory into itself or one of its descendants: {normalizedDestination}");
     }
 
     private static string[] ParseAllowedRoots()

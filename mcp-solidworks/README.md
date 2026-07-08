@@ -28,9 +28,9 @@ The publish folder includes `McpSolidWorks.exe`, `start.cmd`, `run.ps1`, and `so
 
 Connections:
 
-- HTTP: `http://localhost:8097/mcp`
-- SSE: `http://localhost:8097/sse`
-- Health: `http://localhost:8097/healthz`
+- HTTP: `http://localhost:42197/mcp`
+- SSE: `http://localhost:42197/sse`
+- Health: `http://localhost:42197/healthz`
 
 ## Configuration
 
@@ -69,3 +69,4 @@ Tools that operate on documents, such as `open_document`, `active_document`, lis
 | `export_stl` | Exports as STL. |
 | `export_pdf` | Exports as PDF. |
 | `close_active_document` | Closes the active document. |
+

@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot 'matlab.env'),
-    [int]$Port = 8095
+    [int]$Port = 42195
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,3 +52,4 @@ elseif (Test-Path -LiteralPath $dll) {
 else {
     throw "McpMatlab.exe or McpMatlab.dll not found. Run scripts\publish-win.ps1 first, or use scripts\run-dev.ps1 from the repository."
 }
+

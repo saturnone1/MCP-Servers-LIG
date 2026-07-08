@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080");
@@ -121,6 +122,8 @@ internal static class Guard
         var trimmed = sql.TrimStart();
         if (!trimmed.StartsWith("select", StringComparison.OrdinalIgnoreCase) && !trimmed.StartsWith("with", StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException("Read query must start with SELECT or WITH. Use ExecuteNonQuery for writes.");
+        if (HasMultipleStatements(trimmed) || ContainsWriteKeyword(trimmed))
+            throw new UnauthorizedAccessException("Read query must be a single read-only SELECT/WITH statement.");
     }
 
     public static void RequireSqlWrites()
@@ -128,4 +131,9 @@ internal static class Guard
         if (string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_SQL_WRITES"), "false", StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException("SQL write tools are disabled because MCP_ENABLE_SQL_WRITES=false.");
     }
+
+    private static bool HasMultipleStatements(string sql) => sql.TrimEnd().TrimEnd(';').Contains(';', StringComparison.Ordinal);
+
+    private static bool ContainsWriteKeyword(string sql) =>
+        Regex.IsMatch(sql, @"\b(insert|update|delete|merge|drop|alter|create|truncate|exec|execute|grant|revoke|backup|restore)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 }

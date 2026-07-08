@@ -103,24 +103,25 @@ public sealed class GitLabTools
 
     private static async Task<ApiResult> Send(HttpMethod method, string path, Dictionary<string, string>? query = null, object? body = null)
     {
-        var uri = BuildUri(path, query);
-        using var request = new HttpRequestMessage(method, uri);
-        if (!string.IsNullOrWhiteSpace(Guard.Token))
-            request.Headers.Add("PRIVATE-TOKEN", Guard.Token);
-        if (body is not null)
-        {
-            var json = JsonSerializer.Serialize(body, JsonOptions);
-            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        }
+        Uri? uri = null;
         try
         {
+            uri = BuildUri(path, query);
+            using var request = new HttpRequestMessage(method, uri);
+            if (!string.IsNullOrWhiteSpace(Guard.Token))
+                request.Headers.Add("PRIVATE-TOKEN", Guard.Token);
+            if (body is not null)
+            {
+                var json = JsonSerializer.Serialize(body, JsonOptions);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
             using var response = await Client.SendAsync(request);
             var text = await response.Content.ReadAsStringAsync();
             return new ApiResult((int)response.StatusCode, response.IsSuccessStatusCode, text);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or UriFormatException)
         {
-            return new ApiResult(0, false, $"GitLab request failed for {uri}: {ex.Message}");
+            return new ApiResult(0, false, $"GitLab request failed for {uri?.ToString() ?? Guard.BaseUrl}: {ex.Message}");
         }
     }
 

@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8095");
+builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:42195");
 #pragma warning disable MCP9004
 builder.Services.AddMcpServer()
     .WithHttpTransport(options => options.EnableLegacySse = true)
@@ -35,7 +35,7 @@ public sealed class MatlabTools
             server = "mcp-matlab",
             mode = "windows-host",
             lineage = "Official MathWorks MATLAB MCP Core Server plus local C# Windows host tools.",
-            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8095",
+            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:42195",
             allowedDirs = Guard.AllowedRoots,
             writesEnabled = Guard.WritesEnabled,
             officialMcpPath = Environment.GetEnvironmentVariable("MATLAB_MCP_CORE_SERVER_PATH"),
@@ -58,8 +58,8 @@ public sealed class MatlabTools
     [Description("Run MATLAB in batch mode with the provided MATLAB command text.")]
     public static Task<CommandResult> RunBatch(string command, int timeoutMs = 300000)
     {
-        var matlab = MatlabDetection.ResolveMatlabExe() ?? throw new FileNotFoundException("MATLAB executable was not found. Set MATLAB_EXE_PATH or add matlab to PATH.");
-        return CommandRunner.Run(matlab, ["-batch", command], Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 3600000), 8 * 1024 * 1024);
+        Guard.RequireWrites();
+        return RunBatchInternal(command, timeoutMs);
     }
 
     [McpServerTool]
@@ -75,6 +75,7 @@ public sealed class MatlabTools
     [Description("Evaluate MATLAB code through the Windows COM Automation server.")]
     public static object EvalCommand(string command)
     {
+        Guard.RequireWrites();
         var matlab = Com.GetOrCreate(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application");
         var output = Com.Invoke(matlab, "Execute", command);
         return new { command, output = output?.ToString() ?? "" };
@@ -84,7 +85,9 @@ public sealed class MatlabTools
     [Description("Return variables from the active MATLAB COM workspace using whos.")]
     public static object ListWorkspace()
     {
-        var matlab = Com.GetOrCreate(Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application");
+        var progId = Environment.GetEnvironmentVariable("MATLAB_COM_PROGID") ?? "Matlab.Application";
+        if (!Com.TryGetActive(progId, out var matlab, out var error))
+            throw new InvalidOperationException($"No active MATLAB COM session is available: {error}");
         var output = Com.Invoke(matlab, "Execute", "whos")?.ToString() ?? "";
         return new { output };
     }
@@ -108,6 +111,7 @@ public sealed class MatlabTools
     [Description("Call a tool exposed by the official MathWorks MATLAB MCP server over stdio.")]
     public static Task<JsonNode?> OfficialMcpToolCall(string name, Dictionary<string, object?>? arguments = null, int timeoutMs = 300000)
     {
+        Guard.RequireWrites();
         var args = JsonSerializer.SerializeToNode(arguments ?? new Dictionary<string, object?>()) as JsonObject ?? new JsonObject();
         return OfficialMcp.InvokeAfterInitialize("tools/call", new JsonObject { ["name"] = name, ["arguments"] = args }, timeoutMs);
     }
@@ -116,14 +120,18 @@ public sealed class MatlabTools
     [Description("Send a raw JSON-RPC method and params object to the official MathWorks MATLAB MCP server over stdio.")]
     public static Task<JsonNode?> OfficialMcpRawRequest(string method, string paramsJson = "{}", int timeoutMs = 300000)
     {
+        Guard.RequireWrites();
         var parsed = JsonNode.Parse(string.IsNullOrWhiteSpace(paramsJson) ? "{}" : paramsJson) as JsonObject ?? new JsonObject();
         return OfficialMcp.InvokeAfterInitialize(method, parsed, timeoutMs);
     }
 
     [McpServerTool]
     [Description("Load a Simulink model or system using MATLAB batch mode.")]
-    public static Task<CommandResult> SimulinkLoadSystem(string modelOrPath, int timeoutMs = 300000) =>
-        RunBatch($"load_system('{EscapeMatlab(modelOrPath)}'); disp('loaded');", timeoutMs);
+    public static Task<CommandResult> SimulinkLoadSystem(string modelOrPath, int timeoutMs = 300000)
+    {
+        Guard.RequireWrites();
+        return RunBatchInternal($"load_system('{EscapeMatlab(modelOrPath)}'); disp('loaded');", timeoutMs);
+    }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Run Simulink find_system and print JSON-encoded results.")]
@@ -132,32 +140,33 @@ public sealed class MatlabTools
         var args = string.IsNullOrWhiteSpace(blockType)
             ? $"find_system('{EscapeMatlab(system)}')"
             : $"find_system('{EscapeMatlab(system)}','BlockType','{EscapeMatlab(blockType)}')";
-        return RunBatch($"load_system('{EscapeMatlab(system)}'); r={args}; disp(jsonencode(r));", timeoutMs);
+        return RunBatchInternal($"load_system('{EscapeMatlab(system)}'); r={args}; disp(jsonencode(r));", timeoutMs);
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Get a MATLAB or Simulink parameter value and print it as JSON when possible.")]
     public static Task<CommandResult> GetParam(string target, string parameter, int timeoutMs = 300000) =>
-        RunBatch($"v=get_param('{EscapeMatlab(target)}','{EscapeMatlab(parameter)}'); disp(jsonencode(v));", timeoutMs);
+        RunBatchInternal($"v=get_param('{EscapeMatlab(target)}','{EscapeMatlab(parameter)}'); disp(jsonencode(v));", timeoutMs);
 
     [McpServerTool]
     [Description("Set a MATLAB or Simulink parameter value.")]
     public static Task<CommandResult> SetParam(string target, string parameter, string value, int timeoutMs = 300000)
     {
         Guard.RequireWrites();
-        return RunBatch($"set_param('{EscapeMatlab(target)}','{EscapeMatlab(parameter)}','{EscapeMatlab(value)}'); disp('updated');", timeoutMs);
+        return RunBatchInternal($"set_param('{EscapeMatlab(target)}','{EscapeMatlab(parameter)}','{EscapeMatlab(value)}'); disp('updated');", timeoutMs);
     }
 
     [McpServerTool]
     [Description("Run Simulink sim(model) with an optional stop time.")]
     public static Task<CommandResult> SimulinkSimulate(string model, double? stopTime = null, int timeoutMs = 600000)
     {
+        Guard.RequireWrites();
         var command = new StringBuilder();
         command.Append($"load_system('{EscapeMatlab(model)}'); ");
         if (stopTime is not null)
             command.Append($"set_param('{EscapeMatlab(model)}','StopTime','{stopTime.Value}'); ");
         command.Append($"out=sim('{EscapeMatlab(model)}'); disp('simulation complete');");
-        return RunBatch(command.ToString(), timeoutMs);
+        return RunBatchInternal(command.ToString(), timeoutMs);
     }
 
     [McpServerTool]
@@ -165,7 +174,13 @@ public sealed class MatlabTools
     public static Task<CommandResult> SimulinkBuild(string target, int timeoutMs = 1200000)
     {
         Guard.RequireWrites();
-        return RunBatch($"slbuild('{EscapeMatlab(target)}'); disp('build complete');", timeoutMs);
+        return RunBatchInternal($"slbuild('{EscapeMatlab(target)}'); disp('build complete');", timeoutMs);
+    }
+
+    private static Task<CommandResult> RunBatchInternal(string command, int timeoutMs)
+    {
+        var matlab = MatlabDetection.ResolveMatlabExe() ?? throw new FileNotFoundException("MATLAB executable was not found. Set MATLAB_EXE_PATH or add matlab to PATH.");
+        return CommandRunner.Run(matlab, ["-batch", command], Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 3600000), 8 * 1024 * 1024);
     }
 
     private static string EscapeMatlab(string value) => value.Replace("'", "''", StringComparison.Ordinal);
@@ -232,9 +247,20 @@ internal static class Guard
     {
         var full = Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
         if (!File.Exists(full)) throw new FileNotFoundException("File not found.", full);
-        if (!AllowedRoots.Any(root => full.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase)))
+        if (!AllowedRoots.Any(root => IsInside(full, Path.GetFullPath(root))))
             throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {full}");
         return full;
+    }
+
+    private static bool IsInside(string path, string root)
+    {
+        var normalizedRoot = root == Path.GetPathRoot(root)
+            ? root
+            : root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (normalizedRoot == Path.GetPathRoot(normalizedRoot))
+            return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+        return path.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
+               path.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -507,3 +533,4 @@ internal static class CommandRunner
         }
     }
 }
+

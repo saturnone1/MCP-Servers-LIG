@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('prometheus', 'gitlab', 'jira', 'loki')]
+    [ValidateSet('prometheus', 'gitlab', 'jira', 'confluence', 'loki')]
     [string]$Kind,
 
     [Parameter(Mandatory = $true)]
@@ -11,6 +11,9 @@ $ErrorActionPreference = 'Stop'
 
 function Get-MockResponse([string]$Kind, [string]$Path) {
     $pathOnly = ($Path -split '\?')[0]
+    if ($Kind -eq 'confluence' -and $pathOnly.StartsWith('/confluence/', [StringComparison]::OrdinalIgnoreCase)) {
+        $pathOnly = $pathOnly.Substring('/confluence'.Length)
+    }
     switch ($Kind) {
         'prometheus' {
             if ($pathOnly -eq '/-/ready') { return @{ Type = 'text/plain'; Body = 'Ready' } }
@@ -27,6 +30,18 @@ function Get-MockResponse([string]$Kind, [string]$Path) {
             if ($pathOnly -eq '/rest/api/3/project/search') { return @{ Type = 'application/json'; Body = '{"values":[{"id":"10000","key":"SMK","name":"Smoke"}]}' } }
             if ($pathOnly -eq '/rest/api/3/search') { return @{ Type = 'application/json'; Body = '{"issues":[{"key":"SMK-1","fields":{"summary":"Smoke issue"}}]}' } }
             if ($pathOnly -match '^/rest/api/3/issue/') { return @{ Type = 'application/json'; Body = '{"key":"SMK-1","fields":{"summary":"Smoke issue"}}' } }
+            return @{ Type = 'application/json'; Body = '{}' }
+        }
+        'confluence' {
+            if ($pathOnly -eq '/rest/api/settings/systemInfo') { return @{ Type = 'application/json'; Body = '{"version":"9.2.9","buildNumber":"9209","baseUrl":"http://mock/confluence"}' } }
+            if ($pathOnly -eq '/rest/troubleshooting/1.0/pre-upgrade/info') { return @{ Type = 'application/json'; Body = '{"version":"6.15.8","buildNumber":"6158"}' } }
+            if ($pathOnly -eq '/rest/api/space') { return @{ Type = 'application/json'; Body = '{"results":[{"id":1,"key":"SMK","name":"Smoke Space","type":"global","status":"current"}],"start":0,"limit":25,"size":1}' } }
+            if ($pathOnly -eq '/rest/api/space/SMK') { return @{ Type = 'application/json'; Body = '{"id":1,"key":"SMK","name":"Smoke Space","type":"global","status":"current"}' } }
+            if ($pathOnly -eq '/rest/api/content') { return @{ Type = 'application/json'; Body = '{"results":[{"id":"12345","type":"page","title":"Smoke Page","status":"current"}],"start":0,"limit":25,"size":1}' } }
+            if ($pathOnly -eq '/rest/api/content/search') { return @{ Type = 'application/json'; Body = '{"results":[{"id":"12345","type":"page","title":"Smoke Page","status":"current"}],"start":0,"limit":25,"size":1}' } }
+            if ($pathOnly -eq '/rest/api/user/current') { return @{ Type = 'application/json'; Body = '{"type":"known","username":"smoke","displayName":"Smoke User"}' } }
+            if ($pathOnly -match '^/rest/api/content/[^/]+/child/page$') { return @{ Type = 'application/json'; Body = '{"results":[{"id":"23456","type":"page","title":"Child Page"}],"start":0,"limit":25,"size":1}' } }
+            if ($pathOnly -match '^/rest/api/content/') { return @{ Type = 'application/json'; Body = '{"id":"12345","type":"page","title":"Smoke Page","version":{"number":1},"body":{"storage":{"value":"<p>Smoke</p>","representation":"storage"}}}' } }
             return @{ Type = 'application/json'; Body = '{}' }
         }
         'loki' {

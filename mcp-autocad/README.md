@@ -29,9 +29,9 @@ The publish folder includes `McpAutoCad.exe`, `start.cmd`, `run.ps1`, and `autoc
 
 Connections:
 
-- HTTP: `http://localhost:8096/mcp`
-- SSE: `http://localhost:8096/sse`
-- Health: `http://localhost:8096/healthz`
+- HTTP: `http://localhost:42196/mcp`
+- SSE: `http://localhost:42196/sse`
+- Health: `http://localhost:42196/healthz`
 
 ## Configuration
 
@@ -71,3 +71,4 @@ Tools that operate on drawings, such as `open_drawing`, `active_drawing`, list/s
 | `save_drawing` | Saves the active drawing. |
 | `export_drawing` | Exports the active drawing using AutoCAD `Export`. |
 | `save_as_drawing` | Saves a copy to a target path. |
+

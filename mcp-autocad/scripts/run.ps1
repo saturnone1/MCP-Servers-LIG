@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot 'autocad.env'),
-    [int]$Port = 8096
+    [int]$Port = 42196
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,3 +38,4 @@ elseif (Test-Path -LiteralPath $dll) {
 else {
     throw "McpAutoCad.exe or McpAutoCad.dll not found. Run scripts\publish-win.ps1 first, or use scripts\run-dev.ps1 from the repository."
 }
+

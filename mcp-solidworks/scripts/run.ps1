@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot 'solidworks.env'),
-    [int]$Port = 8097
+    [int]$Port = 42197
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,3 +38,4 @@ elseif (Test-Path -LiteralPath $dll) {
 else {
     throw "McpSolidWorks.exe or McpSolidWorks.dll not found. Run scripts\publish-win.ps1 first, or use scripts\run-dev.ps1 from the repository."
 }
+

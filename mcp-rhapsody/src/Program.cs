@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8094");
+builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:42194");
 #pragma warning disable MCP9004
 builder.Services.AddMcpServer()
     .WithHttpTransport(options => options.EnableLegacySse = true)
@@ -35,7 +35,7 @@ public sealed class RhapsodyTools
         {
             server = "mcp-rhapsody",
             mode = "windows-host",
-            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8094",
+            http = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:42194",
             allowedDirs = Guard.AllowedRoots,
             writesEnabled = Guard.WritesEnabled,
             cliEnabled = Guard.CliEnabled,
@@ -643,3 +643,4 @@ internal static class Guard
 }
 
 public sealed record CommandResult(int ExitCode, string Stdout, string Stderr);
+

@@ -26,9 +26,9 @@ Run on the target Windows machine:
 
 Connections:
 
-- HTTP: `http://localhost:8094/mcp`
-- SSE: `http://localhost:8094/sse`
-- Health: `http://localhost:8094/healthz`
+- HTTP: `http://localhost:42194/mcp`
+- SSE: `http://localhost:42194/sse`
+- Health: `http://localhost:42194/healthz`
 
 ## Configuration
 
@@ -98,3 +98,4 @@ To verify write tools as well, explicitly enable write smoke. This creates a smo
 ```powershell
 .\tests\rhapsody-smoke.ps1 -RhapsodyProjectPath "C:\path\model.rpyx" -RunWriteSmoke
 ```
+

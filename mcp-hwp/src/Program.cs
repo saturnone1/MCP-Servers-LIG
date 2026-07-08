@@ -67,10 +67,11 @@ public sealed class HwpTools
         };
     }
 
-    [McpServerTool(ReadOnly = true)]
+    [McpServerTool]
     [Description("Convert .hwp or .hwpx to txt, docx, pdf, or odt. Text output uses the extractor; other formats use LibreOffice.")]
     public static async Task<CommandResult> Convert(string path, string outputDirectory = "/tmp/hwp-output", string format = "txt", int timeoutMs = 120000)
     {
+        Guard.RequireWrites();
         var fullPath = Guard.RequireAllowedPath(path);
         if (!File.Exists(fullPath))
             return new CommandResult(2, "", $"File not found after path mapping: {fullPath}");
@@ -350,6 +351,12 @@ internal static class Guard
         if (!AllowedRoots.Any(root => IsInside(fullPath, root)))
             throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {fullPath}");
         return fullPath;
+    }
+
+    public static void RequireWrites()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_HWP_WRITES"), "false", StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("HWP write tools are disabled because MCP_ENABLE_HWP_WRITES=false.");
     }
 
     public static string RequireSupportedOutput(string format)

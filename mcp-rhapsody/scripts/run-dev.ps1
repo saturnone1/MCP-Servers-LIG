@@ -1,6 +1,6 @@
 param(
     [string]$EnvFile = (Join-Path $PSScriptRoot '..\config\rhapsody.env'),
-    [int]$Port = 8094
+    [int]$Port = 42194
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,4 +28,5 @@ Write-Host "SSE:    $($env:ASPNETCORE_URLS)/sse"
 Write-Host "Health: $($env:ASPNETCORE_URLS)/healthz"
 
 dotnet run --project (Join-Path $PSScriptRoot '..\src\McpRhapsody.csproj')
+
 

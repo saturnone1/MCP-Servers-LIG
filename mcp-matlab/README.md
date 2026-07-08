@@ -53,9 +53,9 @@ You can also double-click `start.cmd` or run `.\McpMatlab.exe` directly after se
 
 Connections:
 
-- HTTP: `http://localhost:8095/mcp`
-- SSE: `http://localhost:8095/sse`
-- Health: `http://localhost:8095/healthz`
+- HTTP: `http://localhost:42195/mcp`
+- SSE: `http://localhost:42195/sse`
+- Health: `http://localhost:42195/healthz`
 
 ## Configuration
 
@@ -113,3 +113,4 @@ For air-gap delivery, copy the published folder as a unit. It contains this C# H
 ## Notes
 
 If MATLAB is not installed, the server still starts and `config` reports the missing executable/COM state. Tools that require MATLAB return clear configuration errors.
+

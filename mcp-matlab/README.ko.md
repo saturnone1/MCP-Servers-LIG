@@ -53,9 +53,9 @@ publish 폴더에서 실행:
 
 연결 주소:
 
-- HTTP: `http://localhost:8095/mcp`
-- SSE: `http://localhost:8095/sse`
-- Health: `http://localhost:8095/healthz`
+- HTTP: `http://localhost:42195/mcp`
+- SSE: `http://localhost:42195/sse`
+- Health: `http://localhost:42195/healthz`
 
 ## 설정
 
@@ -113,3 +113,4 @@ air-gap 배포 시에는 publish 폴더 전체를 옮기면 됩니다. 이 폴�
 ## 참고
 
 MATLAB이 설치되어 있지 않아도 서버는 뜹니다. 이 경우 `config`에서 실행 파일/COM 미탐지 상태를 보여주고, MATLAB이 필요한 tool은 명확한 설정 오류를 반환합니다.
+
