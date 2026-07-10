@@ -51,6 +51,26 @@ else {
     }
 }
 
+# A manager-only patch must preserve the target bundle's server configuration and
+# runtime-aware launchers. publish-win.ps1 emits standalone-package helpers too.
+$standaloneArtifacts = @(
+    'servers.json',
+    'run.ps1',
+    'install-fonts.ps1',
+    'install-fonts.cmd',
+    'mcp-manager.cmd',
+    'LIG-AI-MCP.cmd',
+    'start-all.cmd',
+    'stop-all.cmd',
+    'status.cmd'
+)
+foreach ($artifact in $standaloneArtifacts) {
+    Remove-Item -LiteralPath (Join-Path $OutputRoot $artifact) -Force -ErrorAction SilentlyContinue
+}
+foreach ($pattern in 'start-mcp-*.cmd', 'stop-mcp-*.cmd') {
+    Get-ChildItem -LiteralPath $OutputRoot -File -Filter $pattern | Remove-Item -Force
+}
+
 @"
 This package contains a replacement McpManager build.
 

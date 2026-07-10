@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,6 +20,8 @@ internal sealed class McpManager
     private readonly string _stateDir;
     private readonly string _logDir;
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
+    private readonly HashSet<string> _interactiveOwnedServers = new(StringComparer.OrdinalIgnoreCase);
+    private ChildProcessJob? _interactiveProcessJob;
 
     public McpManager(string baseDirectory, string[] args)
     {
@@ -133,6 +136,7 @@ internal sealed class McpManager
         PrepareInteractiveConsole();
         var config = await LoadConfig();
         var servers = config.Servers.ToArray();
+        _interactiveProcessJob = ChildProcessJob.CreateForCurrentPlatform();
         var selected = 0;
         var rows = await GetStatusRows(servers);
         var message = "준비됨. MCP 서버는 자동으로 시작되지 않습니다.";
@@ -223,8 +227,27 @@ internal sealed class McpManager
         }
         finally
         {
+            await StopInteractiveOwnedServers(servers);
+            _interactiveProcessJob?.Dispose();
+            _interactiveProcessJob = null;
             RestoreInteractiveConsole(cursorWasVisible);
         }
+    }
+
+    private async Task StopInteractiveOwnedServers(ServerConfig[] servers)
+    {
+        foreach (var server in servers.Where(server => _interactiveOwnedServers.Contains(server.Name)).Reverse())
+        {
+            try
+            {
+                await Stop(server);
+            }
+            catch
+            {
+                // Disposing the job below is the final fallback for process-based servers.
+            }
+        }
+        _interactiveOwnedServers.Clear();
     }
 
     private void RenderDashboard(ManagerConfig config, StatusRow[] rows, int selected, string message)
@@ -283,7 +306,17 @@ internal sealed class McpManager
         if (Console.IsInputRedirected)
         {
             var value = Console.ReadLine()?.Trim().ToLowerInvariant();
-            return value is "q" or "9" ? DashboardKey.Quit : DashboardKey.Refresh;
+            return value switch
+            {
+                "s" or "6" => DashboardKey.StartSelected,
+                "t" or "7" => DashboardKey.StopSelected,
+                "r" => DashboardKey.RestartSelected,
+                "a" or "1" => DashboardKey.StartAll,
+                "x" or "2" => DashboardKey.StopAll,
+                "3" => DashboardKey.RestartAll,
+                "q" or "9" or null => DashboardKey.Quit,
+                _ => DashboardKey.Refresh
+            };
         }
 
         while (true)
@@ -1168,6 +1201,8 @@ internal sealed class McpManager
         args.Add(server.Image);
 
         await RunCommand("docker", args, _repoRoot);
+        if (_interactiveProcessJob is not null)
+            _interactiveOwnedServers.Add(server.Name);
     }
 
     private async Task<bool> DockerExists(string name)
@@ -1206,9 +1241,21 @@ internal sealed class McpManager
         psi.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{server.Port}";
 
         var process = StartManagedProcess(server.Name, executable, psi);
+        try
+        {
+            _interactiveProcessJob?.Add(process);
+        }
+        catch
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+            throw;
+        }
         _ = Pump(process.StandardOutput, stdout);
         _ = Pump(process.StandardError, stderr);
         await File.WriteAllTextAsync(pidPath, process.Id.ToString());
+        if (_interactiveProcessJob is not null)
+            _interactiveOwnedServers.Add(server.Name);
         Console.WriteLine($"{server.Name} 시작됨. PID {process.Id}");
     }
 
@@ -1218,6 +1265,7 @@ internal sealed class McpManager
         if (server.Kind == "docker")
         {
             await RunCommand("docker", ["rm", "-f", server.ContainerName], _repoRoot, echo: false, ignoreExit: true);
+            _interactiveOwnedServers.Remove(server.Name);
             return;
         }
 
@@ -1230,6 +1278,7 @@ internal sealed class McpManager
         }
         if (File.Exists(pidPath))
             File.Delete(pidPath);
+        _interactiveOwnedServers.Remove(server.Name);
     }
 
     private async Task PrintStatus(ServerConfig[] servers)
@@ -1568,6 +1617,121 @@ internal sealed class McpManager
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true
     };
+}
+
+internal sealed class ChildProcessJob : IDisposable
+{
+    private IntPtr _handle;
+
+    private ChildProcessJob(IntPtr handle)
+    {
+        _handle = handle;
+    }
+
+    public static ChildProcessJob? CreateForCurrentPlatform()
+    {
+        if (!OperatingSystem.IsWindows())
+            return null;
+
+        var handle = CreateJobObject(IntPtr.Zero, null);
+        if (handle == IntPtr.Zero)
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "MCP 자식 프로세스용 Job Object를 만들 수 없습니다.");
+
+        var limits = new JobObjectExtendedLimitInformation
+        {
+            BasicLimitInformation = new JobObjectBasicLimitInformation
+            {
+                LimitFlags = JobObjectLimitKillOnJobClose
+            }
+        };
+        var size = Marshal.SizeOf<JobObjectExtendedLimitInformation>();
+        var pointer = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(limits, pointer, false);
+            if (!SetInformationJobObject(handle, JobObjectExtendedLimitInformationClass, pointer, (uint)size))
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "MCP 자식 프로세스 종료 정책을 설정할 수 없습니다.");
+            return new ChildProcessJob(handle);
+        }
+        catch
+        {
+            CloseHandle(handle);
+            throw;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(pointer);
+        }
+    }
+
+    public void Add(Process process)
+    {
+        if (_handle == IntPtr.Zero)
+            throw new ObjectDisposedException(nameof(ChildProcessJob));
+        if (!AssignProcessToJobObject(_handle, process.Handle))
+            throw new Win32Exception(Marshal.GetLastWin32Error(), $"PID {process.Id}를 MCP 프로세스 그룹에 추가할 수 없습니다.");
+    }
+
+    public void Dispose()
+    {
+        var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
+        if (handle != IntPtr.Zero)
+            CloseHandle(handle);
+    }
+
+    private const uint JobObjectLimitKillOnJobClose = 0x00002000;
+    private const int JobObjectExtendedLimitInformationClass = 9;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IoCounters
+    {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JobObjectBasicLimitInformation
+    {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public UIntPtr MinimumWorkingSetSize;
+        public UIntPtr MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public UIntPtr Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JobObjectExtendedLimitInformation
+    {
+        public JobObjectBasicLimitInformation BasicLimitInformation;
+        public IoCounters IoInfo;
+        public UIntPtr ProcessMemoryLimit;
+        public UIntPtr JobMemoryLimit;
+        public UIntPtr PeakProcessMemoryUsed;
+        public UIntPtr PeakJobMemoryUsed;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr CreateJobObject(IntPtr jobAttributes, string? name);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetInformationJobObject(IntPtr job, int informationClass, IntPtr information, uint informationLength);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr handle);
 }
 
 internal sealed class ManagerConfig
