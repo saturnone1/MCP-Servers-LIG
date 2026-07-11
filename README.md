@@ -185,23 +185,23 @@ Build the Windows installer with:
 .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-The MSI is written to `installer\output` and includes the shared .NET/ASP.NET Core runtime, Start Menu and desktop shortcuts, upgrade support, and clean uninstall behavior.
+The MSI is written to `installer\output`. Distribute that MSI file by itself; users do not need the `mcp-bundle` directory, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. It includes all 19 MCP servers, the shared runtime, Start Menu and desktop shortcuts, upgrade support, and clean uninstall behavior. External applications such as Git, Docker, kubectl, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. The MSI is currently unsigned, so production distribution should apply the organization's code-signing certificate.
 
 The server executables are included, but tools that shell out to external programs still need those programs on the target PC. Items installed by Dockerfiles through `apt-get`, `curl`, or `pip` are not automatically embedded in the Windows exe bundle.
 
 | Server | Windows exe bundle status | Additional requirement |
 | --- | --- | --- |
 | `mcp-filesystem` | Self-contained | None |
-| `mcp-mssql`, `mcp-postgresql` | Framework-dependent Windows app by default | Real DB connection string |
-| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | Framework-dependent Windows app by default | Real API URL/token |
-| `mcp-shell` | Framework-dependent Windows app by default | Commands invoked by tools must exist on Windows |
-| `mcp-git` | Framework-dependent Windows app by default | `git.exe` |
-| `mcp-dotnet` | Framework-dependent Windows app by default | .NET SDK/CLI on the target PC |
-| `mcp-kubernetes` | Framework-dependent Windows app by default | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
-| `mcp-docker` | Framework-dependent Windows app by default | Docker CLI and Docker Desktop/daemon |
+| `mcp-mssql`, `mcp-postgresql` | Server and shared runtime included | Real DB connection string |
+| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | Server and shared runtime included | Real API URL/token |
+| `mcp-shell` | Server and shared runtime included | Commands invoked by tools must exist on Windows |
+| `mcp-git` | Server and shared runtime included | `git.exe` |
+| `mcp-dotnet` | Server and shared runtime included | .NET SDK/CLI for build and test operations |
+| `mcp-kubernetes` | Server and shared runtime included | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
+| `mcp-docker` | Server and shared runtime included | Docker CLI and Docker Desktop/daemon |
 | `mcp-office` | Bundles `officecli.exe` | `antiword` for legacy `.doc` is optional; OfficeCLI is used as fallback |
 | `mcp-hwp` | Built-in parser handles `.hwpx` and basic `.hwp` text extraction | Optional `hwp5txt` for fallback; LibreOffice `soffice` only for `docx/pdf/odt` conversion |
-| `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | Framework-dependent Windows app by default | Corresponding commercial software, COM/CLI, and license |
+| `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | Server and shared runtime included | Corresponding commercial software, COM/CLI, and license |
 
 The Office publish flow copies the downloaded OfficeCLI Windows binary from `mcp-office\vendor\officecli` into the bundle as `tools/officecli.exe`. If the vendor binary is missing, `publish-mcp-bundle.ps1` calls `mcp-office\scripts\download-officecli.ps1`.
 
