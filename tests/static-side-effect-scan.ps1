@@ -216,6 +216,19 @@ foreach ($relativePath in $portConfigFiles) {
     }
 }
 
+$managerText = Get-Content -LiteralPath (Join-Path $repo 'mcp-manager/src/Program.cs') -Raw
+foreach ($required in @(
+    'JobObjectLimitKillOnJobClose',
+    'AssignProcessToJobObject',
+    'StartAutostartServers',
+    'autostart.json',
+    'ToggleAutostart'
+)) {
+    if (-not $managerText.Contains($required, [StringComparison]::Ordinal)) {
+        $failures.Add("mcp-manager/src/Program.cs: missing manager lifecycle/autostart behavior '$required'")
+    }
+}
+
 if ($failures.Count -gt 0) {
     Write-Host 'Static side-effect scan failed:' -ForegroundColor Red
     $failures | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
