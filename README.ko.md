@@ -185,7 +185,7 @@ Windows 설치 파일은 다음 명령으로 생성합니다.
 .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-결과 MSI는 `installer\output`에 생성되며 공유 .NET/ASP.NET Core 런타임, 시작 메뉴 및 바탕화면 바로가기, 제거 기능을 포함합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+결과 MSI는 `installer\output`에 생성됩니다. 사용자에게는 이 MSI 파일 하나만 배포하면 되며 `mcp-bundle`, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일은 필요하지 않습니다. MSI는 MCP 서버 19개, 공유 런타임, 시작 메뉴 및 바탕화면 바로가기, 업그레이드와 제거 기능을 포함합니다. 현재 MSI는 코드 서명되지 않았으므로 정식 배포 시 조직 인증서로 서명하는 것을 권장합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
 
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 
