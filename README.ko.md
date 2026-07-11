@@ -179,6 +179,14 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 .\scripts\test-mcp-bundle.ps1
 ```
 
+Windows 설치 파일은 다음 명령으로 생성합니다.
+
+```powershell
+.\scripts\build-installer.ps1 -Version 1.0.0
+```
+
+결과 MSI는 `installer\output`에 생성되며 공유 .NET/ASP.NET Core 런타임, 시작 메뉴 및 바탕화면 바로가기, 제거 기능을 포함합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 
 | 서버 | Windows exe 번들 상태 | 추가 필요 항목 |

@@ -179,6 +179,14 @@ Check the bundle structure and external CLI availability with:
 .\scripts\test-mcp-bundle.ps1
 ```
 
+Build the Windows installer with:
+
+```powershell
+.\scripts\build-installer.ps1 -Version 1.0.0
+```
+
+The MSI is written to `installer\output` and includes the shared .NET/ASP.NET Core runtime, Start Menu and desktop shortcuts, upgrade support, and clean uninstall behavior.
+
 The server executables are included, but tools that shell out to external programs still need those programs on the target PC. Items installed by Dockerfiles through `apt-get`, `curl`, or `pip` are not automatically embedded in the Windows exe bundle.
 
 | Server | Windows exe bundle status | Additional requirement |

@@ -16,6 +16,9 @@ mcp-solidworks/publish/
 windows-host-publish/
 mcp-bundle/
 mcp-bundle.zip
+.tools/
+installer/output/
+installer/obj/
 mcp-*-bundle-patch/
 mcp-*-bundle-patch.zip
 mcp-manager/publish/

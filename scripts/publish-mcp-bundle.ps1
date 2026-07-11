@@ -231,6 +231,11 @@ notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
 }
 $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
+# Installable bundles do not need debug symbols or stale backup binaries.
+foreach ($pattern in '*.pdb', '*.old') {
+    Get-ChildItem -LiteralPath $OutputRoot -Recurse -File -Filter $pattern | Remove-Item -Force
+}
+
 if ($BundleDotnetRuntime -and -not $SelfContained) {
     Copy-BundledDotnetRuntime -BundleRoot $OutputRoot -Runtime $Runtime
 }
