@@ -21,6 +21,16 @@ if (-not (Test-Path -LiteralPath $launcherPath)) {
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $missing = @()
+$releaseDebris = Get-ChildItem -LiteralPath $BundleRoot -Recurse -File |
+    Where-Object { $_.Extension -in '.pdb', '.old' }
+
+Write-Host "== Release optimization"
+if ($releaseDebris) {
+    $releaseDebris | ForEach-Object { Write-Host ("MISS release cleanup: {0}" -f $_.FullName) -ForegroundColor Red }
+}
+else {
+    Write-Host "OK   no debug symbols or stale backup binaries"
+}
 
 Write-Host "== Bundled .NET runtime"
 if (Test-Path -LiteralPath $bundledDotnetPath) {
@@ -109,4 +119,7 @@ Write-Host "== Manager view"
 
 if ($missing.Count -gt 0) {
     throw "Bundle has missing server executables."
+}
+if ($releaseDebris) {
+    throw "Bundle contains debug symbols or stale backup binaries."
 }
