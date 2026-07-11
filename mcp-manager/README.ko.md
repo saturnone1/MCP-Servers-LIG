@@ -59,7 +59,7 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 
 ## 명령
 
-인자 없이 `McpManager.exe` 또는 `LIG-AI-MCP.cmd`를 더블클릭하면 대시보드형 콘솔 UI가 열립니다. 첫 화면은 전체 서버 요약, 서버 목록, 선택 서버 상태를 보여주며 서버는 자동 시작하지 않습니다.
+인자 없이 `McpManager.exe` 또는 `LIG-AI-MCP.cmd`를 더블클릭하면 대시보드형 콘솔 UI가 열립니다. `autostart.json`에 등록된 서버는 대시보드가 열릴 때 자동으로 시작되며 이름 옆에 `[A]`가 표시됩니다.
 
 대시보드 조작:
 
@@ -70,6 +70,7 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 | `S` | 선택 서버 시작 |
 | `T` | 선택 서버 중지 |
 | `R` | 선택 서버 재시작 |
+| `P` | 선택 서버 자동실행 등록/해제 |
 | `A` | 전체 서버 시작 |
 | `X` | 전체 서버 중지 |
 | `U` | 선택 서버 HTTP/SSE URL 보기 |
@@ -92,7 +93,12 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 .\LIG-AI-MCP.cmd env mcp-filesystem
 .\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
 .\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
+.\LIG-AI-MCP.cmd autostart enable mcp-filesystem
+.\LIG-AI-MCP.cmd autostart disable mcp-filesystem
+.\LIG-AI-MCP.cmd autostart list
 ```
+
+자동실행 목록은 `servers.json`과 같은 폴더의 `autostart.json`에 저장됩니다. 그룹이나 `all`도 등록할 수 있습니다. 자동으로 시작된 서버도 메인 대시보드를 닫으면 함께 종료됩니다.
 
 대시보드에서 서버를 선택하고 `E`를 누르면 환경변수 설정 화면이 열립니다. `A`로 추가, `Enter`로 수정, `D`로 삭제, `N`으로 메모장 열기, `B`로 뒤로가기를 할 수 있습니다. 변경 후 서버를 재시작하면 적용됩니다.
 

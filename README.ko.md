@@ -154,6 +154,8 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 `mcp-bundle\McpManager.exe`를 그냥 더블클릭하면 콘솔 메뉴가 열립니다. 메뉴에서 전체 시작/종료/재시작, 상태 확인, URL 확인, 서버별 시작/종료, 로그 확인을 선택할 수 있습니다.
 
+대시보드에서 서버를 선택하고 `P`를 누르면 자동실행을 등록하거나 해제합니다. 등록된 서버는 `[A]`로 표시되고 다음 번 번들 실행 시 자동으로 시작됩니다. 목록은 번들 루트의 `autostart.json`에 보존되며 메인 대시보드를 닫으면 자동 시작된 서버도 함께 종료됩니다.
+
 ```powershell
 .\mcp-bundle\McpManager.exe list all
 .\mcp-bundle\McpManager.exe start mcp-filesystem
@@ -163,6 +165,8 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 .\mcp-bundle\LIG-AI-MCP.cmd env mcp-filesystem
 .\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
 .\mcp-bundle\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
+.\mcp-bundle\LIG-AI-MCP.cmd autostart enable mcp-filesystem
+.\mcp-bundle\LIG-AI-MCP.cmd autostart list
 ```
 
 대시보드에서는 서버를 선택한 뒤 `E`를 누르면 텍스트 편집기 없이 환경변수를 수정할 수 있습니다. `A` 추가, `Enter` 수정, `D` 삭제, `N` 메모장 열기, `B` 뒤로가기를 지원합니다. 환경변수를 바꾼 뒤에는 해당 서버를 재시작해야 적용됩니다.

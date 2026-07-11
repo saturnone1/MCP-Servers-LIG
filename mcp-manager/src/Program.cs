@@ -19,8 +19,10 @@ internal sealed class McpManager
     private readonly string _configPath;
     private readonly string _stateDir;
     private readonly string _logDir;
+    private readonly string _autostartPath;
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
     private readonly HashSet<string> _interactiveOwnedServers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _autostartServers = new(StringComparer.OrdinalIgnoreCase);
     private ChildProcessJob? _interactiveProcessJob;
 
     public McpManager(string baseDirectory, string[] args)
@@ -30,6 +32,7 @@ internal sealed class McpManager
         var localConfig = Path.Combine(baseDirectory, "servers.json");
         _configPath = Environment.GetEnvironmentVariable("MCP_MANAGER_CONFIG") ??
                       (File.Exists(localConfig) ? localConfig : Path.Combine(_repoRoot, "mcp-manager", "config", "servers.json"));
+        _autostartPath = Path.Combine(Path.GetDirectoryName(_configPath)!, "autostart.json");
         _stateDir = Path.Combine(_repoRoot, ".mcp-manager");
         _logDir = Path.Combine(_stateDir, "logs");
     }
@@ -53,6 +56,11 @@ internal sealed class McpManager
 
         var config = await LoadConfig();
         var command = _args[0].ToLowerInvariant();
+        if (command == "autostart")
+        {
+            await ExecuteAutostartCommand(config, _args.Skip(1).ToArray());
+            return;
+        }
         var target = _args.Length > 1 ? _args[1] : "all";
         var extraArgs = _args.Skip(2).ToArray();
         await ExecuteCommand(config, command, target, extraArgs);
@@ -137,9 +145,11 @@ internal sealed class McpManager
         var config = await LoadConfig();
         var servers = config.Servers.ToArray();
         _interactiveProcessJob = ChildProcessJob.CreateForCurrentPlatform();
+        LoadAutostartServers(servers);
+        var autostartResult = await StartAutostartServers(servers);
         var selected = 0;
         var rows = await GetStatusRows(servers);
-        var message = "준비됨. MCP 서버는 자동으로 시작되지 않습니다.";
+        var message = autostartResult;
 
         try
         {
@@ -213,6 +223,9 @@ internal sealed class McpManager
                             ShowEnvScreen(servers[selected]);
                             message = $"{servers[selected].Name} 환경변수를 확인했습니다.";
                             break;
+                        case DashboardKey.ToggleAutostart:
+                            message = await ToggleAutostart(servers[selected]);
+                            break;
                         case DashboardKey.Quit:
                             SafeClear();
                             WriteColorLine("LIG AI MCP를 종료합니다.", ConsoleColor.DarkGray);
@@ -232,6 +245,97 @@ internal sealed class McpManager
             _interactiveProcessJob = null;
             RestoreInteractiveConsole(cursorWasVisible);
         }
+    }
+
+    private async Task<string> StartAutostartServers(ServerConfig[] servers)
+    {
+        if (_autostartServers.Count == 0)
+            return "준비됨. 자동실행으로 등록된 MCP 서버가 없습니다.";
+
+        var started = 0;
+        var failed = new List<string>();
+        foreach (var server in servers.Where(server => _autostartServers.Contains(server.Name)))
+        {
+            try
+            {
+                await Start(server);
+                started++;
+            }
+            catch
+            {
+                failed.Add(server.Name);
+            }
+        }
+
+        return failed.Count == 0
+            ? $"자동실행 서버 {started}개를 시작했습니다."
+            : $"자동실행 {started}개 시작, {failed.Count}개 실패: {string.Join(", ", failed)}";
+    }
+
+    private void LoadAutostartServers(IEnumerable<ServerConfig> servers)
+    {
+        _autostartServers.Clear();
+        if (!File.Exists(_autostartPath))
+            return;
+
+        try
+        {
+            var names = JsonSerializer.Deserialize<string[]>(File.ReadAllText(_autostartPath), JsonOptions()) ?? [];
+            var knownNames = servers.Select(server => server.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in names.Where(knownNames.Contains))
+                _autostartServers.Add(name);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException($"자동실행 설정 파일 형식이 올바르지 않습니다: {_autostartPath}", ex);
+        }
+    }
+
+    private async Task SaveAutostartServers()
+    {
+        var json = JsonSerializer.Serialize(_autostartServers.OrderBy(name => name), new JsonSerializerOptions { WriteIndented = true });
+        var tempPath = _autostartPath + ".tmp";
+        await File.WriteAllTextAsync(tempPath, json + Environment.NewLine);
+        File.Move(tempPath, _autostartPath, overwrite: true);
+    }
+
+    private async Task<string> ToggleAutostart(ServerConfig server)
+    {
+        var enabled = _autostartServers.Add(server.Name);
+        if (!enabled)
+            _autostartServers.Remove(server.Name);
+        await SaveAutostartServers();
+        return enabled ? $"{server.Name} 자동실행 등록 완료." : $"{server.Name} 자동실행 해제 완료.";
+    }
+
+    private async Task ExecuteAutostartCommand(ManagerConfig config, string[] args)
+    {
+        var servers = config.Servers.ToArray();
+        LoadAutostartServers(servers);
+        var action = args.FirstOrDefault()?.ToLowerInvariant() ?? "list";
+        if (action == "list")
+        {
+            Console.WriteLine(_autostartServers.Count == 0
+                ? "자동실행으로 등록된 MCP 서버가 없습니다."
+                : string.Join(Environment.NewLine, _autostartServers.OrderBy(name => name)));
+            return;
+        }
+
+        if (action is not ("enable" or "disable"))
+            throw new InvalidOperationException("사용법: autostart [list|enable|disable] [all|group|server]");
+        if (args.Length < 2)
+            throw new InvalidOperationException($"autostart {action} 명령에는 대상이 필요합니다.");
+
+        var selected = Select(config, args[1]).ToArray();
+        if (selected.Length == 0)
+            throw new InvalidOperationException($"'{args[1]}'에 해당하는 서버가 없습니다.");
+        foreach (var server in selected)
+        {
+            if (action == "enable") _autostartServers.Add(server.Name);
+            else _autostartServers.Remove(server.Name);
+        }
+        await SaveAutostartServers();
+        Console.WriteLine($"자동실행 {action}: {string.Join(", ", selected.Select(server => server.Name))}");
     }
 
     private async Task StopInteractiveOwnedServers(ServerConfig[] servers)
@@ -286,7 +390,8 @@ internal sealed class McpManager
             var isSelected = absoluteIndex == selected;
             var background = isSelected ? ConsoleColor.DarkBlue : (ConsoleColor?)null;
             WriteCell(isSelected ? ">" : " ", 2, isSelected ? ConsoleColor.White : ConsoleColor.DarkGray, background);
-            WriteCell(row.Server.Name, 18, isSelected ? ConsoleColor.White : ConsoleColor.Cyan, background);
+            var displayName = _autostartServers.Contains(row.Server.Name) ? $"{row.Server.Name} [A]" : row.Server.Name;
+            WriteCell(displayName, 18, isSelected ? ConsoleColor.White : ConsoleColor.Cyan, background);
             WriteCell(string.Join(",", row.Server.Groups), 24, ConsoleColor.DarkGray, background);
             WriteCell(row.Server.Port.ToString(), 6, ConsoleColor.Gray, background);
             WriteCell(FormatRuntime(row), 14, RuntimeColor(row), background);
@@ -298,7 +403,7 @@ internal sealed class McpManager
         WriteColor(" 상태 ", ConsoleColor.DarkCyan);
         WriteColorLine(message, MessageColor(message));
         WriteColor(" 단축키 ", ConsoleColor.DarkCyan);
-        WriteColorLine(TrimCell("↑/↓ 이동  Enter 상세  S 시작  T 중지  R 재시작  A 전체시작  X 전체중지  U 주소  L 로그  E 환경  F5/Space 새로고침  Q 종료", SafeWidth()), ConsoleColor.DarkGray);
+        WriteColorLine(TrimCell("↑/↓ 이동  Enter 상세  S 시작  T 중지  R 재시작  P 자동실행  A 전체시작  X 전체중지  U 주소  L 로그  E 환경  F5/Space 새로고침  Q 종료", SafeWidth()), ConsoleColor.DarkGray);
     }
 
     private static DashboardKey ReadDashboardKey()
@@ -311,6 +416,7 @@ internal sealed class McpManager
                 "s" or "6" => DashboardKey.StartSelected,
                 "t" or "7" => DashboardKey.StopSelected,
                 "r" => DashboardKey.RestartSelected,
+                "p" => DashboardKey.ToggleAutostart,
                 "a" or "1" => DashboardKey.StartAll,
                 "x" or "2" => DashboardKey.StopAll,
                 "3" => DashboardKey.RestartAll,
@@ -332,6 +438,7 @@ internal sealed class McpManager
                 case ConsoleKey.S: return DashboardKey.StartSelected;
                 case ConsoleKey.T: return DashboardKey.StopSelected;
                 case ConsoleKey.R: return DashboardKey.RestartSelected;
+                case ConsoleKey.P: return DashboardKey.ToggleAutostart;
                 case ConsoleKey.A: return DashboardKey.StartAll;
                 case ConsoleKey.X: return DashboardKey.StopAll;
                 case ConsoleKey.U: return DashboardKey.UrlsSelected;
@@ -430,6 +537,7 @@ internal sealed class McpManager
         WriteField("포트", server.Port.ToString());
         WriteField("실행상태", FormatRuntime(row));
         WriteField("헬스", FormatHealth(row.Health));
+        WriteField("자동실행", _autostartServers.Contains(server.Name) ? "등록됨" : "미등록");
         WriteField("HTTP", $"http://localhost:{server.Port}/mcp");
         WriteField("SSE", $"http://localhost:{server.Port}/sse");
         WriteField("헬스 URL", server.HealthUrl);
@@ -1606,6 +1714,7 @@ internal sealed class McpManager
           mcp-manager env <name>
           mcp-manager set-env <name> <KEY> <VALUE>
           mcp-manager remove-env <name> <KEY>
+          mcp-manager autostart [list|enable|disable] [all|group|name]
 
         주요 그룹: docker, windows, desktop, database, devops, observability, cad, office
         """);
@@ -1781,6 +1890,7 @@ internal enum DashboardKey
     StartSelected,
     StopSelected,
     RestartSelected,
+    ToggleAutostart,
     StartAll,
     StopAll,
     RestartAll,

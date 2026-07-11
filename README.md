@@ -154,6 +154,8 @@ If you patch an existing bundle with the new manager, run `sync-env-files.ps1` o
 
 Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console menu. The menu supports start/stop/restart all, status, URLs, per-server start/stop, and logs.
 
+Select a server and press `P` to register or unregister it for automatic startup. Registered servers show `[A]`, are started the next time the bundle dashboard opens, and remain listed in `autostart.json` at the bundle root. Servers started by the dashboard stop when the dashboard closes.
+
 ```powershell
 .\mcp-bundle\McpManager.exe list all
 .\mcp-bundle\McpManager.exe start mcp-filesystem
@@ -163,6 +165,8 @@ Double-click `mcp-bundle\McpManager.exe` with no arguments to open the console m
 .\mcp-bundle\LIG-AI-MCP.cmd env mcp-filesystem
 .\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
 .\mcp-bundle\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
+.\mcp-bundle\LIG-AI-MCP.cmd autostart enable mcp-filesystem
+.\mcp-bundle\LIG-AI-MCP.cmd autostart list
 ```
 
 In the interactive dashboard, select a server and press `E` to edit its environment variables without opening a text editor. Use `A` to add, `Enter` to edit, `D` to delete, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
