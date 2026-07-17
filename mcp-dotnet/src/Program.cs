@@ -19,8 +19,13 @@ app.Run();
 public sealed class DotnetTools
 {
     [McpServerTool(ReadOnly = true)]
-    [Description("Return dotnet --info.")]
-    public static Task<CommandResult> SdkInfo() => CommandRunner.Run("dotnet", ["--info"], "/workspace", 300000, 67108864);
+    [Description("Return dotnet --info for the external .NET SDK selected for project operations.")]
+    public static async Task<CommandResult> SdkInfo()
+    {
+        var executable = DotnetCli.ResolveSdkExecutable();
+        var result = await CommandRunner.RunDotnet(executable, ["--info"], "/workspace", 300000, 67108864);
+        return result with { Stdout = $"dotnet executable: {executable}{Environment.NewLine}{result.Stdout}" };
+    }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Find .NET project and solution files under a workspace path.")]
@@ -66,7 +71,7 @@ public sealed class DotnetTools
         var args = new List<string> { "add", Guard.RequireAllowedPath(projectPath), "package", packageName };
         if (!string.IsNullOrWhiteSpace(version))
             args.AddRange(["--version", version]);
-        return CommandRunner.Run("dotnet", args.ToArray(), Guard.WorkingDirectoryFor(projectPath), 600000, 67108864);
+        return CommandRunner.RunDotnet(args.ToArray(), Guard.WorkingDirectoryFor(projectPath), 600000, 67108864);
     }
 
     [McpServerTool]
@@ -78,12 +83,18 @@ public sealed class DotnetTools
     }
 
     private static Task<CommandResult> Dotnet(string path, int timeoutMs, params string[] args) =>
-        CommandRunner.Run("dotnet", args, Guard.WorkingDirectoryFor(path), Math.Clamp(timeoutMs, 1000, 86400000), 67108864);
+        CommandRunner.RunDotnet(args, Guard.WorkingDirectoryFor(path), Math.Clamp(timeoutMs, 1000, 86400000), 67108864);
 }
 
 internal static class CommandRunner
 {
-    public static async Task<CommandResult> Run(string fileName, string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes)
+    public static Task<CommandResult> RunDotnet(string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes) =>
+        RunDotnet(DotnetCli.ResolveSdkExecutable(), args, workingDirectory, timeoutMs, maxOutputBytes);
+
+    public static Task<CommandResult> RunDotnet(string executable, string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes) =>
+        Run(executable, args, workingDirectory, timeoutMs, maxOutputBytes);
+
+    private static async Task<CommandResult> Run(string fileName, string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes)
     {
         using var cts = new CancellationTokenSource(timeoutMs);
         var startInfo = new ProcessStartInfo(fileName)
@@ -93,6 +104,7 @@ internal static class CommandRunner
             RedirectStandardError = true,
             UseShellExecute = false
         };
+        DotnetCli.ConfigureSdkProcess(startInfo, fileName);
         foreach (var arg in args)
             startInfo.ArgumentList.Add(arg);
         using var process = StartProcess(fileName, startInfo);
@@ -131,6 +143,122 @@ internal static class CommandRunner
     private static void TryKill(Process process)
     {
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
+    }
+}
+
+internal static class DotnetCli
+{
+    private const string OverrideVariable = "MCP_DOTNET_CLI_PATH";
+
+    public static string ResolveSdkExecutable()
+    {
+        var configured = Environment.GetEnvironmentVariable(OverrideVariable);
+        if (!string.IsNullOrWhiteSpace(configured))
+            return RequireSdkExecutable(Environment.ExpandEnvironmentVariables(configured.Trim().Trim('"')), $"{OverrideVariable} is set");
+
+        // Docker and Kubernetes run this server in an SDK image. The Windows MSI is the
+        // special case because its DOTNET_ROOT intentionally contains a runtime only.
+        if (!OperatingSystem.IsWindows())
+            return "dotnet";
+
+        var bundledDotnet = BundledDotnetPath();
+        foreach (var candidate in WindowsCandidates())
+        {
+            if (PathsEqual(candidate, bundledDotnet) || !HasSdk(candidate))
+                continue;
+            return Path.GetFullPath(candidate);
+        }
+
+        throw new FileNotFoundException(
+            "No external .NET SDK was found. Install a .NET 8, 9, or 10 SDK, add its dotnet.exe to PATH, " +
+            $"or set {OverrideVariable} to the full path of an SDK-enabled dotnet.exe. The runtime-only dotnet bundled with LIG AI MCP is intentionally not used for project operations.");
+    }
+
+    public static void ConfigureSdkProcess(ProcessStartInfo startInfo, string executable)
+    {
+        if (!OperatingSystem.IsWindows() || !Path.IsPathRooted(executable))
+            return;
+
+        startInfo.Environment.Remove("DOTNET_ROOT");
+        startInfo.Environment.Remove("DOTNET_ROOT_X64");
+        startInfo.Environment.Remove("DOTNET_ROOT_X86");
+        startInfo.Environment.Remove("DOTNET_MULTILEVEL_LOOKUP");
+
+        var sdkDirectory = Path.GetDirectoryName(Path.GetFullPath(executable))!;
+        var bundledDirectory = Path.GetDirectoryName(BundledDotnetPath());
+        var currentPath = startInfo.Environment.TryGetValue("PATH", out var value) ? value : Environment.GetEnvironmentVariable("PATH");
+        var entries = (currentPath ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(entry => entry.Trim('"'))
+            .Where(entry => !PathsEqual(entry, bundledDirectory) && !PathsEqual(entry, sdkDirectory));
+        startInfo.Environment["PATH"] = string.Join(Path.PathSeparator, new[] { sdkDirectory }.Concat(entries));
+    }
+
+    private static IEnumerable<string> WindowsCandidates()
+    {
+        var dotnetHostPath = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
+        if (!string.IsNullOrWhiteSpace(dotnetHostPath))
+            yield return dotnetHostPath.Trim().Trim('"');
+
+        foreach (var entry in (Environment.GetEnvironmentVariable("PATH") ?? "")
+                     .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var directory = Environment.ExpandEnvironmentVariables(entry.Trim('"'));
+            if (!string.IsNullOrWhiteSpace(directory))
+                yield return Path.Combine(directory, "dotnet.exe");
+        }
+
+        foreach (var programFiles in new[]
+                 {
+                     Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                     Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+                 }.Where(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            yield return Path.Combine(programFiles, "dotnet", "dotnet.exe");
+        }
+    }
+
+    private static string RequireSdkExecutable(string candidate, string reason)
+    {
+        if (!Path.IsPathRooted(candidate))
+            throw new FileNotFoundException($"{reason}, but the value is not an absolute path: {candidate}", candidate);
+        if (!File.Exists(candidate))
+            throw new FileNotFoundException($"{reason}, but dotnet.exe was not found: {candidate}", candidate);
+        if (!HasSdk(candidate))
+            throw new FileNotFoundException($"{reason}, but no SDK is installed beside this dotnet executable: {candidate}", candidate);
+        return Path.GetFullPath(candidate);
+    }
+
+    private static bool HasSdk(string candidate)
+    {
+        if (!File.Exists(candidate))
+            return false;
+        var root = Path.GetDirectoryName(Path.GetFullPath(candidate));
+        var sdkDirectory = root is null ? null : Path.Combine(root, "sdk");
+        return sdkDirectory is not null && Directory.Exists(sdkDirectory) && Directory.EnumerateDirectories(sdkDirectory).Any();
+    }
+
+    private static string BundledDotnetPath()
+    {
+        var root = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        return string.IsNullOrWhiteSpace(root) ? "" : Path.Combine(root, "dotnet.exe");
+    }
+
+    private static bool PathsEqual(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            return false;
+        try
+        {
+            return string.Equals(
+                Path.GetFullPath(Environment.ExpandEnvironmentVariables(left.Trim().Trim('"'))).TrimEnd(Path.DirectorySeparatorChar),
+                Path.GetFullPath(Environment.ExpandEnvironmentVariables(right.Trim().Trim('"'))).TrimEnd(Path.DirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 

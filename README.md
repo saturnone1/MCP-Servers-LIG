@@ -196,7 +196,7 @@ The server executables are included, but tools that shell out to external progra
 | `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | Server and shared runtime included | Real API URL/token |
 | `mcp-shell` | Server and shared runtime included | Commands invoked by tools must exist on Windows |
 | `mcp-git` | Server and shared runtime included | `git.exe` |
-| `mcp-dotnet` | Server and shared runtime included | .NET SDK/CLI for build and test operations |
+| `mcp-dotnet` | Server runs on the bundled runtime | External .NET SDK/CLI on the target PC; `MCP_DOTNET_CLI_PATH` can select one explicitly. Project `global.json` and target frameworks control .NET 8/9/10 SDK usage. |
 | `mcp-kubernetes` | Server and shared runtime included | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
 | `mcp-docker` | Server and shared runtime included | Docker CLI and Docker Desktop/daemon |
 | `mcp-office` | Bundles `officecli.exe` | `antiword` for legacy `.doc` is optional; OfficeCLI is used as fallback |

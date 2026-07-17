@@ -65,6 +65,9 @@ docker build -t local/mcp-dotnet .
 | `MCP_ALLOWED_DIRS` | `/` | project path로 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_ENABLE_DOTNET_WRITES` | Dockerfile에서 `true` | `false`로 설정하면 `add_package`, `format`을 막습니다. |
+| `MCP_DOTNET_CLI_PATH` | 자동 탐색 | Windows에서 프로젝트 작업에 사용할 외부 SDK 포함 `dotnet.exe`의 절대 경로를 선택적으로 지정합니다. |
+
+Windows MSI의 번들 .NET 런타임은 MCP 서버 자체를 시작하는 용도로만 사용합니다. 프로젝트 작업은 외부 SDK가 포함된 `dotnet.exe`를 따로 선택하며, LIG AI MCP 설치 폴더의 런타임 전용 `dotnet.exe`는 대상에서 제외합니다. 이후 SDK 선택은 일반적인 .NET 규칙을 따릅니다. 저장소의 `global.json`으로 설치된 SDK와 roll-forward 정책을 지정할 수 있고, 각 프로젝트의 대상 프레임워크에 따라 `net8.0`, `net9.0`, `net10.0` 등을 처리합니다. 외부 SDK가 없으면 MCP 서버 전체가 종료되지 않고 요청한 .NET tool 호출만 조치 방법이 포함된 오류로 실패합니다.
 
 ## Kubernetes
 
