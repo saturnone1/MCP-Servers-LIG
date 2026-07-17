@@ -24,7 +24,7 @@
             Id="ApplicationStartMenuShortcut"
             Name="LIG AI MCP"
             Description="Open the LIG AI MCP server manager"
-            Target="[INSTALLFOLDER]LIG-AI-MCP.cmd"
+            Target="[INSTALLFOLDER]McpManager.exe"
             WorkingDirectory="INSTALLFOLDER"
             Icon="AppIcon" />
           <Shortcut
@@ -50,7 +50,7 @@
           Id="DesktopShortcut"
           Name="LIG AI MCP"
           Description="Open the LIG AI MCP server manager"
-          Target="[INSTALLFOLDER]LIG-AI-MCP.cmd"
+          Target="[INSTALLFOLDER]McpManager.exe"
           WorkingDirectory="INSTALLFOLDER"
           Icon="AppIcon" />
         <RegistryValue

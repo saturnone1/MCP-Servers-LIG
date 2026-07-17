@@ -4,6 +4,8 @@ param(
     [string]$Runtime = 'win-x64',
     [bool]$SelfContained = $false,
     [bool]$SingleFile = $false,
+    [bool]$ManagerSelfContained = $true,
+    [bool]$ManagerSingleFile = $true,
     [bool]$BundleDotnetRuntime = $true,
     [switch]$Zip
 )
@@ -109,12 +111,18 @@ set "PATH=%DOTNET_ROOT%;%PATH%"
 }
 
 Write-Host "== Publishing manager"
+foreach ($staleManagerFile in @('McpManager.exe', 'McpManager.dll', 'McpManager.deps.json', 'McpManager.runtimeconfig.json', 'McpManager.pdb')) {
+    $staleManagerPath = Join-Path $OutputRoot $staleManagerFile
+    if (Test-Path -LiteralPath $staleManagerPath) {
+        Remove-Item -LiteralPath $staleManagerPath -Force
+    }
+}
 & (Join-Path $repoRoot 'mcp-manager\scripts\publish-win.ps1') `
     -Output $OutputRoot `
     -Configuration $Configuration `
     -Runtime $Runtime `
-    -SelfContained $SelfContained `
-    -SingleFile $SingleFile
+    -SelfContained $ManagerSelfContained `
+    -SingleFile $ManagerSingleFile
 
 Copy-Item -LiteralPath (Join-Path $repoRoot 'mcp-manager\config\servers.bundle.json') -Destination (Join-Path $OutputRoot 'servers.json') -Force
 
