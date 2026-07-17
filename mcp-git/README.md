@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-git:latest` 
 ## Run
 
 ```powershell
-docker run --rm -p 8082:8080 -v ${PWD}:/workspace local/mcp-git
+.\scripts\run-docker-mcp.ps1 -Server mcp-git -Port 8082
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8082/mcp` or legacy SSE at `http://localhost:8082/sse`. Trusted-local images enable mutating git tools by default and allow `/` inside the container unless `MCP_ALLOWED_DIRS` overrides it.

@@ -46,7 +46,7 @@ Write-Step 'Starting disposable PostgreSQL fixture'
 Remove-ContainerIfExists $PostgresContainer
 docker run -d `
     --name $PostgresContainer `
-    -p "${PostgresPort}:5432" `
+    -p "127.0.0.1:${PostgresPort}:5432" `
     -e POSTGRES_PASSWORD=postgres `
     -e POSTGRES_DB=postgres `
     $PostgresImage | Out-Null

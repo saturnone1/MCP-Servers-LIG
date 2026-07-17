@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-postgresql:l
 ## Run
 
 ```powershell
-docker run --rm -p 8090:8080 `
+docker run --rm -p 127.0.0.1:8090:8080 `
   -e "POSTGRES_CONNECTION_STRING=Host=host.docker.internal;Database=postgres;Username=postgres;Password=postgres" `
   local/mcp-postgresql
 ```
@@ -52,7 +52,7 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8090/mcp` or legac
 | `list_schemas` | `connectionString` string? = `null` | Schema metadata array. |
 | `list_tables` | `connectionString` string? = `null`, `schema` string? = `null` | Table metadata array. |
 | `describe_table` | `tableName` string, `schema` string = `public`, `connectionString` string? = `null` | Column metadata array. |
-| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `200` | Row objects. Only `SELECT`, `WITH`, `SHOW`, and `EXPLAIN` queries are accepted. |
+| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `2000` | Up to 100,000 rows; read-query timeout is one hour. |
 | `execute_non_query` | `sql` string, `connectionString` string? = `null`, `timeoutSeconds` int = `30` | Rows affected and execution metadata. |
 
 ## Environment

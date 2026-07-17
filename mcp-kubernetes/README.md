@@ -24,11 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-kubernetes:l
 ## Run
 
 ```powershell
-docker run --rm -p 8087:8080 `
-  -v C:\:/host/c `
-  -v $HOME\.kube:/root/.kube `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-kubernetes
+.\scripts\run-docker-mcp.ps1 -Server mcp-kubernetes -Port 8087
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8087/mcp` or legacy SSE at `http://localhost:8087/sse`.
@@ -67,8 +63,18 @@ Most tools return `{ "exitCode": number, "stdout": string, "stderr": string }`.
 | `rollout_restart` | `deploymentName` string, `ns` string? = `null` |
 | `scale_deployment` | `deploymentName` string, `replicas` int, `ns` string? = `null` |
 | `generate_deployment_yaml` | `name` string, `image` string, `replicas` int = `1`, `containerPort` int = `80`, `ns` string? = `null` |
-| `run_kubectl` | `args` string array, `timeoutMs` int = `120000` |
+| `run_kubectl` | `args` string array, `timeoutMs` int = `600000` (up to 24 hours, 64 MiB output) |
+
+## Environment
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MCP_ALLOWED_DIRS` | `/` | Container roots allowed for YAML manifest files. |
+| `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to container paths. |
+| `MCP_ENABLE_KUBERNETES_WRITES` | `true` | Set `false` to block apply/delete/restart/scale and raw kubectl. |
+| `MCP_ENABLE_RAW_KUBECTL` | `true` | Set `false` to block only `run_kubectl`. |
+| `KUBECTL_PATH` | `kubectl` | kubectl executable path. |
 
 ## Kubernetes
 
-Kubernetes manifests are available in [k8s/](k8s/README.ko.md). In-cluster deployment uses a ServiceAccount, namespace-scoped Role, and RoleBinding instead of mounting a kubeconfig. This server is cluster-native, but RBAC must explicitly grant the read/write operations you expect the MCP tools to perform.
+Kubernetes manifests are available in [k8s/](k8s/README.ko.md). The in-cluster deployment uses a ServiceAccount with an unrestricted ClusterRole/ClusterRoleBinding and no Pod CPU or memory limit. Cluster admission policies and node capacity still apply.

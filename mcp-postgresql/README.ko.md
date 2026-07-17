@@ -24,7 +24,7 @@ docker build -t local/mcp-postgresql .
 ## 실행
 
 ```powershell
-docker run --rm -p 8090:8080 `
+docker run --rm -p 127.0.0.1:8090:8080 `
   -e "POSTGRES_CONNECTION_STRING=Host=host.docker.internal;Database=postgres;Username=postgres;Password=postgres" `
   local/mcp-postgresql
 ```
@@ -55,7 +55,7 @@ docker run --rm -p 8090:8080 `
 | `list_schemas` | `connectionString` string? = `null` | schema metadata 배열 |
 | `list_tables` | `connectionString` string? = `null`, `schema` string? = `null` | table metadata 배열 |
 | `describe_table` | `tableName` string, `schema` string = `public`, `connectionString` string? = `null` | column metadata 배열 |
-| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `200` | row 객체 배열. `SELECT`, `WITH`, `SHOW`, `EXPLAIN`만 허용합니다. |
+| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `2000` | 최대 100,000행, read query timeout은 1시간입니다. |
 | `execute_non_query` | `sql` string, `connectionString` string? = `null`, `timeoutSeconds` int = `30` | affected row 수와 실행 metadata |
 
 ## 환경 변수

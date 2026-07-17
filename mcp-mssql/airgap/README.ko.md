@@ -23,7 +23,7 @@ docker load -i .\mcp-mssql\airgap\local-mcp-mssql.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-mssql -p 8085:8080 `
+docker run -d --name mcp-mssql -p 127.0.0.1:8085:8080 `
   -e "MSSQL_CONNECTION_STRING=Server=host.docker.internal;Database=master;User Id=sa;Password=yourPassword;TrustServerCertificate=True" `
   local/mcp-mssql:latest
 ```

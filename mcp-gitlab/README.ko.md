@@ -23,7 +23,7 @@ docker build -t local/mcp-gitlab .
 ## 실행
 
 ```powershell
-docker run --rm -p 8091:8080 `
+docker run --rm -p 127.0.0.1:8091:8080 `
   -e "GITLAB_BASE_URL=https://gitlab.example.local" `
   -e "GITLAB_TOKEN=<token>" `
   local/mcp-gitlab
@@ -46,6 +46,8 @@ docker run --rm -p 8091:8080 `
 | `list_merge_requests` | project merge request 목록을 조회합니다. |
 | `get_file` | repository file을 읽습니다. |
 | `create_or_update_file` | repository file을 생성하거나 수정합니다. |
+
+목록 tool은 GitLab의 최대 page 크기인 100을 기본 사용하며 `page`로 계속 조회할 수 있습니다.
 
 ## 환경 변수
 

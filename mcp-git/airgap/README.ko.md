@@ -23,10 +23,7 @@ docker load -i .\mcp-git\airgap\local-mcp-git.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-git -p 8082:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-git:latest
+.\mcp-git\airgap\run-docker-mcp.ps1 -Server mcp-git -Port 8082
 ```
 
 연결 주소:

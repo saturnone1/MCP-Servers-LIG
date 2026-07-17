@@ -24,7 +24,7 @@ docker build -t local/mcp-dotnet .
 ## 실행
 
 ```powershell
-docker run --rm -p 8084:8080 -v ${PWD}:/workspace local/mcp-dotnet
+.\scripts\run-docker-mcp.ps1 -Server mcp-dotnet -Port 8084
 ```
 
 연결 주소:
@@ -39,8 +39,8 @@ docker run --rm -p 8084:8080 -v ${PWD}:/workspace local/mcp-dotnet
 | `sdk_info` | `dotnet --info`를 실행합니다. |
 | `list_projects` | 지정 경로 아래 `.csproj`, `.fsproj`, `.vbproj`, `.sln` 파일을 찾습니다. |
 | `restore` | `dotnet restore`를 실행합니다. |
-| `build` | `dotnet build --no-restore`를 실행합니다. |
-| `test` | `dotnet test --no-build`를 실행합니다. |
+| `build` | 필요하면 restore를 포함해 완전한 `dotnet build`를 실행합니다. |
+| `test` | 필요하면 restore와 build를 포함해 완전한 `dotnet test`를 실행합니다. |
 | `add_package` | `dotnet add package`를 실행하고, optional version을 지원합니다. |
 | `format` | `dotnet format`을 실행합니다. |
 
@@ -51,12 +51,12 @@ docker run --rm -p 8084:8080 -v ${PWD}:/workspace local/mcp-dotnet
 | Tool | Arguments | 설명 |
 | --- | --- | --- |
 | `sdk_info` | 없음 | `/workspace`에서 `dotnet --info`를 실행합니다. |
-| `list_projects` | `path` string = `.`, `limit` int = `200` | project/solution metadata 배열을 반환합니다. |
-| `restore` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | `dotnet restore`를 실행합니다. |
-| `build` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `120000` | `dotnet build --no-restore`를 실행합니다. |
-| `test` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `180000` | `dotnet test --no-build`를 실행합니다. |
+| `list_projects` | `path` string = `.`, `limit` int = `2000` | 최대 100,000개 project/solution metadata를 반환합니다. |
+| `restore` | `projectOrSolutionPath` string, `timeoutMs` int = `600000` | `dotnet restore`를 실행합니다. |
+| `build` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `600000` | 완전한 `dotnet build`를 실행합니다. |
+| `test` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `900000` | 완전한 `dotnet test`를 실행합니다. |
 | `add_package` | `projectPath` string, `packageName` string, `version` string? = `null` | `dotnet add package`를 실행합니다. |
-| `format` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | `dotnet format`을 실행합니다. |
+| `format` | `projectOrSolutionPath` string, `timeoutMs` int = `600000` | `dotnet format`을 실행하며 최대 24시간까지 지정할 수 있습니다. |
 
 ## 환경 변수
 

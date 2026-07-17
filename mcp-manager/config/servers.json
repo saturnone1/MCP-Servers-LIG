@@ -10,11 +10,11 @@
         "office"
       ],
       "volumes": [
-        "{repo}:/workspace",
-        "C:\\:/host/c"
+        "{repo}:/workspace"
       ],
+      "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }
     },
     {
@@ -27,11 +27,11 @@
         "files"
       ],
       "volumes": [
-        "{repo}:/workspace",
-        "C:\\:/host/c"
+        "{repo}:/workspace"
       ],
+      "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }
     },
     {
@@ -44,11 +44,11 @@
         "devops"
       ],
       "volumes": [
-        "{repo}:/workspace",
-        "C:\\:/host/c"
+        "{repo}:/workspace"
       ],
+      "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }
     },
     {
@@ -61,11 +61,11 @@
         "shell"
       ],
       "volumes": [
-        "{repo}:/workspace",
-        "C:\\:/host/c"
+        "{repo}:/workspace"
       ],
+      "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }
     },
     {
@@ -78,11 +78,11 @@
         "dev"
       ],
       "volumes": [
-        "{repo}:/workspace",
-        "C:\\:/host/c"
+        "{repo}:/workspace"
       ],
+      "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }
     },
     {
@@ -112,11 +112,11 @@
         "office"
       ],
       "volumes": [
-        "{repo}:/workspace",
-        "C:\\:/host/c"
+        "{repo}:/workspace"
       ],
+      "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }
     },
     {
@@ -133,6 +133,7 @@
         "{repo}:/workspace",
         "{home}\\.kube:/root/.kube"
       ],
+      "mountHostDrives": true,
       "env": {
         "MCP_PATH_MAPPINGS": "{repo}=/workspace"
       }

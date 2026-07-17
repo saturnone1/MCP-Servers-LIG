@@ -63,7 +63,7 @@ Write-Step 'Starting disposable SQL Server fixture'
 Remove-ContainerIfExists $MssqlContainer
 docker run -d `
     --name $MssqlContainer `
-    -p "${MssqlPort}:1433" `
+    -p "127.0.0.1:${MssqlPort}:1433" `
     -e ACCEPT_EULA=Y `
     -e MSSQL_SA_PASSWORD=$SaPassword `
     -e MSSQL_PID=Developer `

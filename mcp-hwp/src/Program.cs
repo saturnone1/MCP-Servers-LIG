@@ -25,7 +25,7 @@ public sealed class HwpTools
 {
     [McpServerTool(ReadOnly = true)]
     [Description("Extract readable text from .hwp or .hwpx files.")]
-    public static async Task<string> ExtractText(string path, int maxChars = 20000)
+    public static async Task<string> ExtractText(string path, int maxChars = 1000000)
     {
         var fullPath = Guard.RequireAllowedPath(path);
         if (!File.Exists(fullPath))
@@ -69,7 +69,7 @@ public sealed class HwpTools
 
     [McpServerTool]
     [Description("Convert .hwp or .hwpx to txt, docx, pdf, or odt. Text output uses the extractor; other formats use LibreOffice.")]
-    public static async Task<CommandResult> Convert(string path, string outputDirectory = "/tmp/hwp-output", string format = "txt", int timeoutMs = 120000)
+    public static async Task<CommandResult> Convert(string path, string outputDirectory = "/tmp/hwp-output", string format = "txt", int timeoutMs = 600000)
     {
         Guard.RequireWrites();
         var fullPath = Guard.RequireAllowedPath(path);
@@ -88,7 +88,7 @@ public sealed class HwpTools
             return new CommandResult(0, $"Wrote {txtPath}", "");
         }
 
-        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", normalizedFormat, "--outdir", output, fullPath], "/tmp", Math.Clamp(timeoutMs, 1000, 600000), 2097152);
+        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", normalizedFormat, "--outdir", output, fullPath], "/tmp", Math.Clamp(timeoutMs, 1000, 86400000), 67108864);
         var outputPath = Path.Combine(output, Path.GetFileNameWithoutExtension(fullPath) + "." + normalizedFormat);
         var fallback = Directory.EnumerateFiles(output, Path.GetFileNameWithoutExtension(fullPath) + ".*").FirstOrDefault(file => string.Equals(Path.GetExtension(file), "." + normalizedFormat, StringComparison.OrdinalIgnoreCase));
         if (result.ExitCode != 0 || (!File.Exists(outputPath) && fallback is null) || result.Stderr.Contains("source file could not be loaded", StringComparison.OrdinalIgnoreCase))
@@ -111,7 +111,7 @@ public sealed class HwpTools
         if (!Guard.CommandExists(Guard.Hwp5TxtPath))
             return await ExtractHwpTextWithLibreOffice(path, new CommandResult(127, "", $"hwp5txt not found: {Guard.Hwp5TxtPath}"));
 
-        var result = await CommandRunner.Run(Guard.Hwp5TxtPath, [path], "/tmp", 120000, 2097152);
+        var result = await CommandRunner.Run(Guard.Hwp5TxtPath, [path], "/tmp", 3600000, 67108864);
         if (result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.Stdout))
             return result.Stdout;
 
@@ -127,7 +127,7 @@ public sealed class HwpTools
         Directory.CreateDirectory(tempDir);
         try
         {
-            var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", "txt:Text", "--outdir", tempDir, path], "/tmp", 120000, 2097152);
+        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", "txt:Text", "--outdir", tempDir, path], "/tmp", 3600000, 67108864);
             var txtPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(path) + ".txt");
             if (File.Exists(txtPath))
                 return await File.ReadAllTextAsync(txtPath, Encoding.UTF8);
@@ -262,7 +262,7 @@ public sealed class HwpTools
     }
 
     private static string Trim(string text, int maxChars) =>
-        text.Length <= maxChars ? text : text[..Math.Clamp(maxChars, 1, 1_000_000)] + "\n[truncated]";
+        text.Length <= maxChars ? text : text[..Math.Clamp(maxChars, 1, 10_000_000)] + "\n[truncated]";
 }
 
 internal static class CommandRunner
@@ -371,17 +371,22 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? ["/"]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 

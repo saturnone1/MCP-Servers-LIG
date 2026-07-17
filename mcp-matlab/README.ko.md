@@ -69,7 +69,7 @@ publish 폴더에서 실행:
 | `MATLAB_MCP_CORE_SERVER_PATH` | MathWorks 공식 MCP Core Server 실행 파일/스크립트 경로입니다. |
 | `MATLAB_MCP_CORE_SERVER_ARGS` | MathWorks 공식 MCP Core Server에 전달할 추가 인자입니다. |
 | `MCP_ALLOWED_DIRS` | script 파일 접근을 허용할 Windows root 목록입니다. |
-| `MCP_ENABLE_MATLAB_WRITES` | `false`로 설정하면 향후 write 계열 tool을 막습니다. |
+| `MCP_ENABLE_MATLAB_WRITES` | `false`로 설정하면 batch/script 실행, COM eval, 공식 MCP 호출, Simulink load/set/simulate/build를 막습니다. |
 
 ## 실행 정책
 

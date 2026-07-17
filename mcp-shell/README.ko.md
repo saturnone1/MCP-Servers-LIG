@@ -24,7 +24,7 @@ docker build -t local/mcp-shell .
 ## 실행
 
 ```powershell
-docker run --rm -p 8083:8080 -v ${PWD}:/workspace local/mcp-shell
+.\scripts\run-docker-mcp.ps1 -Server mcp-shell -Port 8083
 ```
 
 연결 주소:
@@ -42,7 +42,7 @@ docker run --rm -p 8083:8080 -v ${PWD}:/workspace local/mcp-shell
 
 | Tool | Arguments | 반환 |
 | --- | --- | --- |
-| `run_command` | `command` string, `args` string array = `[]`, `workingDirectory` string = `/workspace`, `timeoutMs` int = `30000`, `maxOutputBytes` int = `1048576`, `environment` object? = `null` | `{ "exitCode": number, "stdout": string, "stderr": string }` |
+| `run_command` | `command` string, `args` string array = `[]`, `workingDirectory` string = `/workspace`, `timeoutMs` int = `300000`, `maxOutputBytes` int = `16777216`, `environment` object? = `null` | 최대 24시간, 출력 64 MiB. env 허용 목록이 비어 있으면 전달한 환경변수를 모두 허용합니다. |
 
 `workingDirectory`는 매핑된 Windows 호스트 경로도 받을 수 있습니다. `MCP_SHELL_ALLOWED_ENV`가 설정되어 있으면 `environment`는 해당 allowlist로 필터링됩니다.
 

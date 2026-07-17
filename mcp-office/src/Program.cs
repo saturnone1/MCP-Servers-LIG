@@ -34,7 +34,7 @@ public sealed class OfficeTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("Extract readable text from .doc, .docx, .xlsx, or .pptx files.")]
-    public static Task<CommandResult> ExtractText(string path, int maxLines = 200)
+    public static Task<CommandResult> ExtractText(string path, int maxLines = 2000)
     {
         var fullPath = Guard.RequireAllowedPath(path);
         var extension = Path.GetExtension(fullPath);
@@ -42,10 +42,10 @@ public sealed class OfficeTools
         {
             var antiword = Environment.GetEnvironmentVariable("ANTIWORD_PATH") ?? "antiword";
             if (CommandRunner.CommandExists(antiword))
-                return CommandRunner.Run(antiword, [fullPath], "/workspace", 60000, 2097152);
+                return CommandRunner.Run(antiword, [fullPath], "/workspace", 3600000, 67108864);
         }
 
-        return OfficeCli(60000, "view", fullPath, "text", "--max-lines", Math.Clamp(maxLines, 1, 2000).ToString(), "--json");
+        return OfficeCli(3600000, "view", fullPath, "text", "--max-lines", Math.Clamp(maxLines, 1, 100000).ToString(), "--json");
     }
 
     [McpServerTool]
@@ -85,14 +85,14 @@ public sealed class OfficeTools
 
     [McpServerTool]
     [Description("Run raw OfficeCLI arguments inside the container.")]
-    public static Task<CommandResult> RunOfficeCli(string[] args, int timeoutMs = 120000)
+    public static Task<CommandResult> RunOfficeCli(string[] args, int timeoutMs = 600000)
     {
         Guard.RequireOfficeWrites();
-        return OfficeCli(Math.Clamp(timeoutMs, 1000, 300000), args);
+        return OfficeCli(Math.Clamp(timeoutMs, 1000, 86400000), args);
     }
 
     private static Task<CommandResult> OfficeCli(int timeoutMs, params string[] args) =>
-        CommandRunner.Run(Environment.GetEnvironmentVariable("OFFICECLI_PATH") ?? "officecli", args, "/workspace", timeoutMs, 2097152);
+        CommandRunner.Run(Environment.GetEnvironmentVariable("OFFICECLI_PATH") ?? "officecli", args, "/workspace", timeoutMs, 67108864);
 }
 
 internal static class CommandRunner
@@ -185,17 +185,22 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? ["/"]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 

@@ -41,7 +41,7 @@ Copy `config/rhapsody.env.example` to `config/rhapsody.env` for development, or 
 | `RHAPSODY_CLI_PATH` | Optional explicit CLI path. |
 | `RHAPSODY_COM_PROGID` | Optional explicit COM ProgID. |
 | `MCP_ALLOWED_DIRS` | Allowed Windows roots for project/model files. |
-| `MCP_ENABLE_RHAPSODY_WRITES` | Set `false` to block future write tools. |
+| `MCP_ENABLE_RHAPSODY_WRITES` | Set `false` to block project saves and package/class/interface/property/tag changes. |
 | `MCP_ENABLE_RHAPSODY_CLI` | Set `false` to block raw CLI execution. |
 
 ## COM/CLI Launch Policy

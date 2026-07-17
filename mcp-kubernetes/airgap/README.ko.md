@@ -23,11 +23,7 @@ docker load -i .\mcp-kubernetes\airgap\local-mcp-kubernetes.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-kubernetes -p 8087:8080 `
-  -v C:\:/host/c `
-  -v $HOME\.kube:/root/.kube `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-kubernetes:latest
+.\mcp-kubernetes\airgap\run-docker-mcp.ps1 -Server mcp-kubernetes -Port 8087
 ```
 
 연결 주소:

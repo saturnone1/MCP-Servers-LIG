@@ -23,10 +23,7 @@ docker load -i .\mcp-office\airgap\local-mcp-office.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-office -p 8080:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-office:latest
+.\mcp-office\airgap\run-docker-mcp.ps1 -Server mcp-office -Port 8080
 ```
 
 연결 주소:
@@ -36,4 +33,4 @@ docker run -d --name mcp-office -p 8080:8080 `
 
 ## Air Gap 참고
 
-OfficeCLI, `antiword`, .NET 런타임은 이미지 안에 포함됩니다. 런타임 인터넷은 필요 없습니다. 파일 접근은 Docker로 마운트한 호스트 경로에 한정됩니다.
+OfficeCLI, `antiword`, .NET 런타임은 이미지 안에 포함됩니다. 런타임 인터넷은 필요 없습니다. 실행 helper가 준비된 Windows 드라이브를 모두 자동 마운트합니다.

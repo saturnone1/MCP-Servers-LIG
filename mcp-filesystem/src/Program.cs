@@ -25,19 +25,19 @@ public sealed class FilesystemTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("Read a UTF-8 text file from an allowed directory.")]
-    public static async Task<string> ReadFile(string path, int maxBytes = 1048576)
+    public static async Task<string> ReadFile(string path, int maxBytes = 16777216)
     {
         var fullPath = Guard.RequireAllowedFile(path);
         await using var stream = File.OpenRead(fullPath);
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-        var buffer = new char[Math.Min(maxBytes, 1048576)];
+        var buffer = new char[Math.Clamp(maxBytes, 1, 67108864)];
         var read = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
         return new string(buffer, 0, read);
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Read multiple UTF-8 text files from allowed directories.")]
-    public static async Task<Dictionary<string, string>> ReadMultipleFiles(string[] paths, int maxBytesPerFile = 1048576)
+    public static async Task<Dictionary<string, string>> ReadMultipleFiles(string[] paths, int maxBytesPerFile = 16777216)
     {
         var result = new Dictionary<string, string>();
         foreach (var path in paths)
@@ -119,25 +119,25 @@ public sealed class FilesystemTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List a directory under an allowed root.")]
-    public static object[] ListDirectory(string path = ".", string pattern = "*", bool recursive = false, int limit = 200)
+    public static object[] ListDirectory(string path = ".", string pattern = "*", bool recursive = false, int limit = 2000)
     {
         var fullPath = Guard.RequireAllowedDirectory(path);
         var option = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         return Directory.EnumerateFileSystemEntries(fullPath, pattern, option)
-            .Take(Math.Clamp(limit, 1, 2000))
+            .Take(Math.Clamp(limit, 1, 100000))
             .Select(Info)
             .ToArray();
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Search file names under an allowed root using a regular expression.")]
-    public static object[] Search(string path, string regex, int limit = 100)
+    public static object[] Search(string path, string regex, int limit = 1000)
     {
         var fullPath = Guard.RequireAllowedDirectory(path);
-        var matcher = new Regex(regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+        var matcher = new Regex(regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(30));
         return Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories)
             .Where(p => matcher.IsMatch(Path.GetFileName(p)))
-            .Take(Math.Clamp(limit, 1, 1000))
+            .Take(Math.Clamp(limit, 1, 100000))
             .Select(Info)
             .ToArray();
     }
@@ -189,10 +189,7 @@ internal static class Guard
 
     public static string RequireAllowedPath(string path)
     {
-        var fullPath = Path.GetFullPath(TranslateHostPath(path));
-        var finalPath = File.Exists(fullPath) || Directory.Exists(fullPath)
-            ? Path.GetFullPath(new FileInfo(fullPath).FullName)
-            : fullPath;
+        var finalPath = ResolvePathForAuthorization(TranslateHostPath(path));
         if (!AllowedRoots.Any(root => IsInside(finalPath, root)))
             throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {finalPath}");
         return finalPath;
@@ -218,18 +215,53 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? ["/"]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return values.Select(NormalizeRoot).ToArray();
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return values.Select(ResolvePathForAuthorization).Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
+    }
+
+    private static string ResolvePathForAuthorization(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath) ?? throw new ArgumentException($"Path has no filesystem root: {path}", nameof(path));
+        var segments = fullPath[root.Length..]
+            .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+        var current = root;
+
+        for (var index = 0; index < segments.Length; index++)
+        {
+            var candidate = Path.Combine(current, segments[index]);
+            FileSystemInfo? entry = Directory.Exists(candidate)
+                ? new DirectoryInfo(candidate)
+                : File.Exists(candidate)
+                    ? new FileInfo(candidate)
+                    : null;
+
+            if (entry is null)
+            {
+                current = Path.Combine(current, Path.Combine(segments[index..]));
+                break;
+            }
+
+            var target = entry.ResolveLinkTarget(returnFinalTarget: true);
+            current = target is null ? candidate : Path.GetFullPath(target.FullName);
+        }
+
+        return Path.GetFullPath(current);
     }
 
     private static string TranslateHostPath(string path)

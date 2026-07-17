@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-dotnet:lates
 ## Run
 
 ```powershell
-docker run --rm -p 8084:8080 -v ${PWD}:/workspace local/mcp-dotnet
+.\scripts\run-docker-mcp.ps1 -Server mcp-dotnet -Port 8084
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8084/mcp` or legacy SSE at `http://localhost:8084/sse`. Trusted-local images enable mutating operations such as `add package` and `format` by default.
@@ -36,8 +36,8 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8084/mcp` or legac
 | `sdk_info` | Runs `dotnet --info`. |
 | `list_projects` | Finds `.csproj`, `.fsproj`, `.vbproj`, and `.sln` files under a path. |
 | `restore` | Runs `dotnet restore`. |
-| `build` | Runs `dotnet build --no-restore`. |
-| `test` | Runs `dotnet test --no-build`. |
+| `build` | Runs a complete `dotnet build`, including restore when needed. |
+| `test` | Runs a complete `dotnet test`, including restore and build when needed. |
 | `add_package` | Runs `dotnet add package`, optionally with a version. |
 | `format` | Runs `dotnet format`. |
 
@@ -48,12 +48,12 @@ Command tools return `{ "exitCode": number, "stdout": string, "stderr": string }
 | Tool | Arguments | Notes |
 | --- | --- | --- |
 | `sdk_info` | none | Runs from `/workspace`. |
-| `list_projects` | `path` string = `.`, `limit` int = `200` | Returns project/solution metadata array. |
-| `restore` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | Runs `dotnet restore`. |
-| `build` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `120000` | Runs `dotnet build --no-restore`. |
-| `test` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `180000` | Runs `dotnet test --no-build`. |
+| `list_projects` | `path` string = `.`, `limit` int = `2000` | Returns up to 100,000 project/solution entries. |
+| `restore` | `projectOrSolutionPath` string, `timeoutMs` int = `600000` | Runs `dotnet restore`. |
+| `build` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `600000` | Runs a complete `dotnet build`. |
+| `test` | `projectOrSolutionPath` string, `configuration` string = `Debug`, `timeoutMs` int = `900000` | Runs a complete `dotnet test`. |
 | `add_package` | `projectPath` string, `packageName` string, `version` string? = `null` | Runs `dotnet add package`. |
-| `format` | `projectOrSolutionPath` string, `timeoutMs` int = `120000` | Runs `dotnet format`. |
+| `format` | `projectOrSolutionPath` string, `timeoutMs` int = `600000` | Runs `dotnet format`; command timeout can be raised to 24 hours. |
 
 ## Environment
 

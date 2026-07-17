@@ -23,10 +23,7 @@ docker load -i .\mcp-dotnet\airgap\local-mcp-dotnet.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-dotnet -p 8084:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-dotnet:latest
+.\mcp-dotnet\airgap\run-docker-mcp.ps1 -Server mcp-dotnet -Port 8084
 ```
 
 연결 주소:

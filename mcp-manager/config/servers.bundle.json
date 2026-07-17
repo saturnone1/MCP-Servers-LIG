@@ -12,9 +12,9 @@
       "workingDirectory": "{manager}\\mcp-office-win-x64",
       "executable": "McpOffice.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
+        "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_OFFICE_WRITES": "true",
-        "MCP_PATH_MAPPINGS": "C:\\=C:\\",
+        "MCP_PATH_MAPPINGS": "",
         "OFFICECLI_PATH": "{manager}\\mcp-office-win-x64\\tools\\officecli.exe",
         "ANTIWORD_PATH": "{manager}\\mcp-office-win-x64\\tools\\antiword.exe"
       }
@@ -31,7 +31,7 @@
       "workingDirectory": "{manager}\\mcp-filesystem-win-x64",
       "executable": "McpFilesystem.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
+        "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_WRITES": "true"
       }
     },
@@ -47,7 +47,7 @@
       "workingDirectory": "{manager}\\mcp-git-win-x64",
       "executable": "McpGit.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
+        "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_GIT_WRITES": "true"
       }
     },
@@ -63,7 +63,7 @@
       "workingDirectory": "{manager}\\mcp-shell-win-x64",
       "executable": "McpShell.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
+        "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_SHELL": "true"
       }
     },
@@ -79,7 +79,7 @@
       "workingDirectory": "{manager}\\mcp-dotnet-win-x64",
       "executable": "McpDotnet.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
+        "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_DOTNET_WRITES": "true"
       }
     },
@@ -111,8 +111,8 @@
       "workingDirectory": "{manager}\\mcp-hwp-win-x64",
       "executable": "McpHwp.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
-        "MCP_PATH_MAPPINGS": "C:\\=C:\\",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_PATH_MAPPINGS": "",
         "SOFFICE_PATH": "soffice",
         "HWP5TXT_PATH": "hwp5txt"
       }
@@ -130,7 +130,7 @@
       "workingDirectory": "{manager}\\mcp-kubernetes-win-x64",
       "executable": "McpKubernetes.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "C:\\",
+        "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_KUBERNETES_WRITES": "true",
         "MCP_ENABLE_RAW_KUBECTL": "true",
         "KUBECTL_PATH": "kubectl"
@@ -272,7 +272,10 @@
         "modeling"
       ],
       "workingDirectory": "{manager}\\mcp-rhapsody-win-x64",
-      "executable": "McpRhapsody.exe"
+      "executable": "McpRhapsody.exe",
+      "env": {
+        "MCP_ALLOWED_DIRS": "*"
+      }
     },
     {
       "name": "mcp-matlab",
@@ -285,7 +288,10 @@
         "engineering"
       ],
       "workingDirectory": "{manager}\\mcp-matlab-win-x64",
-      "executable": "McpMatlab.exe"
+      "executable": "McpMatlab.exe",
+      "env": {
+        "MCP_ALLOWED_DIRS": "*"
+      }
     },
     {
       "name": "mcp-autocad",
@@ -298,7 +304,10 @@
         "cad"
       ],
       "workingDirectory": "{manager}\\mcp-autocad-win-x64",
-      "executable": "McpAutoCad.exe"
+      "executable": "McpAutoCad.exe",
+      "env": {
+        "MCP_ALLOWED_DIRS": "*"
+      }
     },
     {
       "name": "mcp-solidworks",
@@ -311,7 +320,10 @@
         "cad"
       ],
       "workingDirectory": "{manager}\\mcp-solidworks-win-x64",
-      "executable": "McpSolidWorks.exe"
+      "executable": "McpSolidWorks.exe",
+      "env": {
+        "MCP_ALLOWED_DIRS": "*"
+      }
     }
   ]
 }

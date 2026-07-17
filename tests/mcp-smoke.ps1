@@ -1,7 +1,7 @@
 param(
     [string]$Workspace = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
-    [string]$HostDriveRoot = 'C:\',
-    [string]$HostDriveMount = '/host/c',
+    [string]$HostDriveRoot = '',
+    [string]$HostDriveMount = '',
     [string]$VirtualizationHostPath = 'C:\Users\taewon\Desktop\가상화',
     [string]$PostgresConnectionString = '',
     [string]$MssqlConnectionString = '',
@@ -194,15 +194,31 @@ function Restart-Containers {
     }
 
     foreach ($server in $servers) {
-        $args = @('run', '-d', '--name', $server.Name, '-p', "$($server.Port):8080", '-v', "${Workspace}:/workspace")
+        $args = @('run', '-d', '--name', $server.Name, '-p', "127.0.0.1:$($server.Port):8080", '-v', "${Workspace}:/workspace")
         $pathMappings = @("${Workspace}=/workspace")
-        if (Test-Path -LiteralPath $HostDriveRoot) {
+        if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+            foreach ($drive in [System.IO.DriveInfo]::GetDrives()) {
+                try {
+                    if (-not $drive.IsReady -or $drive.RootDirectory.FullName -notmatch '^[A-Za-z]:\\$') { continue }
+                    $root = $drive.RootDirectory.FullName
+                    $driveLetter = $root.Substring(0, 1).ToLowerInvariant()
+                    $containerPath = "/host/drives/$driveLetter"
+                    $args += @('-v', "$($root):$containerPath")
+                    $pathMappings += "$root=$containerPath"
+                }
+                catch [System.IO.IOException] { continue }
+                catch [System.UnauthorizedAccessException] { continue }
+            }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($HostDriveRoot) -and
+            -not [string]::IsNullOrWhiteSpace($HostDriveMount) -and
+            (Test-Path -LiteralPath $HostDriveRoot)) {
             $args += @('-v', "$($HostDriveRoot):$HostDriveMount")
-            $pathMappings += "$HostDriveRoot=$HostDriveMount"
+            $pathMappings = @("$HostDriveRoot=$HostDriveMount") + $pathMappings
         }
         if (Test-Path -LiteralPath $VirtualizationHostPath) {
             $args += @('-v', "${VirtualizationHostPath}:/virtualization")
-            $pathMappings += "${VirtualizationHostPath}=/virtualization"
+            $pathMappings = @("${VirtualizationHostPath}=/virtualization") + $pathMappings
         }
         $args += @('-e', "MCP_PATH_MAPPINGS=$($pathMappings -join ';')")
         if ($server.Name -eq 'mcp-mssql' -and -not [string]::IsNullOrWhiteSpace($MssqlConnectionString)) {

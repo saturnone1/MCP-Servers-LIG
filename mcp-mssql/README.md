@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-mssql:latest
 ## Run
 
 ```powershell
-docker run --rm -p 8085:8080 -e MSSQL_CONNECTION_STRING="Server=host.docker.internal;Database=master;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True" local/mcp-mssql
+docker run --rm -p 127.0.0.1:8085:8080 -e MSSQL_CONNECTION_STRING="Server=host.docker.internal;Database=master;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True" local/mcp-mssql
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8085/mcp` or legacy SSE at `http://localhost:8085/sse`. Trusted-local images enable non-query SQL writes by default, but SQL tools still require a valid `MSSQL_CONNECTION_STRING` or per-call connection string.
@@ -50,7 +50,7 @@ SQL tools use `MSSQL_CONNECTION_STRING` by default. Pass `connectionString` per 
 | `list_schemas` | `connectionString` string? = `null` | Schema metadata array. |
 | `list_tables` | `connectionString` string? = `null`, `schema` string? = `null` | Table metadata array. |
 | `describe_table` | `tableName` string, `schema` string = `dbo`, `connectionString` string? = `null` | Column metadata array. |
-| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `200` | Row objects. Only `SELECT` and `WITH` queries are accepted. |
+| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `2000` | Up to 100,000 rows; read-query timeout is one hour. |
 | `execute_non_query` | `sql` string, `connectionString` string? = `null`, `timeoutSeconds` int = `30` | Rows affected and execution metadata. |
 
 ## Environment

@@ -163,7 +163,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 .\mcp-bundle\McpManager.exe urls all
 .\mcp-bundle\McpManager.exe stop all
 .\mcp-bundle\LIG-AI-MCP.cmd env mcp-filesystem
-.\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
+.\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS "*"
 .\mcp-bundle\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
 .\mcp-bundle\LIG-AI-MCP.cmd autostart enable mcp-filesystem
 .\mcp-bundle\LIG-AI-MCP.cmd autostart list
@@ -320,16 +320,13 @@ air gap 환경에서는 이 값들을 내부 서비스, 내부 DNS, 또는 로�
 
 ## Windows 경로 매핑
 
-Linux 컨테이너 안에서 MCP 클라이언트가 넘긴 Windows 호스트 경로를 쓰려면 해당 호스트 폴더를 Docker로 마운트하고 `MCP_PATH_MAPPINGS`에 등록해야 합니다.
+Linux 컨테이너 안에서 MCP 클라이언트가 넘긴 Windows 호스트 경로를 쓰려면 호스트 드라이브를 Docker로 마운트하고 `MCP_PATH_MAPPINGS`에 등록해야 합니다. 제공된 helper는 준비된 Windows 드라이브를 모두 자동 처리하고 포트를 localhost에만 공개합니다.
 
 ```powershell
-docker run --rm -p 42181:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-filesystem
+.\scripts\run-docker-mcp.ps1 -Server mcp-filesystem -Port 42181
 ```
 
-같은 방식의 경로 매핑은 Office, filesystem, Git, shell, .NET, HWP처럼 파일 경로를 받는 서버에서 지원합니다. `MCP_ALLOWED_DIRS=/`는 컨테이너 내부 파일시스템을 여는 설정이지, Docker에 마운트하지 않은 호스트 폴더까지 자동으로 보이게 하지는 않습니다.
+같은 방식의 경로 매핑은 Office, filesystem, Git, shell, .NET, HWP, Kubernetes처럼 파일 경로를 받는 서버에서 지원합니다. MCP 매니저 설정에서 `mountHostDrives`가 활성화된 서버는 실행 시 준비된 Windows 드라이브(C:, D:, E: 등)를 `/host/drives/<문자>`에 자동 마운트하고 경로 매핑을 구성합니다. Windows 호스트 프로세스에서는 `MCP_ALLOWED_DIRS=*`가 현재 연결된 모든 드라이브 루트를 뜻합니다. 운영체제 계정 권한이나 Docker Desktop의 드라이브 공유 정책은 그대로 적용됩니다.
 
 ## Kubernetes 배포
 

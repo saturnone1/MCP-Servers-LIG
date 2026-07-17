@@ -21,7 +21,7 @@ app.Run();
 
 public sealed class LokiTools
 {
-    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(300) };
+    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromHours(1) };
 
     [McpServerTool(ReadOnly = true)]
     [Description("Return this MCP server's Loki target configuration.")]
@@ -44,7 +44,7 @@ public sealed class LokiTools
         var parameters = new Dictionary<string, string>
         {
             ["query"] = query,
-            ["limit"] = Math.Clamp(limit, 1, 5000).ToString(CultureInfo.InvariantCulture),
+            ["limit"] = Math.Clamp(limit, 1, 100000).ToString(CultureInfo.InvariantCulture),
             ["direction"] = direction
         };
         if (!string.IsNullOrWhiteSpace(time)) parameters["time"] = time;
@@ -60,7 +60,7 @@ public sealed class LokiTools
             ["query"] = query,
             ["start"] = start,
             ["end"] = end,
-            ["limit"] = Math.Clamp(limit, 1, 5000).ToString(CultureInfo.InvariantCulture),
+            ["limit"] = Math.Clamp(limit, 1, 100000).ToString(CultureInfo.InvariantCulture),
             ["direction"] = direction
         };
         if (!string.IsNullOrWhiteSpace(step)) parameters["step"] = step;
@@ -72,7 +72,7 @@ public sealed class LokiTools
     public static Task<LokiResult> RecentLogs(string selector, int sinceMinutes = 30, int limit = 200, string direction = "backward")
     {
         var end = DateTimeOffset.UtcNow;
-        var start = end.AddMinutes(-Math.Clamp(sinceMinutes, 1, 10080));
+        var start = end.AddMinutes(-Math.Clamp(sinceMinutes, 1, 5256000));
         return QueryRange(selector, ToUnixNano(start), ToUnixNano(end), null, limit, direction);
     }
 

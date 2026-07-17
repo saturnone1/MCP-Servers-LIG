@@ -23,7 +23,7 @@ docker load -i .\mcp-prometheus\airgap\local-mcp-prometheus.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-prometheus -p 8089:8080 `
+docker run -d --name mcp-prometheus -p 127.0.0.1:8089:8080 `
   -e "PROMETHEUS_BASE_URL=http://prometheus.internal:9090" `
   local/mcp-prometheus:latest
 ```

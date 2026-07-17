@@ -69,7 +69,7 @@ Copy `config/matlab.env.example` to `config/matlab.env` for development, or edit
 | `MATLAB_MCP_CORE_SERVER_PATH` | Optional path to the official MathWorks MCP Core Server executable/script. |
 | `MATLAB_MCP_CORE_SERVER_ARGS` | Optional arguments passed to the official MathWorks MCP Core Server. |
 | `MCP_ALLOWED_DIRS` | Semicolon-separated Windows roots allowed for script files. |
-| `MCP_ENABLE_MATLAB_WRITES` | Set `false` to block future write-oriented tools. |
+| `MCP_ENABLE_MATLAB_WRITES` | Set `false` to block batch/script execution, COM eval, official MCP calls, and Simulink load/set/simulate/build. |
 
 ## Launch Policy
 

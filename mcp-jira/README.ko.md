@@ -23,7 +23,7 @@ docker build -t local/mcp-jira .
 ## 실행
 
 ```powershell
-docker run --rm -p 8092:8080 `
+docker run --rm -p 127.0.0.1:8092:8080 `
   -e "JIRA_BASE_URL=https://jira.example.local" `
   -e "JIRA_BEARER_TOKEN=<token>" `
   local/mcp-jira
@@ -46,6 +46,8 @@ docker run --rm -p 8092:8080 `
 | `list_transitions` | 사용 가능한 issue transition 목록을 조회합니다. |
 | `transition_issue` | issue transition을 실행합니다. |
 | `list_projects` | Jira project 목록을 조회합니다. |
+
+`search_issues`는 기본 100개를 반환하며 `startAt`으로 Jira의 요청당 100개 제한 이후도 계속 조회할 수 있습니다.
 
 ## 환경 변수
 

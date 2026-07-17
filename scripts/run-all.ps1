@@ -1,7 +1,7 @@
 param(
     [string]$Workspace = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
-    [string]$HostDriveRoot = 'C:\',
-    [string]$HostDriveMount = '/host/c',
+    [string]$HostDriveRoot = '',
+    [string]$HostDriveMount = '',
     [string]$MssqlConnectionString = '',
     [string]$PostgresConnectionString = '',
     [string]$PrometheusBaseUrl = '',
@@ -61,13 +61,31 @@ if ($existing) {
 $pathMappings = @("${Workspace}=/workspace")
 $mounts = @('-v', "${Workspace}:/workspace")
 
-if (Test-Path -LiteralPath $HostDriveRoot) {
+if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    foreach ($drive in [System.IO.DriveInfo]::GetDrives()) {
+        try {
+            if (-not $drive.IsReady -or $drive.RootDirectory.FullName -notmatch '^[A-Za-z]:\\$') { continue }
+            $root = $drive.RootDirectory.FullName
+            $driveLetter = $root.Substring(0, 1).ToLowerInvariant()
+            $containerPath = "/host/drives/$driveLetter"
+            $mounts += @('-v', "$($root):$containerPath")
+            $pathMappings += "$root=$containerPath"
+        }
+        catch [System.IO.IOException] { continue }
+        catch [System.UnauthorizedAccessException] { continue }
+    }
+}
+
+# Backward-compatible optional mount for callers that still pass the old parameters.
+if (-not [string]::IsNullOrWhiteSpace($HostDriveRoot) -and
+    -not [string]::IsNullOrWhiteSpace($HostDriveMount) -and
+    (Test-Path -LiteralPath $HostDriveRoot)) {
     $mounts += @('-v', "$($HostDriveRoot):$HostDriveMount")
-    $pathMappings += "$HostDriveRoot=$HostDriveMount"
+    $pathMappings = @("$HostDriveRoot=$HostDriveMount") + $pathMappings
 }
 
 foreach ($server in $servers) {
-    $args = @('run', '-d', '--name', $server.Name, '-p', "$($server.Port):8080")
+    $args = @('run', '-d', '--name', $server.Name, '-p', "127.0.0.1:$($server.Port):8080")
     $args += $mounts
     $args += @('-e', "MCP_PATH_MAPPINGS=$($pathMappings -join ';')")
     if ($server.Name -eq 'mcp-mssql' -and -not [string]::IsNullOrWhiteSpace($MssqlConnectionString)) {

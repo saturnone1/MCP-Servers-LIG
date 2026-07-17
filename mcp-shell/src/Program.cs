@@ -24,14 +24,14 @@ public sealed class ShellTools
         string command,
         string[]? args = null,
         string workingDirectory = ".",
-        int timeoutMs = 30000,
-        int maxOutputBytes = 1048576,
+        int timeoutMs = 300000,
+        int maxOutputBytes = 16777216,
         Dictionary<string, string>? environment = null)
     {
         Guard.RequireShell();
         Guard.RequireAllowedCommand(command);
         var directory = Guard.RequireAllowedDirectory(workingDirectory);
-        return CommandRunner.Run(command, args ?? [], directory, Math.Clamp(timeoutMs, 1000, 300000), Math.Clamp(maxOutputBytes, 1024, 4194304), environment);
+        return CommandRunner.Run(command, args ?? [], directory, Math.Clamp(timeoutMs, 1000, 86400000), Math.Clamp(maxOutputBytes, 1024, 67108864), environment);
     }
 }
 
@@ -117,27 +117,32 @@ internal static class Guard
 
     public static IEnumerable<KeyValuePair<string, string>> FilterEnvironment(Dictionary<string, string>? environment)
     {
-        if (environment is null || AllowedEnv.Length == 0)
+        if (environment is null)
             yield break;
         foreach (var pair in environment)
-            if (AllowedEnv.Contains(pair.Key, StringComparer.OrdinalIgnoreCase))
+            if (AllowedEnv.Length == 0 || AllowedEnv.Contains(pair.Key, StringComparer.OrdinalIgnoreCase))
                 yield return pair;
     }
 
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? ["/"]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 

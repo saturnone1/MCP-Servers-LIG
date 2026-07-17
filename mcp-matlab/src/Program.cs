@@ -56,7 +56,7 @@ public sealed class MatlabTools
 
     [McpServerTool]
     [Description("Run MATLAB in batch mode with the provided MATLAB command text.")]
-    public static Task<CommandResult> RunBatch(string command, int timeoutMs = 300000)
+    public static Task<CommandResult> RunBatch(string command, int timeoutMs = 900000)
     {
         Guard.RequireWrites();
         return RunBatchInternal(command, timeoutMs);
@@ -64,7 +64,7 @@ public sealed class MatlabTools
 
     [McpServerTool]
     [Description("Run a MATLAB .m script file with matlab -batch run('path').")]
-    public static Task<CommandResult> RunScript(string path, int timeoutMs = 300000)
+    public static Task<CommandResult> RunScript(string path, int timeoutMs = 900000)
     {
         var fullPath = Guard.RequireAllowedFile(path);
         var escaped = fullPath.Replace("'", "''", StringComparison.Ordinal);
@@ -109,7 +109,7 @@ public sealed class MatlabTools
 
     [McpServerTool]
     [Description("Call a tool exposed by the official MathWorks MATLAB MCP server over stdio.")]
-    public static Task<JsonNode?> OfficialMcpToolCall(string name, Dictionary<string, object?>? arguments = null, int timeoutMs = 300000)
+    public static Task<JsonNode?> OfficialMcpToolCall(string name, Dictionary<string, object?>? arguments = null, int timeoutMs = 900000)
     {
         Guard.RequireWrites();
         var args = JsonSerializer.SerializeToNode(arguments ?? new Dictionary<string, object?>()) as JsonObject ?? new JsonObject();
@@ -118,7 +118,7 @@ public sealed class MatlabTools
 
     [McpServerTool]
     [Description("Send a raw JSON-RPC method and params object to the official MathWorks MATLAB MCP server over stdio.")]
-    public static Task<JsonNode?> OfficialMcpRawRequest(string method, string paramsJson = "{}", int timeoutMs = 300000)
+    public static Task<JsonNode?> OfficialMcpRawRequest(string method, string paramsJson = "{}", int timeoutMs = 900000)
     {
         Guard.RequireWrites();
         var parsed = JsonNode.Parse(string.IsNullOrWhiteSpace(paramsJson) ? "{}" : paramsJson) as JsonObject ?? new JsonObject();
@@ -180,7 +180,7 @@ public sealed class MatlabTools
     private static Task<CommandResult> RunBatchInternal(string command, int timeoutMs)
     {
         var matlab = MatlabDetection.ResolveMatlabExe() ?? throw new FileNotFoundException("MATLAB executable was not found. Set MATLAB_EXE_PATH or add matlab to PATH.");
-        return CommandRunner.Run(matlab, ["-batch", command], Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 3600000), 8 * 1024 * 1024);
+        return CommandRunner.Run(matlab, ["-batch", command], Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 86400000), 64 * 1024 * 1024);
     }
 
     private static string EscapeMatlab(string value) => value.Replace("'", "''", StringComparison.Ordinal);
@@ -235,8 +235,7 @@ internal static class MatlabDetection
 
 internal static class Guard
 {
-    public static string[] AllowedRoots => (Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS") ?? "C:\\")
-        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    public static string[] AllowedRoots { get; } = ParseAllowedRoots();
     public static bool WritesEnabled => !string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_MATLAB_WRITES"), "false", StringComparison.OrdinalIgnoreCase);
     public static void RequireWrites()
     {
@@ -261,6 +260,16 @@ internal static class Guard
             return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
         return path.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
                path.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string[] ParseAllowedRoots()
+    {
+        var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return OperatingSystem.IsWindows()
+                ? DriveInfo.GetDrives().Select(drive => drive.RootDirectory.FullName).ToArray()
+                : ["/"];
+        return raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
 

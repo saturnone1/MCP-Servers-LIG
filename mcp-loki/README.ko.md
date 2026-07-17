@@ -23,7 +23,7 @@ docker build -t local/mcp-loki .
 ## 실행
 
 ```powershell
-docker run --rm -p 8093:8080 `
+docker run --rm -p 127.0.0.1:8093:8080 `
   -e "LOKI_BASE_URL=http://host.docker.internal:3100" `
   local/mcp-loki
 ```

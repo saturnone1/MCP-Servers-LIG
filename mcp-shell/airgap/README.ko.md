@@ -23,10 +23,7 @@ docker load -i .\mcp-shell\airgap\local-mcp-shell.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-shell -p 8083:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-shell:latest
+.\mcp-shell\airgap\run-docker-mcp.ps1 -Server mcp-shell -Port 8083
 ```
 
 연결 주소:

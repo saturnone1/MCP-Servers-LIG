@@ -17,6 +17,7 @@ foreach ($server in $Servers) {
     }
 
     New-Item -ItemType Directory -Force -Path $airgapDir | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'run-docker-mcp.ps1') -Destination (Join-Path $airgapDir 'run-docker-mcp.ps1') -Force
     docker image inspect $image *> $null
     docker save -o $tarPath $image
 

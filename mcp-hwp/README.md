@@ -25,7 +25,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-hwp:latest` 
 ## Run
 
 ```powershell
-docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
+.\scripts\run-docker-mcp.ps1 -Server mcp-hwp -Port 8086
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8086/mcp` or legacy SSE at `http://localhost:8086/sse`.
@@ -42,9 +42,9 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8086/mcp` or legac
 
 | Tool | Arguments | Returns |
 | --- | --- | --- |
-| `extract_text` | `path` string, `maxChars` int = `20000` | Extracted text. If the mapped file is missing, returns a file-not-found message. |
+| `extract_text` | `path` string, `maxChars` int = `1000000` | Extracted text, up to 10,000,000 characters. |
 | `inspect` | `path` string | Metadata object. Missing files return `{ "exists": false, "requestedPath": ..., "mappedPath": ..., "error": ... }`. |
-| `convert` | `path` string, `outputDirectory` string = `/tmp/hwp-output`, `format` string = `txt`, `timeoutMs` int = `120000` | `{ "exitCode": number, "stdout": string, "stderr": string }`. `txt` writes extracted text. `docx`, `pdf`, and `odt` use LibreOffice. |
+| `convert` | `path` string, `outputDirectory` string = `/tmp/hwp-output`, `format` string = `txt`, `timeoutMs` int = `600000` | Up to 24 hours and 64 MiB output. `txt` writes extracted text; other formats use LibreOffice. |
 
 Supported formats are `txt`, `docx`, `pdf`, and `odt`.
 
@@ -54,6 +54,7 @@ Supported formats are `txt`, `docx`, `pdf`, and `odt`.
 | --- | --- | --- |
 | `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for file paths. |
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
+| `MCP_ENABLE_HWP_WRITES` | `true` | Set `false` to block `convert`. |
 | `HWP5TXT_PATH` | `hwp5txt` | Override optional fallback `hwp5txt` executable path. |
 | `SOFFICE_PATH` | `soffice` | Override optional LibreOffice executable path. |
 

@@ -24,7 +24,7 @@ docker build -t local/mcp-docker .
 ## 실행
 
 ```powershell
-docker run --rm -p 8088:8080 `
+docker run --rm -p 127.0.0.1:8088:8080 `
   -v /var/run/docker.sock:/var/run/docker.sock `
   local/mcp-docker
 ```
@@ -67,6 +67,13 @@ docker run --rm -p 8088:8080 `
 | `remove_container` | `container` string, `force` bool = `false` |
 | `pull_image` | `image` string |
 | `remove_image` | `image` string, `force` bool = `false` |
+
+## 환경 변수
+
+| 변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `MCP_ENABLE_DOCKER_WRITES` | `true` | `false`로 설정하면 container/image 시작·중지·생성·삭제·pull을 차단합니다. |
+| `DOCKER_PATH` | `docker` | Docker CLI 실행 파일 경로입니다. |
 
 ## Kubernetes
 

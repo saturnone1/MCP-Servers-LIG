@@ -26,7 +26,7 @@ public sealed class GitTools
     [McpServerTool(ReadOnly = true)]
     [Description("Return recent git commits.")]
     public static Task<CommandResult> Log(string repositoryPath = ".", int maxCount = 20) =>
-        Git(repositoryPath, "log", $"--max-count={Math.Clamp(maxCount, 1, 200)}", "--oneline", "--decorate");
+        Git(repositoryPath, "log", $"--max-count={Math.Clamp(maxCount, 1, 100000)}", "--oneline", "--decorate");
 
     [McpServerTool(ReadOnly = true)]
     [Description("Show git diff output.")]
@@ -63,7 +63,7 @@ public sealed class GitTools
     [McpServerTool(ReadOnly = true)]
     [Description("Search tracked content using git grep.")]
     public static Task<CommandResult> Grep(string repositoryPath, string pattern, int maxMatches = 100) =>
-        Git(repositoryPath, "grep", "-n", "-I", $"-m{Math.Clamp(maxMatches, 1, 1000)}", pattern);
+        Git(repositoryPath, "grep", "-n", "-I", $"-m{Math.Clamp(maxMatches, 1, 100000)}", pattern);
 
     [McpServerTool]
     [Description("Run git init.")]
@@ -89,7 +89,7 @@ public sealed class GitTools
         createBranch ? GitWrite(repositoryPath, "checkout", "-b", target) : GitWrite(repositoryPath, "checkout", target);
 
     private static Task<CommandResult> Git(string repositoryPath, params string[] args) =>
-        CommandRunner.Run("git", args, Guard.RequireAllowedDirectory(repositoryPath), 30000, 1048576);
+        CommandRunner.Run("git", args, Guard.RequireAllowedDirectory(repositoryPath), 3600000, 67108864);
 
     private static Task<CommandResult> GitWrite(string repositoryPath, params string[] args)
     {
@@ -171,17 +171,22 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? ["/"]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 

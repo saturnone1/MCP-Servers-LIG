@@ -29,7 +29,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-office:lates
 ## Run
 
 ```powershell
-docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
+.\scripts\run-docker-mcp.ps1 -Server mcp-office -Port 8080
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8080/mcp` or legacy SSE at `http://localhost:8080/sse`. Trusted-local images enable document creation, batch edits, text snapshot export, and raw OfficeCLI calls by default.
@@ -54,11 +54,11 @@ All tools return a command-style object: `{ "exitCode": number, "stdout": string
 | --- | --- | --- |
 | `version` | none | Returns the bundled OfficeCLI version. |
 | `inspect_document` | `path` string, `mode` string = `text` | Runs OfficeCLI inspection for `.docx`, `.xlsx`, `.pptx`, and supported OfficeCLI formats. |
-| `extract_text` | `path` string, `maxLines` int = `200` | Uses OfficeCLI for modern Office files. For legacy `.doc`, `antiword` is used when available, otherwise OfficeCLI is used as fallback. |
+| `extract_text` | `path` string, `maxLines` int = `2000` | Extracts up to 100,000 lines with up to 64 MiB output. |
 | `create_document` | `path` string | Creates a document at the mapped path. |
 | `apply_batch` | `documentPath` string, `batchJsonPath` string | Applies an OfficeCLI batch JSON file. |
 | `render_document` | `documentPath` string, `outputPath` string | Writes the OfficeCLI `view text --json` output to the requested path. This is a text snapshot, not PDF/HTML/image rendering. |
-| `run_office_cli` | `args` string array, `timeoutMs` int = `120000` | Advanced escape hatch for raw OfficeCLI arguments. |
+| `run_office_cli` | `args` string array, `timeoutMs` int = `600000` | Raw OfficeCLI escape hatch, up to 24 hours and 64 MiB output. |
 
 ## Environment
 

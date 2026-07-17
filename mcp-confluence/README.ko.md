@@ -24,7 +24,7 @@ docker build -t local/mcp-confluence .
 ## 실행
 
 ```powershell
-docker run --rm -p 42198:8080 `
+docker run --rm -p 127.0.0.1:42198:8080 `
   -e "CONFLUENCE_BASE_URL=https://confluence.example.local" `
   -e "CONFLUENCE_BEARER_TOKEN=<token>" `
   local/mcp-confluence
@@ -48,6 +48,8 @@ MCP 클라이언트는 Streamable HTTP `http://localhost:42198/mcp` 또는 legac
 | `create_page` | storage 형식 본문으로 페이지를 생성합니다. |
 | `update_page` | 다음 version 번호로 페이지를 갱신합니다. |
 | `delete_content` | 콘텐츠를 삭제 또는 휴지통 처리합니다. |
+
+목록·검색 tool은 요청당 최대 100개를 기본 사용하며 `start`로 계속 조회할 수 있습니다.
 
 ## 환경변수
 

@@ -29,12 +29,12 @@ public sealed class PostgresqlTools
     [McpServerTool(ReadOnly = true)]
     [Description("List PostgreSQL databases visible to the configured login.")]
     public static Task<object[]> ListDatabases(string? connectionString = null) =>
-        Query(connectionString, "select datname as database_name from pg_database where datistemplate = false order by datname", 200);
+        Query(connectionString, "select datname as database_name from pg_database where datistemplate = false order by datname", 100000);
 
     [McpServerTool(ReadOnly = true)]
     [Description("List schemas in the current PostgreSQL database.")]
     public static Task<object[]> ListSchemas(string? connectionString = null) =>
-        Query(connectionString, "select schema_name from information_schema.schemata order by schema_name", 500);
+        Query(connectionString, "select schema_name from information_schema.schemata order by schema_name", 100000);
 
     [McpServerTool(ReadOnly = true)]
     [Description("List tables in the current PostgreSQL database.")]
@@ -47,7 +47,7 @@ public sealed class PostgresqlTools
               and table_schema not in ('pg_catalog', 'information_schema')
             order by table_schema, table_name
             """;
-        return Query(connectionString, sql, 1000, new NpgsqlParameter("schema", (object?)schema ?? DBNull.Value));
+        return Query(connectionString, sql, 100000, new NpgsqlParameter("schema", (object?)schema ?? DBNull.Value));
     }
 
     [McpServerTool(ReadOnly = true)]
@@ -60,15 +60,15 @@ public sealed class PostgresqlTools
             where table_schema = @schema and table_name = @table
             order by ordinal_position
             """;
-        return Query(connectionString, sql, 1000, new NpgsqlParameter("schema", schema), new NpgsqlParameter("table", tableName));
+        return Query(connectionString, sql, 100000, new NpgsqlParameter("schema", schema), new NpgsqlParameter("table", tableName));
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Execute a read-only PostgreSQL query and return rows.")]
-    public static Task<object[]> ExecuteReadQuery(string sql, string? connectionString = null, int maxRows = 200)
+    public static Task<object[]> ExecuteReadQuery(string sql, string? connectionString = null, int maxRows = 2000)
     {
         Guard.RequireReadQuery(sql);
-        return Query(connectionString, sql, Math.Clamp(maxRows, 1, 5000));
+        return Query(connectionString, sql, Math.Clamp(maxRows, 1, 100000));
     }
 
     [McpServerTool]
@@ -78,7 +78,7 @@ public sealed class PostgresqlTools
         Guard.RequireSqlWrites();
         await using var connection = new NpgsqlConnection(Guard.ConnectionString(connectionString));
         await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = Math.Clamp(timeoutSeconds, 1, 300) };
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = Math.Clamp(timeoutSeconds, 1, 86400) };
         var affected = await command.ExecuteNonQueryAsync();
         return new { rowsAffected = affected };
     }
@@ -87,7 +87,7 @@ public sealed class PostgresqlTools
     {
         await using var connection = new NpgsqlConnection(Guard.ConnectionString(connectionString));
         await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 60 };
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 3600 };
         command.Parameters.AddRange(parameters);
         await using var reader = await command.ExecuteReaderAsync();
         var rows = new List<Dictionary<string, object?>>();

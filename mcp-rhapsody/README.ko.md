@@ -41,7 +41,7 @@ airgap Windows 배포 폴더 생성:
 | `RHAPSODY_CLI_PATH` | Rhapsody CLI 경로를 명시합니다. |
 | `RHAPSODY_COM_PROGID` | Rhapsody COM ProgID를 명시합니다. |
 | `MCP_ALLOWED_DIRS` | project/model 파일 접근을 허용할 Windows root입니다. |
-| `MCP_ENABLE_RHAPSODY_WRITES` | `false`로 설정하면 향후 write tool을 막습니다. |
+| `MCP_ENABLE_RHAPSODY_WRITES` | `false`로 설정하면 project 저장과 package/class/interface/property/tag 변경을 막습니다. |
 | `MCP_ENABLE_RHAPSODY_CLI` | `false`로 설정하면 raw CLI 실행을 막습니다. |
 
 ## COM/CLI 실행 정책

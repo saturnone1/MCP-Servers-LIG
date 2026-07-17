@@ -87,7 +87,7 @@ public sealed class AutoCadTools
     {
         var doc = AutoCad.ActiveDocument();
         var layers = Com.Get(doc, "Layers");
-        return AutoCad.Enumerate(layers, Math.Clamp(limit, 1, 5000))
+        return AutoCad.Enumerate(layers, Math.Clamp(limit, 1, 100000))
             .Select(layer => new
             {
                 name = Com.GetString(layer, "Name"),
@@ -105,7 +105,7 @@ public sealed class AutoCadTools
     {
         var doc = AutoCad.ActiveDocument();
         var modelSpace = Com.Get(doc, "ModelSpace");
-        return AutoCad.Enumerate(modelSpace, Math.Clamp(limit, 1, 5000))
+        return AutoCad.Enumerate(modelSpace, Math.Clamp(limit, 1, 100000))
             .Select(entity => new
             {
                 objectName = Com.GetString(entity, "ObjectName"),
@@ -120,7 +120,7 @@ public sealed class AutoCadTools
     public static object[] ListBlocks(int limit = 500)
     {
         var blocks = Com.Get(AutoCad.ActiveDocument(), "Blocks");
-        return AutoCad.Enumerate(blocks, Math.Clamp(limit, 1, 5000))
+        return AutoCad.Enumerate(blocks, Math.Clamp(limit, 1, 100000))
             .Select(block => new
             {
                 name = Com.GetString(block, "Name"),
@@ -272,7 +272,7 @@ internal static class AutoCad
     public static object[] ListEntitiesByObjectName(string[] objectNames, int limit)
     {
         var modelSpace = Com.Get(ActiveDocument(), "ModelSpace");
-        return Enumerate(modelSpace, Math.Clamp(limit, 1, 5000))
+        return Enumerate(modelSpace, Math.Clamp(limit, 1, 100000))
             .Where(entity =>
             {
                 var objectName = Com.GetString(entity, "ObjectName") ?? "";
@@ -298,8 +298,7 @@ internal static class AutoCad
 
 internal static class Guard
 {
-    public static string[] AllowedRoots => (Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS") ?? "C:\\")
-        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    public static string[] AllowedRoots { get; } = ParseAllowedRoots();
     public static bool WritesEnabled => !string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_AUTOCAD_WRITES"), "false", StringComparison.OrdinalIgnoreCase);
     public static void RequireWrites()
     {
@@ -332,6 +331,16 @@ internal static class Guard
             return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
         return path.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
                path.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string[] ParseAllowedRoots()
+    {
+        var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return OperatingSystem.IsWindows()
+                ? DriveInfo.GetDrives().Select(drive => drive.RootDirectory.FullName).ToArray()
+                : ["/"];
+        return raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
 
