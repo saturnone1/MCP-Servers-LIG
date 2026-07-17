@@ -62,6 +62,9 @@ Command tools return `{ "exitCode": number, "stdout": string, "stderr": string }
 | `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for project paths. |
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_ENABLE_DOTNET_WRITES` | `true` in Dockerfile | Optional compatibility switch; set `false` to block `add_package` and `format`. |
+| `MCP_DOTNET_CLI_PATH` | auto-detected | Optional absolute path to the external SDK-enabled `dotnet.exe` used for project operations on Windows. |
+
+The Windows MSI uses its bundled .NET runtime only to start the MCP server. Project operations deliberately select an external SDK-enabled `dotnet.exe`; the runtime-only copy under the LIG AI MCP installation directory is excluded. SDK selection after that follows normal .NET behavior: a repository `global.json` can select or roll forward an installed SDK, while each project controls its target frameworks (for example `net8.0`, `net9.0`, or `net10.0`). If no external SDK is available, only the requested .NET tool call fails with an actionable error; the MCP server itself remains available.
 
 ## Kubernetes
 

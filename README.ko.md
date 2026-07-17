@@ -196,7 +196,7 @@ Windows 설치 파일은 다음 명령으로 생성합니다.
 | `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | 자체 동작 | 실제 API URL/토큰 |
 | `mcp-shell` | 자체 동작 | 실행할 명령이 Windows에 존재해야 함 |
 | `mcp-git` | 서버는 자체 동작 | `git.exe` |
-| `mcp-dotnet` | 서버는 자체 동작 | 대상 PC의 .NET SDK/CLI |
+| `mcp-dotnet` | 서버는 번들 런타임으로 동작 | 대상 PC의 외부 .NET SDK/CLI. 필요하면 `MCP_DOTNET_CLI_PATH`로 명시할 수 있으며, 프로젝트의 `global.json`과 대상 프레임워크에 따라 .NET 8/9/10 SDK를 선택합니다. |
 | `mcp-kubernetes` | 서버는 자체 동작 | `kubectl.exe`, kubeconfig 또는 in-cluster 대체 환경 |
 | `mcp-docker` | 서버는 자체 동작 | Docker CLI와 Docker Desktop/daemon |
 | `mcp-office` | `officecli.exe`를 번들에 동봉 | legacy `.doc`용 `antiword`는 선택 사항. 없으면 OfficeCLI로 fallback |
