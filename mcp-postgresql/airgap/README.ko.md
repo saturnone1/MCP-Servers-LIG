@@ -16,7 +16,7 @@ docker load -i .\local-mcp-postgresql.tar
 실행 예시:
 
 ```powershell
-docker run --rm -p 8090:8080 `
+docker run --rm -p 127.0.0.1:8090:8080 `
   -e "POSTGRES_CONNECTION_STRING=Host=<postgres>;Database=postgres;Username=<user>;Password=<password>" `
   local/mcp-postgresql
 ```

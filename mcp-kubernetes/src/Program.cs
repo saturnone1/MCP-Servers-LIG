@@ -47,11 +47,11 @@ public sealed class KubernetesTools
     [Description("Get logs from a pod.")]
     public static Task<CommandResult> PodLogs(string podName, string? ns = null, string? container = null, int tailLines = 200, bool previous = false)
     {
-        var args = new List<string> { "logs", podName, "--tail", Math.Clamp(tailLines, 1, 10000).ToString() };
+        var args = new List<string> { "logs", podName, "--tail", Math.Clamp(tailLines, 1, 100000).ToString() };
         if (!string.IsNullOrWhiteSpace(ns)) args.AddRange(["-n", ns]);
         if (!string.IsNullOrWhiteSpace(container)) args.AddRange(["-c", container]);
         if (previous) args.Add("--previous");
-        return Kubectl([.. args], timeoutMs: 120000, maxOutputBytes: 4194304);
+        return Kubectl([.. args], timeoutMs: 3600000, maxOutputBytes: 67108864);
     }
 
     [McpServerTool(ReadOnly = true)]
@@ -134,14 +134,14 @@ metadata:
 
     [McpServerTool]
     [Description("Run raw kubectl arguments.")]
-    public static Task<CommandResult> RunKubectl(string[] args, int timeoutMs = 120000)
+    public static Task<CommandResult> RunKubectl(string[] args, int timeoutMs = 600000)
     {
         Guard.RequireKubernetesWrites();
         Guard.RequireRawKubectl();
-        return Kubectl(args, timeoutMs: Math.Clamp(timeoutMs, 1000, 300000), maxOutputBytes: 4194304);
+        return Kubectl(args, timeoutMs: Math.Clamp(timeoutMs, 1000, 86400000), maxOutputBytes: 67108864);
     }
 
-    private static Task<CommandResult> Kubectl(string[] args, int timeoutMs = 60000, int maxOutputBytes = 2097152) =>
+    private static Task<CommandResult> Kubectl(string[] args, int timeoutMs = 3600000, int maxOutputBytes = 67108864) =>
         CommandRunner.Run(Guard.KubectlPath, args, "/workspace", timeoutMs, maxOutputBytes);
 
     private static void AddNamespace(List<string> args, string? ns, bool allNamespaces)
@@ -232,15 +232,22 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw) ? ["/"] : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 

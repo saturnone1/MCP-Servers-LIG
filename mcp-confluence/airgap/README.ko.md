@@ -10,7 +10,7 @@ docker save -o airgap/local-mcp-confluence.tar local/mcp-confluence:latest
 
 ```powershell
 docker load -i airgap/local-mcp-confluence.tar
-docker run --rm -p 42198:8080 `
+docker run --rm -p 127.0.0.1:42198:8080 `
   -e "CONFLUENCE_BASE_URL=https://confluence.example.local" `
   -e "CONFLUENCE_PAT=<personal-access-token>" `
   local/mcp-confluence

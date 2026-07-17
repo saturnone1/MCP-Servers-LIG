@@ -16,7 +16,7 @@ docker load -i .\local-mcp-gitlab.tar
 실행 예시:
 
 ```powershell
-docker run --rm -p 8091:8080 `
+docker run --rm -p 127.0.0.1:8091:8080 `
   -e "GITLAB_BASE_URL=https://gitlab.example.local" `
   -e "GITLAB_TOKEN=<token>" `
   local/mcp-gitlab

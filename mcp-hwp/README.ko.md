@@ -25,7 +25,7 @@ docker build -t local/mcp-hwp .
 ## 실행
 
 ```powershell
-docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
+.\scripts\run-docker-mcp.ps1 -Server mcp-hwp -Port 8086
 ```
 
 연결 주소:
@@ -45,9 +45,9 @@ docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
 
 | Tool | Arguments | 반환 |
 | --- | --- | --- |
-| `extract_text` | `path` string, `maxChars` int = `20000` | 추출된 텍스트. 매핑된 파일이 없으면 파일 없음 메시지를 반환합니다. |
+| `extract_text` | `path` string, `maxChars` int = `1000000` | 최대 10,000,000자의 추출 텍스트입니다. |
 | `inspect` | `path` string | metadata 객체. 파일이 없으면 `{ "exists": false, "requestedPath": ..., "mappedPath": ..., "error": ... }`를 반환합니다. |
-| `convert` | `path` string, `outputDirectory` string = `/tmp/hwp-output`, `format` string = `txt`, `timeoutMs` int = `120000` | `{ "exitCode": number, "stdout": string, "stderr": string }`. `txt`는 추출 텍스트를 저장하고, `docx`, `pdf`, `odt`는 LibreOffice를 사용합니다. |
+| `convert` | `path` string, `outputDirectory` string = `/tmp/hwp-output`, `format` string = `txt`, `timeoutMs` int = `600000` | 최대 24시간, 출력 64 MiB입니다. `txt`는 추출 텍스트를 저장하고 나머지는 LibreOffice를 사용합니다. |
 
 지원 format은 `txt`, `docx`, `pdf`, `odt`입니다.
 
@@ -57,6 +57,7 @@ docker run --rm -p 8086:8080 -v ${PWD}:/workspace local/mcp-hwp
 | --- | --- | --- |
 | `MCP_ALLOWED_DIRS` | `/` | 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
+| `MCP_ENABLE_HWP_WRITES` | `true` | `false`로 설정하면 `convert`를 차단합니다. |
 | `HWP5TXT_PATH` | `hwp5txt` | 선택적 fallback `hwp5txt` 실행 파일 경로를 바꿉니다. |
 | `SOFFICE_PATH` | `soffice` | 선택적 LibreOffice 실행 파일 경로를 바꿉니다. |
 

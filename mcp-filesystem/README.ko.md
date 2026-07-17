@@ -24,7 +24,7 @@ docker build -t local/mcp-filesystem .
 ## 실행
 
 ```powershell
-docker run --rm -p 8081:8080 -v ${PWD}:/workspace local/mcp-filesystem
+.\scripts\run-docker-mcp.ps1 -Server mcp-filesystem -Port 8081
 ```
 
 연결 주소:
@@ -54,15 +54,15 @@ docker run --rm -p 8081:8080 -v ${PWD}:/workspace local/mcp-filesystem
 | Tool | Arguments | 반환 |
 | --- | --- | --- |
 | `list_allowed_directories` | 없음 | 허용 root string 배열 |
-| `read_file` | `path` string, `maxBytes` int = `1048576` | 파일 텍스트 |
-| `read_multiple_files` | `paths` string array, `maxBytesPerFile` int = `1048576` | path별 텍스트 객체 |
+| `read_file` | `path` string, `maxBytes` int = `16777216` | 파일 텍스트(최대 64 MiB) |
+| `read_multiple_files` | `paths` string array, `maxBytesPerFile` int = `16777216` | path별 텍스트 객체(파일당 최대 64 MiB) |
 | `write_file` | `path` string, `content` string | 쓰기 결과 metadata |
 | `copy` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | 복사 결과 metadata |
 | `move` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | 이동 결과 metadata |
 | `delete` | `path` string, `recursive` bool = `false` | 삭제 결과 metadata |
 | `stat` | `path` string | 파일 또는 디렉터리 metadata |
-| `list_directory` | `path` string = `.`, `pattern` string = `*`, `recursive` bool = `false`, `limit` int = `200` | entry metadata 배열 |
-| `search` | `path` string, `regex` string, `limit` int = `100` | 검색 결과 metadata 배열 |
+| `list_directory` | `path` string = `.`, `pattern` string = `*`, `recursive` bool = `false`, `limit` int = `2000` | entry metadata 배열(최대 100,000개) |
+| `search` | `path` string, `regex` string, `limit` int = `1000` | 검색 결과 metadata 배열(최대 100,000개) |
 
 ## 환경 변수
 

@@ -17,6 +17,6 @@ kubectl -n mcp-servers port-forward svc/mcp-kubernetes 8087:8080
 ## 호환성
 
 - kubeconfig를 마운트하지 않고 ServiceAccount token을 사용합니다.
-- 기본 Role은 `mcp-servers` namespace 안의 pods/logs/services/configmaps/deployments 중심 권한만 제공합니다.
-- `list_namespaces`, cluster-wide 조회, 다른 namespace 관리가 필요하면 별도 ClusterRole/ClusterRoleBinding을 추가해야 합니다.
-- `apply_yaml`, `delete_resource`, `rollout_restart`, `scale_deployment`, `run_kubectl`은 RBAC 범위 안에서만 성공합니다.
+- 기본 매니페스트는 모든 API group, resource, verb를 허용하는 ClusterRole/ClusterRoleBinding을 사용합니다.
+- 모든 namespace의 조회·생성·수정·삭제와 raw kubectl을 사용할 수 있습니다.
+- Pod CPU/메모리 limit은 두지 않으며 실제 사용량은 클러스터 정책과 노드 용량을 따릅니다.

@@ -37,7 +37,7 @@ public sealed class PrometheusTools
     {
         var parameters = new Dictionary<string, string> { ["query"] = query };
         if (!string.IsNullOrWhiteSpace(time)) parameters["time"] = time;
-        if (timeoutSeconds > 0) parameters["timeout"] = Math.Clamp(timeoutSeconds, 1, 300) + "s";
+        if (timeoutSeconds > 0) parameters["timeout"] = Math.Clamp(timeoutSeconds, 1, 86400) + "s";
         return Get("/api/v1/query", parameters);
     }
 
@@ -51,7 +51,7 @@ public sealed class PrometheusTools
             ["start"] = start,
             ["end"] = end,
             ["step"] = step,
-            ["timeout"] = Math.Clamp(timeoutSeconds, 1, 300) + "s"
+            ["timeout"] = Math.Clamp(timeoutSeconds, 1, 86400) + "s"
         };
         return Get("/api/v1/query_range", parameters);
     }
@@ -138,7 +138,7 @@ public sealed class PrometheusTools
         return parameters;
     }
 
-    private static HttpClient CreateClient() => new() { Timeout = TimeSpan.FromSeconds(300) };
+    private static HttpClient CreateClient() => new() { Timeout = TimeSpan.FromHours(24) };
 }
 
 internal static class Guard

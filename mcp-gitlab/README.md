@@ -23,7 +23,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-gitlab:lates
 ## Run
 
 ```powershell
-docker run --rm -p 8091:8080 `
+docker run --rm -p 127.0.0.1:8091:8080 `
   -e "GITLAB_BASE_URL=https://gitlab.example.local" `
   -e "GITLAB_TOKEN=<token>" `
   local/mcp-gitlab
@@ -43,6 +43,8 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8091/mcp` or legac
 | `list_merge_requests` | Lists project merge requests. |
 | `get_file` | Reads a repository file. |
 | `create_or_update_file` | Creates or updates a repository file. |
+
+List tools default to GitLab's maximum page size of 100 and expose `page` for unrestricted pagination.
 
 ## Environment
 

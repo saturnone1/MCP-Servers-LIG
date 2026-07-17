@@ -23,7 +23,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-jira:latest`
 ## Run
 
 ```powershell
-docker run --rm -p 8092:8080 `
+docker run --rm -p 127.0.0.1:8092:8080 `
   -e "JIRA_BASE_URL=https://jira.example.local" `
   -e "JIRA_BEARER_TOKEN=<token>" `
   local/mcp-jira
@@ -43,6 +43,8 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8092/mcp` or legac
 | `list_transitions` | Lists available issue transitions. |
 | `transition_issue` | Transitions an issue. |
 | `list_projects` | Lists Jira projects. |
+
+`search_issues` defaults to 100 results and accepts `startAt` for unrestricted pagination beyond Jira's 100-item request limit.
 
 ## Environment
 

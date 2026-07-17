@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-docker:lates
 ## Run
 
 ```powershell
-docker run --rm -p 8088:8080 `
+docker run --rm -p 127.0.0.1:8088:8080 `
   -v /var/run/docker.sock:/var/run/docker.sock `
   local/mcp-docker
 ```
@@ -64,6 +64,13 @@ All tools return `{ "exitCode": number, "stdout": string, "stderr": string }`.
 | `remove_container` | `container` string, `force` bool = `false` |
 | `pull_image` | `image` string |
 | `remove_image` | `image` string, `force` bool = `false` |
+
+## Environment
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MCP_ENABLE_DOCKER_WRITES` | `true` | Set `false` to block container/image start, stop, create, remove, and pull operations. |
+| `DOCKER_PATH` | `docker` | Docker CLI executable path. |
 
 ## Kubernetes
 

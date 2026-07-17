@@ -40,16 +40,16 @@ public sealed class DockerTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("Inspect a Docker container or image.")]
-    public static Task<CommandResult> Inspect(string target) => Docker(["inspect", target], maxOutputBytes: 4194304);
+    public static Task<CommandResult> Inspect(string target) => Docker(["inspect", target], maxOutputBytes: 67108864);
 
     [McpServerTool(ReadOnly = true)]
     [Description("Read Docker container logs.")]
     public static Task<CommandResult> Logs(string container, int tail = 200, bool timestamps = false)
     {
-        var args = new List<string> { "logs", "--tail", Math.Clamp(tail, 1, 10000).ToString() };
+        var args = new List<string> { "logs", "--tail", Math.Clamp(tail, 1, 100000).ToString() };
         if (timestamps) args.Add("--timestamps");
         args.Add(container);
-        return Docker([.. args], timeoutMs: 120000, maxOutputBytes: 4194304);
+        return Docker([.. args], timeoutMs: 3600000, maxOutputBytes: 67108864);
     }
 
     [McpServerTool]
@@ -65,7 +65,7 @@ public sealed class DockerTools
         foreach (var env in environment ?? []) cli.AddRange(["-e", env]);
         cli.Add(image);
         cli.AddRange(args ?? []);
-        return Docker([.. cli], timeoutMs: 300000, maxOutputBytes: 4194304);
+        return Docker([.. cli], timeoutMs: 3600000, maxOutputBytes: 67108864);
     }
 
     [McpServerTool]
@@ -81,7 +81,7 @@ public sealed class DockerTools
     public static Task<CommandResult> StopContainer(string container, int timeoutSeconds = 10)
     {
         Guard.RequireDockerWrites();
-        return Docker(["stop", "--time", Math.Clamp(timeoutSeconds, 0, 300).ToString(), container], timeoutMs: 300000);
+        return Docker(["stop", "--time", Math.Clamp(timeoutSeconds, 0, 3600).ToString(), container], timeoutMs: 7200000);
     }
 
     [McpServerTool]
@@ -100,7 +100,7 @@ public sealed class DockerTools
     public static Task<CommandResult> PullImage(string image)
     {
         Guard.RequireDockerWrites();
-        return Docker(["pull", image], timeoutMs: 600000, maxOutputBytes: 4194304);
+        return Docker(["pull", image], timeoutMs: 86400000, maxOutputBytes: 67108864);
     }
 
     [McpServerTool]
@@ -114,7 +114,7 @@ public sealed class DockerTools
         return Docker([.. args], timeoutMs: 300000);
     }
 
-    private static Task<CommandResult> Docker(string[] args, int timeoutMs = 60000, int maxOutputBytes = 2097152) =>
+    private static Task<CommandResult> Docker(string[] args, int timeoutMs = 3600000, int maxOutputBytes = 67108864) =>
         CommandRunner.Run(Guard.DockerPath, args, "/workspace", timeoutMs, maxOutputBytes);
 }
 

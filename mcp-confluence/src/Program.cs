@@ -21,7 +21,7 @@ app.Run();
 
 public sealed class ConfluenceTools
 {
-    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(300) };
+    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromHours(1) };
 
     [McpServerTool(ReadOnly = true)]
     [Description("Return this MCP server's Confluence target configuration.")]
@@ -52,7 +52,7 @@ public sealed class ConfluenceTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List Confluence spaces using /rest/api/space.")]
-    public static Task<ApiResult> ListSpaces(string? spaceKey = null, string? type = null, string? status = null, int start = 0, int limit = 25, string expand = "")
+    public static Task<ApiResult> ListSpaces(string? spaceKey = null, string? type = null, string? status = null, int start = 0, int limit = 100, string expand = "")
     {
         var query = new Dictionary<string, string>
         {
@@ -73,7 +73,7 @@ public sealed class ConfluenceTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List Confluence content using /rest/api/content query parameters.")]
-    public static Task<ApiResult> ListContent(string? spaceKey = null, string type = "page", string? title = null, string status = "current", int start = 0, int limit = 25, string expand = "space,version")
+    public static Task<ApiResult> ListContent(string? spaceKey = null, string type = "page", string? title = null, string status = "current", int start = 0, int limit = 100, string expand = "space,version")
     {
         var query = new Dictionary<string, string>
         {
@@ -90,7 +90,7 @@ public sealed class ConfluenceTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("Search Confluence content with CQL using /rest/api/content/search.")]
-    public static Task<ApiResult> SearchContent(string cql, int start = 0, int limit = 25, string expand = "space,version")
+    public static Task<ApiResult> SearchContent(string cql, int start = 0, int limit = 100, string expand = "space,version")
     {
         var query = new Dictionary<string, string>
         {
@@ -109,7 +109,7 @@ public sealed class ConfluenceTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List child pages below a Confluence content item.")]
-    public static Task<ApiResult> ListChildPages(string parentId, int start = 0, int limit = 25, string expand = "version,space") =>
+    public static Task<ApiResult> ListChildPages(string parentId, int start = 0, int limit = 100, string expand = "version,space") =>
         Send(HttpMethod.Get, "/rest/api/content/" + Uri.EscapeDataString(parentId) + "/child/page", OptionalQuery(new Dictionary<string, string>
         {
             ["start"] = Math.Max(0, start).ToString(),

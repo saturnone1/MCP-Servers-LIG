@@ -16,7 +16,7 @@ docker load -i .\local-mcp-jira.tar
 실행 예시:
 
 ```powershell
-docker run --rm -p 8092:8080 `
+docker run --rm -p 127.0.0.1:8092:8080 `
   -e "JIRA_BASE_URL=https://jira.example.local" `
   -e "JIRA_BEARER_TOKEN=<token>" `
   local/mcp-jira

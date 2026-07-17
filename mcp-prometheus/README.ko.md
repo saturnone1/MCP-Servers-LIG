@@ -23,7 +23,7 @@ docker build -t local/mcp-prometheus .
 ## 실행
 
 ```powershell
-docker run --rm -p 8089:8080 `
+docker run --rm -p 127.0.0.1:8089:8080 `
   -e "PROMETHEUS_BASE_URL=http://host.docker.internal:9090" `
   local/mcp-prometheus
 ```

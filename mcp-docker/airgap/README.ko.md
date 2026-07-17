@@ -23,7 +23,7 @@ docker load -i .\mcp-docker\airgap\local-mcp-docker.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-docker -p 8088:8080 `
+docker run -d --name mcp-docker -p 127.0.0.1:8088:8080 `
   -v /var/run/docker.sock:/var/run/docker.sock `
   local/mcp-docker:latest
 ```

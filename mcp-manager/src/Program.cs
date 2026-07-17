@@ -20,7 +20,7 @@ internal sealed class McpManager
     private readonly string _stateDir;
     private readonly string _logDir;
     private readonly string _autostartPath;
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private readonly HashSet<string> _interactiveOwnedServers = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _autostartServers = new(StringComparer.OrdinalIgnoreCase);
     private ChildProcessJob? _interactiveProcessJob;
@@ -1299,10 +1299,30 @@ internal sealed class McpManager
         if (await DockerExists(server.ContainerName))
             await RunCommand("docker", ["rm", "-f", server.ContainerName], _repoRoot, echo: false);
 
-        var args = new List<string> { "run", "-d", "--name", server.ContainerName, "-p", $"{server.Port}:8080" };
+        var args = new List<string> { "run", "-d", "--name", server.ContainerName, "-p", $"127.0.0.1:{server.Port}:8080" };
         foreach (var volume in server.Volumes)
             args.AddRange(["-v", Expand(volume)]);
-        foreach (var env in BuildEnvironment(server))
+        var environment = BuildEnvironment(server);
+        if (server.MountHostDrives)
+        {
+            var driveMappings = new List<string>();
+            foreach (var drive in GetReadyWindowsDrives())
+            {
+                var driveName = char.ToLowerInvariant(drive.RootDirectory.FullName[0]);
+                var containerPath = $"/host/drives/{driveName}";
+                args.AddRange(["-v", $"{drive.RootDirectory.FullName}:{containerPath}"]);
+                driveMappings.Add($"{drive.RootDirectory.FullName}={containerPath}");
+            }
+
+            if (driveMappings.Count > 0)
+            {
+                environment["MCP_ALLOWED_DIRS"] = "/";
+                environment.TryGetValue("MCP_PATH_MAPPINGS", out var configuredMappings);
+                environment["MCP_PATH_MAPPINGS"] = string.Join(';',
+                    new[] { configuredMappings }.Where(value => !string.IsNullOrWhiteSpace(value)).Concat(driveMappings));
+            }
+        }
+        foreach (var env in environment)
             args.AddRange(["-e", $"{env.Key}={env.Value}"]);
         foreach (var extraArg in server.Args)
             args.Add(Expand(extraArg));
@@ -1311,6 +1331,30 @@ internal sealed class McpManager
         await RunCommand("docker", args, _repoRoot);
         if (_interactiveProcessJob is not null)
             _interactiveOwnedServers.Add(server.Name);
+    }
+
+    private static IEnumerable<DriveInfo> GetReadyWindowsDrives()
+    {
+        if (!OperatingSystem.IsWindows())
+            return [];
+
+        return DriveInfo.GetDrives().Where(drive =>
+        {
+            try
+            {
+                return drive.IsReady &&
+                       drive.RootDirectory.FullName.Length >= 3 &&
+                       char.IsAsciiLetter(drive.RootDirectory.FullName[0]);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        });
     }
 
     private async Task<bool> DockerExists(string name)
@@ -1433,7 +1477,7 @@ internal sealed class McpManager
 
     private async Task<string> DockerStatus(ServerConfig server)
     {
-        var result = await RunCapture("docker", ["ps", "-a", "--filter", $"name=^{server.ContainerName}$", "--format", "{{.Status}}"], _repoRoot, TimeSpan.FromSeconds(2));
+        var result = await RunCapture("docker", ["ps", "-a", "--filter", $"name=^{server.ContainerName}$", "--format", "{{.Status}}"], _repoRoot, TimeSpan.FromSeconds(30));
         if (result.ExitCode == -1)
             return "docker 시간초과";
         return string.IsNullOrWhiteSpace(result.Stdout) ? "stopped" : result.Stdout.Trim().Split(Environment.NewLine)[0];
@@ -1862,6 +1906,7 @@ internal sealed class ServerConfig
     public string HealthUrl { get; set; } = "";
     public List<string> Groups { get; set; } = [];
     public List<string> Volumes { get; set; } = [];
+    public bool MountHostDrives { get; set; }
     public Dictionary<string, string> Env { get; set; } = [];
     public List<string> EnvFiles { get; set; } = [];
     public List<string> Args { get; set; } = [];

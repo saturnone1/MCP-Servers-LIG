@@ -23,10 +23,7 @@ docker load -i .\mcp-filesystem\airgap\local-mcp-filesystem.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-filesystem -p 8081:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-filesystem:latest
+.\mcp-filesystem\airgap\run-docker-mcp.ps1 -Server mcp-filesystem -Port 8081
 ```
 
 연결 주소:
@@ -36,4 +33,4 @@ docker run -d --name mcp-filesystem -p 8081:8080 `
 
 ## Air Gap 참고
 
-파일시스템 서버는 로컬/마운트 파일만 사용합니다. 런타임 인터넷은 필요 없습니다. `C:\` 전체를 보려면 위 예시처럼 `C:\:/host/c` 마운트와 `MCP_PATH_MAPPINGS`가 필요합니다.
+파일시스템 서버는 로컬/마운트 파일만 사용합니다. 런타임 인터넷은 필요 없습니다. 실행 helper는 준비된 Windows 드라이브를 모두 자동 마운트하고 localhost에만 포트를 공개합니다.

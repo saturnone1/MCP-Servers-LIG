@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-shell:latest
 ## Run
 
 ```powershell
-docker run --rm -p 8083:8080 -v ${PWD}:/workspace local/mcp-shell
+.\scripts\run-docker-mcp.ps1 -Server mcp-shell -Port 8083
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8083/mcp` or legacy SSE at `http://localhost:8083/sse`. Trusted-local images enable shell execution by default. Use `MCP_SHELL_ALLOWED_COMMANDS` and `MCP_SHELL_ALLOWED_ENV` for optional allowlists.
@@ -39,7 +39,7 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8083/mcp` or legac
 
 | Tool | Arguments | Returns |
 | --- | --- | --- |
-| `run_command` | `command` string, `args` string array = `[]`, `workingDirectory` string = `/workspace`, `timeoutMs` int = `30000`, `maxOutputBytes` int = `1048576`, `environment` object? = `null` | `{ "exitCode": number, "stdout": string, "stderr": string }` |
+| `run_command` | `command` string, `args` string array = `[]`, `workingDirectory` string = `/workspace`, `timeoutMs` int = `300000`, `maxOutputBytes` int = `16777216`, `environment` object? = `null` | Up to 24 hours and 64 MiB output. An empty env allowlist permits all supplied variables. |
 
 `workingDirectory` can be a mapped Windows host path. `environment` is filtered by `MCP_SHELL_ALLOWED_ENV` when that allowlist is set.
 

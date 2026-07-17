@@ -21,7 +21,7 @@ app.Run();
 
 public sealed class JiraTools
 {
-    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(300) };
+    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromHours(1) };
 
     [McpServerTool(ReadOnly = true)]
     [Description("Return this MCP server's Jira target configuration.")]
@@ -34,11 +34,12 @@ public sealed class JiraTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("Search Jira issues with JQL.")]
-    public static Task<ApiResult> SearchIssues(string jql, int maxResults = 20, string[]? fields = null)
+    public static Task<ApiResult> SearchIssues(string jql, int startAt = 0, int maxResults = 100, string[]? fields = null)
     {
         var body = new Dictionary<string, object?>
         {
             ["jql"] = jql,
+            ["startAt"] = Math.Max(startAt, 0),
             ["maxResults"] = Math.Clamp(maxResults, 1, 100),
             ["fields"] = fields is { Length: > 0 } ? fields : new[] { "summary", "status", "assignee", "issuetype", "priority", "updated" }
         };

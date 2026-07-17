@@ -85,7 +85,7 @@ public sealed class SolidWorksTools
         var doc = SolidWorks.ActiveDocument();
         var feature = Com.Invoke(doc, "FirstFeature");
         var items = new List<object>();
-        while (feature is not null && items.Count < Math.Clamp(limit, 1, 5000))
+        while (feature is not null && items.Count < Math.Clamp(limit, 1, 100000))
         {
             items.Add(new
             {
@@ -105,7 +105,7 @@ public sealed class SolidWorksTools
         var config = Com.Invoke(doc, "GetActiveConfiguration");
         var root = Com.Invoke(config, "GetRootComponent3", true);
         var components = new List<object>();
-        WalkComponent(root, components, Math.Clamp(limit, 1, 5000));
+        WalkComponent(root, components, Math.Clamp(limit, 1, 100000));
         return components.ToArray();
     }
 
@@ -127,7 +127,7 @@ public sealed class SolidWorksTools
         var manager = Com.Get(doc, "EquationMgr");
         var count = Convert.ToInt32(Com.GetSafe(manager, "GetCount") ?? Com.Invoke(manager, "GetCount") ?? 0);
         var items = new List<object>();
-        for (var i = 0; i < Math.Min(count, Math.Clamp(limit, 1, 5000)); i++)
+        for (var i = 0; i < Math.Min(count, Math.Clamp(limit, 1, 100000)); i++)
         {
             items.Add(new { index = i, equation = Com.Invoke(manager, "Equation", i)?.ToString() ?? Com.GetString(manager, "Equation") });
         }
@@ -313,8 +313,7 @@ internal static class SolidWorks
 
 internal static class Guard
 {
-    public static string[] AllowedRoots => (Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS") ?? "C:\\")
-        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    public static string[] AllowedRoots { get; } = ParseAllowedRoots();
     public static bool WritesEnabled => !string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_SOLIDWORKS_WRITES"), "false", StringComparison.OrdinalIgnoreCase);
     public static void RequireWrites()
     {
@@ -347,6 +346,16 @@ internal static class Guard
             return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
         return path.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
                path.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string[] ParseAllowedRoots()
+    {
+        var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return OperatingSystem.IsWindows()
+                ? DriveInfo.GetDrives().Select(drive => drive.RootDirectory.FullName).ToArray()
+                : ["/"];
+        return raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
 

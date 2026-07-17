@@ -163,7 +163,7 @@ Select a server and press `P` to register or unregister it for automatic startup
 .\mcp-bundle\McpManager.exe urls all
 .\mcp-bundle\McpManager.exe stop all
 .\mcp-bundle\LIG-AI-MCP.cmd env mcp-filesystem
-.\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
+.\mcp-bundle\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS "*"
 .\mcp-bundle\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
 .\mcp-bundle\LIG-AI-MCP.cmd autostart enable mcp-filesystem
 .\mcp-bundle\LIG-AI-MCP.cmd autostart list
@@ -320,16 +320,13 @@ For air-gapped environments, point these values at internal services, internal D
 
 ## Path Mapping
 
-For Linux containers to accept Windows host paths from MCP clients, the matching host folder must be mounted with Docker and listed in `MCP_PATH_MAPPINGS`:
+For Linux containers to accept Windows host paths from MCP clients, host drives must be mounted with Docker and listed in `MCP_PATH_MAPPINGS`. The provided helper handles every ready Windows drive and publishes the port on localhost only:
 
 ```powershell
-docker run --rm -p 42181:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-filesystem
+.\scripts\run-docker-mcp.ps1 -Server mcp-filesystem -Port 42181
 ```
 
-The same mapping pattern is supported by path-based servers such as Office, filesystem, Git, shell, .NET, and HWP. `MCP_ALLOWED_DIRS=/` opens the container filesystem, but it does not grant access to host folders that were not mounted into the container.
+The same mapping pattern is supported by path-based servers such as Office, filesystem, Git, shell, .NET, HWP, and Kubernetes. For servers with `mountHostDrives` enabled, MCP Manager automatically mounts every ready Windows drive (C:, D:, E:, and so on) at `/host/drives/<letter>` and configures the path mappings. In native Windows processes, `MCP_ALLOWED_DIRS=*` means every currently connected drive root. Operating-system account permissions and Docker Desktop drive-sharing policy still apply.
 
 ## Kubernetes Deployment
 

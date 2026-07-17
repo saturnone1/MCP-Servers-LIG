@@ -26,7 +26,7 @@ docker build -t local/mcp-confluence .
 ## Run
 
 ```powershell
-docker run --rm -p 42198:8080 `
+docker run --rm -p 127.0.0.1:42198:8080 `
   -e "CONFLUENCE_BASE_URL=https://confluence.example.local" `
   -e "CONFLUENCE_BEARER_TOKEN=<token>" `
   local/mcp-confluence
@@ -50,6 +50,8 @@ Connect MCP clients with Streamable HTTP at `http://localhost:42198/mcp` or lega
 | `create_page` | Creates a page with storage-format body. |
 | `update_page` | Updates a page using the next version number. |
 | `delete_content` | Deletes or trashes a content item. |
+
+List/search tools default to the maximum request size of 100 and expose `start` for unrestricted pagination.
 
 ## Environment
 

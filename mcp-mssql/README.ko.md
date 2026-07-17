@@ -24,7 +24,7 @@ docker build -t local/mcp-mssql .
 ## 실행
 
 ```powershell
-docker run --rm -p 8085:8080 -e MSSQL_CONNECTION_STRING="Server=host.docker.internal;Database=master;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True" local/mcp-mssql
+docker run --rm -p 127.0.0.1:8085:8080 -e MSSQL_CONNECTION_STRING="Server=host.docker.internal;Database=master;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True" local/mcp-mssql
 ```
 
 연결 주소:
@@ -53,7 +53,7 @@ SQL tool은 기본적으로 `MSSQL_CONNECTION_STRING`을 사용합니다. 호출
 | `list_schemas` | `connectionString` string? = `null` | schema metadata 배열 |
 | `list_tables` | `connectionString` string? = `null`, `schema` string? = `null` | table metadata 배열 |
 | `describe_table` | `tableName` string, `schema` string = `dbo`, `connectionString` string? = `null` | column metadata 배열 |
-| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `200` | row 객체 배열. `SELECT`, `WITH` query만 허용합니다. |
+| `execute_read_query` | `sql` string, `connectionString` string? = `null`, `maxRows` int = `2000` | 최대 100,000행, read query timeout은 1시간입니다. |
 | `execute_non_query` | `sql` string, `connectionString` string? = `null`, `timeoutSeconds` int = `30` | affected row 수와 실행 metadata |
 
 ## 환경 변수

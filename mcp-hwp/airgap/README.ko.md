@@ -23,10 +23,7 @@ docker load -i .\mcp-hwp\airgap\local-mcp-hwp.tar
 ## 실행
 
 ```powershell
-docker run -d --name mcp-hwp -p 8086:8080 `
-  -v C:\:/host/c `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-hwp:latest
+.\mcp-hwp\airgap\run-docker-mcp.ps1 -Server mcp-hwp -Port 8086
 ```
 
 연결 주소:

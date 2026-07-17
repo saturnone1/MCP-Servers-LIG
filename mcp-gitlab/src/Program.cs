@@ -21,7 +21,7 @@ app.Run();
 
 public sealed class GitLabTools
 {
-    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(300) };
+    private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromHours(1) };
 
     [McpServerTool(ReadOnly = true)]
     [Description("Return this MCP server's GitLab target configuration.")]
@@ -29,7 +29,7 @@ public sealed class GitLabTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List GitLab projects visible to the configured token.")]
-    public static Task<ApiResult> ListProjects(string? search = null, int page = 1, int perPage = 20)
+    public static Task<ApiResult> ListProjects(string? search = null, int page = 1, int perPage = 100)
     {
         var query = new Dictionary<string, string>
         {
@@ -47,7 +47,7 @@ public sealed class GitLabTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List issues in a GitLab project.")]
-    public static Task<ApiResult> ListIssues(string project, string state = "opened", int page = 1, int perPage = 20) =>
+    public static Task<ApiResult> ListIssues(string project, string state = "opened", int page = 1, int perPage = 100) =>
         Send(HttpMethod.Get, $"/api/v4/projects/{EncodeProject(project)}/issues", new Dictionary<string, string>
         {
             ["state"] = state,
@@ -68,7 +68,7 @@ public sealed class GitLabTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("List merge requests in a GitLab project.")]
-    public static Task<ApiResult> ListMergeRequests(string project, string state = "opened", int page = 1, int perPage = 20) =>
+    public static Task<ApiResult> ListMergeRequests(string project, string state = "opened", int page = 1, int perPage = 100) =>
         Send(HttpMethod.Get, $"/api/v4/projects/{EncodeProject(project)}/merge_requests", new Dictionary<string, string>
         {
             ["state"] = state,

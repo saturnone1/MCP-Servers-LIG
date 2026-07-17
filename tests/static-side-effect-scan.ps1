@@ -39,6 +39,15 @@ function Get-MethodBody {
 
 $failures = [System.Collections.Generic.List[string]]::new()
 
+function Test-ContainsOrdinal {
+    param(
+        [AllowNull()][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
+
+    return $null -ne $Text -and $Text.IndexOf($Value, [StringComparison]::Ordinal) -ge 0
+}
+
 $safeQueryMethods = @(
     @{ Path = 'mcp-autocad/src/Program.cs'; Methods = @('Config', 'DetectInstallations') },
     @{ Path = 'mcp-matlab/src/Program.cs'; Methods = @('Config', 'DetectInstallations') },
@@ -68,7 +77,7 @@ foreach ($entry in $safeQueryMethods) {
         }
 
         foreach ($pattern in $forbiddenInSafeQueries) {
-            if ($body.Contains($pattern, [StringComparison]::Ordinal)) {
+            if (Test-ContainsOrdinal $body $pattern) {
                 $failures.Add("$($entry.Path): $method contains side-effectful call '$pattern'")
             }
         }
@@ -85,7 +94,7 @@ $desktopComFiles = @(
 foreach ($relativePath in $desktopComFiles) {
     $text = Get-Content -LiteralPath (Join-Path $repo $relativePath) -Raw
     foreach ($required in @('IsRegistered', 'TryGetActive', 'GetOrCreate', 'Create')) {
-        if (-not $text.Contains($required, [StringComparison]::Ordinal)) {
+        if (-not (Test-ContainsOrdinal $text $required)) {
             $failures.Add("${relativePath}: missing COM helper '$required'")
         }
     }
@@ -93,7 +102,7 @@ foreach ($relativePath in $desktopComFiles) {
 
 $rhapsodyText = Get-Content -LiteralPath (Join-Path $repo 'mcp-rhapsody/src/Program.cs') -Raw
 $getApplication = Get-MethodBody -Text $rhapsodyText -MethodName 'GetApplication'
-if ($null -eq $getApplication -or -not $getApplication.Contains('GetOrCreate(ResolveProgId())', [StringComparison]::Ordinal)) {
+if ($null -eq $getApplication -or -not (Test-ContainsOrdinal $getApplication 'GetOrCreate(ResolveProgId())')) {
     $failures.Add('mcp-rhapsody/src/Program.cs: GetApplication should reuse an active COM object before creating one')
 }
 
@@ -117,7 +126,7 @@ foreach ($program in Get-ChildItem -Path $repo -Directory -Filter 'mcp-*') {
     if (-not (Test-Path -LiteralPath $programPath)) { continue }
     $text = Get-Content -LiteralPath $programPath -Raw
     foreach ($pattern in $unsafePathPrefixPatterns) {
-        if ($text.Contains($pattern, [StringComparison]::Ordinal)) {
+        if (Test-ContainsOrdinal $text $pattern) {
             $failures.Add("$($program.Name): path allow-list uses unsafe prefix check '$pattern'")
         }
     }
@@ -135,7 +144,7 @@ foreach ($entry in @(
     }
 
     foreach ($required in $entry.Required) {
-        if (-not $body.Contains($required, [StringComparison]::Ordinal)) {
+        if (-not (Test-ContainsOrdinal $body $required)) {
             $failures.Add("$($entry.Path): $($entry.Method) does not call '$required'")
         }
     }
@@ -158,7 +167,7 @@ foreach ($entry in @(
     }
 
     foreach ($required in $entry.Required) {
-        if (-not $body.Contains($required, [StringComparison]::Ordinal)) {
+        if (-not (Test-ContainsOrdinal $body $required)) {
             $failures.Add("$($entry.Path): $($entry.Method) does not call '$required'")
         }
     }
@@ -166,7 +175,7 @@ foreach ($entry in @(
 
 $matlabText = Get-Content -LiteralPath (Join-Path $repo 'mcp-matlab/src/Program.cs') -Raw
 $listWorkspace = Get-MethodBody -Text $matlabText -MethodName 'ListWorkspace'
-if ($null -eq $listWorkspace -or -not $listWorkspace.Contains('Com.TryGetActive', [StringComparison]::Ordinal) -or $listWorkspace.Contains('Com.GetOrCreate', [StringComparison]::Ordinal)) {
+if ($null -eq $listWorkspace -or -not (Test-ContainsOrdinal $listWorkspace 'Com.TryGetActive') -or (Test-ContainsOrdinal $listWorkspace 'Com.GetOrCreate')) {
     $failures.Add('mcp-matlab/src/Program.cs: ListWorkspace should reuse only an active COM object and must not create MATLAB')
 }
 
@@ -179,26 +188,26 @@ foreach ($entry in @(
 )) {
     $text = Get-Content -LiteralPath (Join-Path $repo $entry.Path) -Raw
     $body = Get-MethodBody -Text $text -MethodName $entry.Method
-    if ($null -eq $body -or -not $body.Contains($entry.Required, [StringComparison]::Ordinal)) {
+    if ($null -eq $body -or -not (Test-ContainsOrdinal $body $entry.Required)) {
         $failures.Add("$($entry.Path): $($entry.Method) should return a structured failure for malformed base URLs")
     }
 }
 
 $confluenceText = Get-Content -LiteralPath (Join-Path $repo 'mcp-confluence/src/Program.cs') -Raw
 $confluenceBuildUri = Get-MethodBody -Text $confluenceText -MethodName 'BuildUri'
-if ($null -eq $confluenceBuildUri -or -not $confluenceBuildUri.Contains('basePath', [StringComparison]::Ordinal)) {
+if ($null -eq $confluenceBuildUri -or -not (Test-ContainsOrdinal $confluenceBuildUri 'basePath')) {
     $failures.Add('mcp-confluence/src/Program.cs: BuildUri should preserve CONFLUENCE_BASE_URL context paths such as /confluence')
 }
 
 $confluenceServerInfo = Get-MethodBody -Text $confluenceText -MethodName 'ServerInfo'
 if ($null -eq $confluenceServerInfo -or
-    -not $confluenceServerInfo.Contains('/rest/api/settings/systemInfo', [StringComparison]::Ordinal) -or
-    -not $confluenceServerInfo.Contains('/rest/troubleshooting/1.0/pre-upgrade/info', [StringComparison]::Ordinal)) {
+    -not (Test-ContainsOrdinal $confluenceServerInfo '/rest/api/settings/systemInfo') -or
+    -not (Test-ContainsOrdinal $confluenceServerInfo '/rest/troubleshooting/1.0/pre-upgrade/info')) {
     $failures.Add('mcp-confluence/src/Program.cs: ServerInfo should support both modern server information and 6.15.8+ troubleshooting version endpoints')
 }
 
 foreach ($required in @('CONFLUENCE_PAT', 'CONFLUENCE_COOKIE')) {
-    if (-not $confluenceText.Contains($required, [StringComparison]::Ordinal)) {
+    if (-not (Test-ContainsOrdinal $confluenceText $required)) {
         $failures.Add("mcp-confluence/src/Program.cs: missing compatibility auth variable '$required'")
     }
 }
@@ -224,7 +233,7 @@ foreach ($required in @(
     'autostart.json',
     'ToggleAutostart'
 )) {
-    if (-not $managerText.Contains($required, [StringComparison]::Ordinal)) {
+    if (-not (Test-ContainsOrdinal $managerText $required)) {
         $failures.Add("mcp-manager/src/Program.cs: missing manager lifecycle/autostart behavior '$required'")
     }
 }

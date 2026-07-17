@@ -91,7 +91,7 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 .\McpManager.exe logs mcp-filesystem
 .\McpManager.exe urls all
 .\LIG-AI-MCP.cmd env mcp-filesystem
-.\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS C:\
+.\LIG-AI-MCP.cmd set-env mcp-filesystem MCP_ALLOWED_DIRS "*"
 .\LIG-AI-MCP.cmd remove-env mcp-filesystem MCP_ALLOWED_DIRS
 .\LIG-AI-MCP.cmd autostart enable mcp-filesystem
 .\LIG-AI-MCP.cmd autostart disable mcp-filesystem
@@ -99,6 +99,8 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 ```
 
 자동실행 목록은 `servers.json`과 같은 폴더의 `autostart.json`에 저장됩니다. 그룹이나 `all`도 등록할 수 있습니다. 자동으로 시작된 서버도 메인 대시보드를 닫으면 함께 종료됩니다.
+
+`MCP_ALLOWED_DIRS=*`는 Windows에서 현재 연결된 모든 드라이브를 허용합니다. Docker 서버 중 `mountHostDrives`가 설정된 서버는 매니저가 시작할 때 준비된 C:, D:, E: 등의 드라이브를 자동으로 마운트하고 Windows 경로 매핑도 함께 전달합니다.
 
 대시보드에서 서버를 선택하고 `E`를 누르면 환경변수 설정 화면이 열립니다. `A`로 추가, `Enter`로 수정, `D`로 삭제, `N`으로 메모장 열기, `B`로 뒤로가기를 할 수 있습니다. 변경 후 서버를 재시작하면 적용됩니다.
 

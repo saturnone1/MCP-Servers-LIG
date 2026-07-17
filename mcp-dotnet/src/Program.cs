@@ -20,42 +20,42 @@ public sealed class DotnetTools
 {
     [McpServerTool(ReadOnly = true)]
     [Description("Return dotnet --info.")]
-    public static Task<CommandResult> SdkInfo() => CommandRunner.Run("dotnet", ["--info"], "/workspace", 30000, 1048576);
+    public static Task<CommandResult> SdkInfo() => CommandRunner.Run("dotnet", ["--info"], "/workspace", 300000, 67108864);
 
     [McpServerTool(ReadOnly = true)]
     [Description("Find .NET project and solution files under a workspace path.")]
-    public static object[] ListProjects(string path = ".", int limit = 200)
+    public static object[] ListProjects(string path = ".", int limit = 2000)
     {
         var root = Guard.RequireAllowedDirectory(path);
         return Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
             .Where(p => p.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".fsproj", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".vbproj", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
-            .Take(Math.Clamp(limit, 1, 1000))
+            .Take(Math.Clamp(limit, 1, 100000))
             .Select(p => new { path = p })
             .ToArray();
     }
 
     [McpServerTool]
     [Description("Run dotnet restore. This can populate package caches inside the container.")]
-    public static Task<CommandResult> Restore(string projectOrSolutionPath, int timeoutMs = 120000)
+    public static Task<CommandResult> Restore(string projectOrSolutionPath, int timeoutMs = 600000)
     {
         Guard.RequireDotnetWrites();
         return Dotnet(projectOrSolutionPath, timeoutMs, "restore", Guard.RequireAllowedPath(projectOrSolutionPath));
     }
 
     [McpServerTool]
-    [Description("Run dotnet build --no-restore.")]
-    public static Task<CommandResult> Build(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 120000)
+    [Description("Run dotnet build, including restore when needed.")]
+    public static Task<CommandResult> Build(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 600000)
     {
         Guard.RequireDotnetWrites();
-        return Dotnet(projectOrSolutionPath, timeoutMs, "build", Guard.RequireAllowedPath(projectOrSolutionPath), "--no-restore", "-c", configuration);
+        return Dotnet(projectOrSolutionPath, timeoutMs, "build", Guard.RequireAllowedPath(projectOrSolutionPath), "-c", configuration);
     }
 
     [McpServerTool]
-    [Description("Run dotnet test --no-build.")]
-    public static Task<CommandResult> Test(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 180000)
+    [Description("Run dotnet test, including restore and build when needed.")]
+    public static Task<CommandResult> Test(string projectOrSolutionPath, string configuration = "Debug", int timeoutMs = 900000)
     {
         Guard.RequireDotnetWrites();
-        return Dotnet(projectOrSolutionPath, timeoutMs, "test", Guard.RequireAllowedPath(projectOrSolutionPath), "--no-build", "-c", configuration);
+        return Dotnet(projectOrSolutionPath, timeoutMs, "test", Guard.RequireAllowedPath(projectOrSolutionPath), "-c", configuration);
     }
 
     [McpServerTool]
@@ -66,19 +66,19 @@ public sealed class DotnetTools
         var args = new List<string> { "add", Guard.RequireAllowedPath(projectPath), "package", packageName };
         if (!string.IsNullOrWhiteSpace(version))
             args.AddRange(["--version", version]);
-        return CommandRunner.Run("dotnet", args.ToArray(), Guard.WorkingDirectoryFor(projectPath), 120000, 1048576);
+        return CommandRunner.Run("dotnet", args.ToArray(), Guard.WorkingDirectoryFor(projectPath), 600000, 67108864);
     }
 
     [McpServerTool]
     [Description("Run dotnet format.")]
-    public static Task<CommandResult> Format(string projectOrSolutionPath, int timeoutMs = 120000)
+    public static Task<CommandResult> Format(string projectOrSolutionPath, int timeoutMs = 600000)
     {
         Guard.RequireDotnetWrites();
         return Dotnet(projectOrSolutionPath, timeoutMs, "format", Guard.RequireAllowedPath(projectOrSolutionPath));
     }
 
     private static Task<CommandResult> Dotnet(string path, int timeoutMs, params string[] args) =>
-        CommandRunner.Run("dotnet", args, Guard.WorkingDirectoryFor(path), Math.Clamp(timeoutMs, 1000, 600000), 2097152);
+        CommandRunner.Run("dotnet", args, Guard.WorkingDirectoryFor(path), Math.Clamp(timeoutMs, 1000, 86400000), 67108864);
 }
 
 internal static class CommandRunner
@@ -171,17 +171,22 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? ["/"]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return AllFilesystemRoots();
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
     }
+
+    private static string[] AllFilesystemRoots() => OperatingSystem.IsWindows()
+        ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+        : ["/"];
 
     private static bool IsInside(string path, string root)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return root == Path.GetPathRoot(root) ||
-               path.Equals(root, comparison) ||
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
                path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 

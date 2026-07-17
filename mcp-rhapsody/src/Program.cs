@@ -61,11 +61,11 @@ public sealed class RhapsodyTools
 
     [McpServerTool(ReadOnly = true)]
     [Description("Inspect a Rhapsody project/model text file without opening Rhapsody.")]
-    public static async Task<object> InspectProjectFile(string path, int maxBytes = 1048576)
+    public static async Task<object> InspectProjectFile(string path, int maxBytes = 16777216)
     {
         var fullPath = Guard.RequireAllowedFile(path);
         var info = new FileInfo(fullPath);
-        var bytesToRead = (int)Math.Min(Math.Clamp(maxBytes, 4096, 8 * 1024 * 1024), info.Length);
+        var bytesToRead = (int)Math.Min(Math.Clamp(maxBytes, 4096, 64 * 1024 * 1024), info.Length);
         var buffer = new byte[bytesToRead];
         await using (var stream = File.OpenRead(fullPath))
             await stream.ReadExactlyAsync(buffer.AsMemory(0, bytesToRead));
@@ -88,11 +88,11 @@ public sealed class RhapsodyTools
 
     [McpServerTool]
     [Description("Run configured Rhapsody CLI with raw arguments.")]
-    public static Task<CommandResult> RunRhapsodyCli(string[] args, int timeoutMs = 120000)
+    public static Task<CommandResult> RunRhapsodyCli(string[] args, int timeoutMs = 600000)
     {
         Guard.RequireCli();
         var cli = RhapsodyDetection.ResolveCliPath() ?? throw new FileNotFoundException("Rhapsody CLI was not found. Set RHAPSODY_CLI_PATH.");
-        return CommandRunner.Run(cli, args, Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 600000), 4 * 1024 * 1024);
+        return CommandRunner.Run(cli, args, Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 86400000), 64 * 1024 * 1024);
     }
 
     [McpServerTool]
@@ -152,7 +152,7 @@ public sealed class RhapsodyTools
     [Description("Search active Rhapsody project elements by text and optional metaclass.")]
     public static object[] SearchElements(string query, string? metaClass = null, int limit = 100)
     {
-        var all = RhapsodyCom.Traverse(RhapsodyCom.ActiveProject(), Math.Clamp(limit * 20, 100, 5000));
+        var all = RhapsodyCom.Traverse(RhapsodyCom.ActiveProject(), (int)Math.Clamp((long)limit * 20, 100, 2000000));
         return all
             .Where(e =>
             {
@@ -163,7 +163,7 @@ public sealed class RhapsodyTools
                        ((name?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
                         (fullName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false));
             })
-            .Take(Math.Clamp(limit, 1, 1000))
+            .Take(Math.Clamp(limit, 1, 100000))
             .Select(e => RhapsodyCom.Describe(e))
             .ToArray();
     }
@@ -325,13 +325,13 @@ internal static class RhapsodyCom
     public static object[] ListByMetaClass(string[] metaClasses, int limit)
     {
         var project = ActiveProject();
-        return Traverse(project, Math.Clamp(limit * 20, 100, 5000))
+        return Traverse(project, (int)Math.Clamp((long)limit * 20, 100, 2000000))
             .Where(e =>
             {
                 var meta = StringValue(e, ["getMetaClass", "getUserDefinedMetaClass", "metaClass"]);
                 return metaClasses.Any(expected => string.Equals(meta, expected, StringComparison.OrdinalIgnoreCase));
             })
-            .Take(Math.Clamp(limit, 1, 1000))
+            .Take(Math.Clamp(limit, 1, 100000))
             .Select(e => Describe(e))
             .ToArray();
     }
@@ -511,7 +511,7 @@ internal static class RhapsodyDetection
                     name.Contains("Telelogic", StringComparison.OrdinalIgnoreCase))
                 {
                     yield return dir;
-                    foreach (var child in SafeEnumerateDirectories(dir, "*Rhapsody*", SearchOption.AllDirectories).Take(20))
+                    foreach (var child in SafeEnumerateDirectories(dir, "*Rhapsody*", SearchOption.AllDirectories).Take(1000))
                         yield return child;
                 }
             }
@@ -522,7 +522,7 @@ internal static class RhapsodyDetection
     {
         foreach (var dir in installDirs)
             foreach (var name in names)
-                foreach (var candidate in Directory.Exists(dir) ? SafeEnumerateFiles(dir, name, SearchOption.AllDirectories).Take(20) : Enumerable.Empty<string>())
+                foreach (var candidate in Directory.Exists(dir) ? SafeEnumerateFiles(dir, name, SearchOption.AllDirectories).Take(1000) : Enumerable.Empty<string>())
                     yield return candidate;
 
         var path = Environment.GetEnvironmentVariable("PATH") ?? "";
@@ -620,7 +620,7 @@ internal static class Guard
     {
         var fullPath = Path.GetFullPath(path);
         if (!File.Exists(fullPath)) throw new FileNotFoundException($"File not found: {fullPath}", fullPath);
-        if (!AllowedRoots.Any(root => root == Path.GetPathRoot(root) || fullPath.Equals(root, StringComparison.OrdinalIgnoreCase) || fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+        if (!AllowedRoots.Any(root => IsInside(fullPath, root)))
             throw new UnauthorizedAccessException($"Path is outside MCP_ALLOWED_DIRS: {fullPath}");
         return fullPath;
     }
@@ -628,10 +628,21 @@ internal static class Guard
     private static string[] ParseAllowedRoots()
     {
         var raw = Environment.GetEnvironmentVariable("MCP_ALLOWED_DIRS");
-        var values = string.IsNullOrWhiteSpace(raw)
-            ? [Path.GetPathRoot(Environment.CurrentDirectory) ?? Environment.CurrentDirectory]
-            : raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "*")
+            return OperatingSystem.IsWindows()
+                ? DriveInfo.GetDrives().Select(drive => NormalizeRoot(drive.RootDirectory.FullName)).ToArray()
+                : ["/"];
+        var values = raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return values.Select(NormalizeRoot).ToArray();
+    }
+
+    private static bool IsInside(string path, string root)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (root == Path.GetPathRoot(root))
+            return string.Equals(Path.GetPathRoot(path), root, comparison);
+        return path.Equals(root, comparison) ||
+               path.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 
     private static string NormalizeRoot(string path)

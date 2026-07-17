@@ -24,7 +24,7 @@ docker build -t local/mcp-git .
 ## 실행
 
 ```powershell
-docker run --rm -p 8082:8080 -v ${PWD}:/workspace local/mcp-git
+.\scripts\run-docker-mcp.ps1 -Server mcp-git -Port 8082
 ```
 
 연결 주소:

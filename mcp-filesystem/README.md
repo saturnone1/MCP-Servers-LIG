@@ -24,7 +24,7 @@ Use [airgap/README.ko.md](airgap/README.ko.md) to export `local/mcp-filesystem:l
 ## Run
 
 ```powershell
-docker run --rm -p 8081:8080 -v ${PWD}:/workspace local/mcp-filesystem
+.\scripts\run-docker-mcp.ps1 -Server mcp-filesystem -Port 8081
 ```
 
 Connect MCP clients with Streamable HTTP at `http://localhost:8081/mcp` or legacy SSE at `http://localhost:8081/sse`. Trusted-local images enable writes by default and allow `/` inside the container unless `MCP_ALLOWED_DIRS` overrides it.
@@ -51,15 +51,15 @@ Path arguments accept normal container paths or Windows host paths when `MCP_PAT
 | Tool | Arguments | Returns |
 | --- | --- | --- |
 | `list_allowed_directories` | none | string array of allowed roots. |
-| `read_file` | `path` string, `maxBytes` int = `1048576` | File text. |
-| `read_multiple_files` | `paths` string array, `maxBytesPerFile` int = `1048576` | Object keyed by path with file text values. |
+| `read_file` | `path` string, `maxBytes` int = `16777216` | File text (up to 64 MiB). |
+| `read_multiple_files` | `paths` string array, `maxBytesPerFile` int = `16777216` | Object keyed by path with file text values (up to 64 MiB each). |
 | `write_file` | `path` string, `content` string | Write metadata. |
 | `copy` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | Copy metadata. |
 | `move` | `sourcePath` string, `destinationPath` string, `overwrite` bool = `false` | Move metadata. |
 | `delete` | `path` string, `recursive` bool = `false` | Delete metadata. |
 | `stat` | `path` string | File or directory metadata. |
-| `list_directory` | `path` string = `.`, `pattern` string = `*`, `recursive` bool = `false`, `limit` int = `200` | Entry metadata array. |
-| `search` | `path` string, `regex` string, `limit` int = `100` | Matching entry metadata array. |
+| `list_directory` | `path` string = `.`, `pattern` string = `*`, `recursive` bool = `false`, `limit` int = `2000` | Entry metadata array (up to 100,000). |
+| `search` | `path` string, `regex` string, `limit` int = `1000` | Matching entry metadata array (up to 100,000). |
 
 ## Environment
 

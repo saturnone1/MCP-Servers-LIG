@@ -24,11 +24,7 @@ docker build -t local/mcp-kubernetes .
 ## 실행
 
 ```powershell
-docker run --rm -p 8087:8080 `
-  -v C:\:/host/c `
-  -v $HOME\.kube:/root/.kube `
-  -e "MCP_PATH_MAPPINGS=C:\=/host/c" `
-  local/mcp-kubernetes
+.\scripts\run-docker-mcp.ps1 -Server mcp-kubernetes -Port 8087
 ```
 
 연결 주소:
@@ -70,8 +66,18 @@ docker run --rm -p 8087:8080 `
 | `rollout_restart` | `deploymentName` string, `ns` string? = `null` |
 | `scale_deployment` | `deploymentName` string, `replicas` int, `ns` string? = `null` |
 | `generate_deployment_yaml` | `name` string, `image` string, `replicas` int = `1`, `containerPort` int = `80`, `ns` string? = `null` |
-| `run_kubectl` | `args` string array, `timeoutMs` int = `120000` |
+| `run_kubectl` | `args` string array, `timeoutMs` int = `600000` (최대 24시간, 출력 64 MiB) |
+
+## 환경 변수
+
+| 변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `MCP_ALLOWED_DIRS` | `/` | YAML manifest 파일 접근을 허용할 컨테이너 root입니다. |
+| `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 컨테이너 경로로 매핑합니다. |
+| `MCP_ENABLE_KUBERNETES_WRITES` | `true` | `false`로 설정하면 apply/delete/restart/scale 및 raw kubectl을 차단합니다. |
+| `MCP_ENABLE_RAW_KUBECTL` | `true` | `false`로 설정하면 `run_kubectl`만 별도로 차단합니다. |
+| `KUBECTL_PATH` | `kubectl` | kubectl 실행 파일 경로입니다. |
 
 ## Kubernetes
 
-Kubernetes 매니페스트는 [k8s/](k8s/README.ko.md)에 있습니다. 클러스터 내부 배포에서는 kubeconfig를 마운트하지 않고 ServiceAccount, namespace-scoped Role, RoleBinding을 사용합니다. 이 서버는 클러스터 네이티브로 동작하지만, MCP tool이 수행할 read/write 작업은 RBAC에 명시적으로 허용되어 있어야 합니다.
+Kubernetes 매니페스트는 [k8s/](k8s/README.ko.md)에 있습니다. 클러스터 내부 배포는 kubeconfig 대신 모든 API group/resource/verb를 허용하는 ClusterRole/ClusterRoleBinding을 사용하며 Pod CPU·메모리 limit을 두지 않습니다. 클러스터 admission 정책과 노드 용량은 그대로 적용됩니다.

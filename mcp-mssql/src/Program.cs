@@ -29,12 +29,12 @@ public sealed class MssqlTools
     [McpServerTool(ReadOnly = true)]
     [Description("List databases visible to the configured SQL Server login.")]
     public static Task<object[]> ListDatabases(string? connectionString = null) =>
-        Query(connectionString, "select name, database_id, create_date from sys.databases order by name", 200);
+        Query(connectionString, "select name, database_id, create_date from sys.databases order by name", 100000);
 
     [McpServerTool(ReadOnly = true)]
     [Description("List schemas in the current database.")]
     public static Task<object[]> ListSchemas(string? connectionString = null) =>
-        Query(connectionString, "select name, schema_id from sys.schemas order by name", 200);
+        Query(connectionString, "select name, schema_id from sys.schemas order by name", 100000);
 
     [McpServerTool(ReadOnly = true)]
     [Description("List tables in the current database.")]
@@ -47,7 +47,7 @@ public sealed class MssqlTools
             where (@schema is null or s.name = @schema)
             order by s.name, t.name
             """;
-        return Query(connectionString, sql, 1000, new SqlParameter("@schema", (object?)schema ?? DBNull.Value));
+        return Query(connectionString, sql, 100000, new SqlParameter("@schema", (object?)schema ?? DBNull.Value));
     }
 
     [McpServerTool(ReadOnly = true)]
@@ -63,15 +63,15 @@ public sealed class MssqlTools
             where s.name = @schema and t.name = @table
             order by c.column_id
             """;
-        return Query(connectionString, sql, 1000, new SqlParameter("@schema", schema), new SqlParameter("@table", tableName));
+        return Query(connectionString, sql, 100000, new SqlParameter("@schema", schema), new SqlParameter("@table", tableName));
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("Execute a read-only SELECT/WITH query and return rows.")]
-    public static Task<object[]> ExecuteReadQuery(string sql, string? connectionString = null, int maxRows = 200)
+    public static Task<object[]> ExecuteReadQuery(string sql, string? connectionString = null, int maxRows = 2000)
     {
         Guard.RequireReadQuery(sql);
-        return Query(connectionString, sql, Math.Clamp(maxRows, 1, 5000));
+        return Query(connectionString, sql, Math.Clamp(maxRows, 1, 100000));
     }
 
     [McpServerTool]
@@ -81,7 +81,7 @@ public sealed class MssqlTools
         Guard.RequireSqlWrites();
         await using var connection = new SqlConnection(Guard.ConnectionString(connectionString));
         await connection.OpenAsync();
-        await using var command = new SqlCommand(sql, connection) { CommandTimeout = Math.Clamp(timeoutSeconds, 1, 300) };
+        await using var command = new SqlCommand(sql, connection) { CommandTimeout = Math.Clamp(timeoutSeconds, 1, 86400) };
         var affected = await command.ExecuteNonQueryAsync();
         return new { rowsAffected = affected };
     }
@@ -90,7 +90,7 @@ public sealed class MssqlTools
     {
         await using var connection = new SqlConnection(Guard.ConnectionString(connectionString));
         await connection.OpenAsync();
-        await using var command = new SqlCommand(sql, connection) { CommandTimeout = 60 };
+        await using var command = new SqlCommand(sql, connection) { CommandTimeout = 3600 };
         command.Parameters.AddRange(parameters);
         await using var reader = await command.ExecuteReaderAsync();
         var rows = new List<Dictionary<string, object?>>();

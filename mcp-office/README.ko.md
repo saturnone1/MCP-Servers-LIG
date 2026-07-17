@@ -29,7 +29,7 @@ Windows exe 번들은 `mcp-office\scripts\download-officecli.ps1`로 받은 Offi
 ## 실행
 
 ```powershell
-docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
+.\scripts\run-docker-mcp.ps1 -Server mcp-office -Port 8080
 ```
 
 연결 주소:
@@ -57,11 +57,11 @@ docker run --rm -p 8080:8080 -v ${PWD}:/workspace local/mcp-office
 | --- | --- | --- |
 | `version` | 없음 | 이미지에 포함된 OfficeCLI 버전을 반환합니다. |
 | `inspect_document` | `path` string, `mode` string = `text` | OfficeCLI로 `.docx`, `.xlsx`, `.pptx` 등 지원 문서를 검사합니다. |
-| `extract_text` | `path` string, `maxLines` int = `200` | 최신 Office 파일은 OfficeCLI, legacy `.doc`는 `antiword`로 텍스트를 추출합니다. |
+| `extract_text` | `path` string, `maxLines` int = `2000` | 최대 100,000줄, 출력 64 MiB까지 추출합니다. |
 | `create_document` | `path` string | 매핑된 경로에 문서를 생성합니다. |
 | `apply_batch` | `documentPath` string, `batchJsonPath` string | OfficeCLI batch JSON을 문서에 적용합니다. |
 | `render_document` | `documentPath` string, `outputPath` string | OfficeCLI `view text --json` 결과를 지정 경로에 저장합니다. PDF/HTML/이미지 렌더링이 아니라 텍스트 스냅샷입니다. |
-| `run_office_cli` | `args` string array, `timeoutMs` int = `120000` | raw OfficeCLI 인자를 직접 실행하는 고급용 tool입니다. |
+| `run_office_cli` | `args` string array, `timeoutMs` int = `600000` | 최대 24시간, 출력 64 MiB의 raw OfficeCLI tool입니다. |
 
 ## 환경 변수
 
