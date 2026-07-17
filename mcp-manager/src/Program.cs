@@ -32,8 +32,11 @@ internal sealed class McpManager
         var localConfig = Path.Combine(baseDirectory, "servers.json");
         _configPath = Environment.GetEnvironmentVariable("MCP_MANAGER_CONFIG") ??
                       (File.Exists(localConfig) ? localConfig : Path.Combine(_repoRoot, "mcp-manager", "config", "servers.json"));
-        _autostartPath = Path.Combine(Path.GetDirectoryName(_configPath)!, "autostart.json");
-        _stateDir = Path.Combine(_repoRoot, ".mcp-manager");
+        var configuredStateDirectory = Environment.GetEnvironmentVariable("MCP_MANAGER_STATE_DIR");
+        _stateDir = string.IsNullOrWhiteSpace(configuredStateDirectory)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LIG AI MCP", ".mcp-manager")
+            : Path.GetFullPath(configuredStateDirectory);
+        _autostartPath = Path.Combine(_stateDir, "autostart.json");
         _logDir = Path.Combine(_stateDir, "logs");
     }
 
@@ -774,8 +777,7 @@ internal sealed class McpManager
 
     private string ResolveEditableEnvPath(ServerConfig server)
     {
-        var workingDirectory = Expand(server.WorkingDirectory);
-        return Path.Combine(workingDirectory, $"{server.Name}.env");
+        return Path.Combine(_stateDir, "env", $"{server.Name}.env");
     }
 
     private string EnsureEditableEnvFile(ServerConfig server)
@@ -1607,6 +1609,8 @@ internal sealed class McpManager
 
         foreach (var envFile in server.EnvFiles)
             yield return envFile;
+
+        yield return ResolveEditableEnvPath(server);
     }
 
     private static Dictionary<string, string> ReadEnvFile(string path)

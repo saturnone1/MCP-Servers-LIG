@@ -4,7 +4,7 @@
     Manufacturer="LIG Defense &amp; Aerospace"
     Version="$(ProductVersion)"
     UpgradeCode="A77A4464-74E0-4B6C-94C4-D15FCBD744E5"
-    Scope="perUser"
+    Scope="perMachine"
     InstallerVersion="500">
 
     <SummaryInformation Description="LIG AI MCP Server Suite" />
@@ -13,25 +13,8 @@
     <Icon Id="AppIcon" SourceFile="$(IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
 
-    <StandardDirectory Id="LocalAppDataFolder">
-      <Directory Id="ProgramsDirectory" Name="Programs">
-        <Directory Id="INSTALLFOLDER" Name="LIG AI MCP">
-          <Directory Id="ManagerStateDirectory" Name=".mcp-manager">
-            <Directory Id="ManagerLogsDirectory" Name="logs" />
-          </Directory>
-          <Component Id="GeneratedSettingsCleanup" Guid="*">
-            <RemoveFile Id="RemoveAutostartSettings" Name="autostart.json" On="uninstall" />
-            <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
-            <RegistryValue
-              Root="HKCU"
-              Key="Software\LIG Defense and Aerospace\LIG AI MCP"
-              Name="GeneratedSettings"
-              Type="integer"
-              Value="1"
-              KeyPath="yes" />
-          </Component>
-        </Directory>
-      </Directory>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="LIG AI MCP" />
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
@@ -51,7 +34,7 @@
             Arguments="/x [ProductCode]" />
           <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
           <RegistryValue
-            Root="HKCU"
+              Root="HKLM"
             Key="Software\LIG Defense and Aerospace\LIG AI MCP"
             Name="Installed"
             Type="integer"
@@ -71,7 +54,7 @@
           WorkingDirectory="INSTALLFOLDER"
           Icon="AppIcon" />
         <RegistryValue
-          Root="HKCU"
+              Root="HKLM"
           Key="Software\LIG Defense and Aerospace\LIG AI MCP"
           Name="DesktopShortcut"
           Type="integer"
@@ -80,43 +63,12 @@
       </Component>
     </StandardDirectory>
 
-    <DirectoryRef Id="ManagerStateDirectory">
-      <Component Id="ManagerStateCleanup" Guid="*">
-        <RemoveFile Id="RemoveManagerStateFiles" Name="*" On="uninstall" />
-        <RemoveFolder Id="RemoveManagerStateDirectory" On="uninstall" />
-        <RegistryValue
-          Root="HKCU"
-          Key="Software\LIG Defense and Aerospace\LIG AI MCP"
-          Name="ManagerState"
-          Type="integer"
-          Value="1"
-          KeyPath="yes" />
-      </Component>
-    </DirectoryRef>
-
-    <DirectoryRef Id="ManagerLogsDirectory">
-      <Component Id="ManagerLogsCleanup" Guid="*">
-        <RemoveFile Id="RemoveManagerLogFiles" Name="*" On="uninstall" />
-        <RemoveFolder Id="RemoveManagerLogsDirectory" On="uninstall" />
-        <RegistryValue
-          Root="HKCU"
-          Key="Software\LIG Defense and Aerospace\LIG AI MCP"
-          Name="ManagerLogs"
-          Type="integer"
-          Value="1"
-          KeyPath="yes" />
-      </Component>
-    </DirectoryRef>
-
     <Feature Id="Complete" Title="LIG AI MCP Server Suite" Level="1">
       <Files Include="$(BundleDirectory)\**" Directory="INSTALLFOLDER">
         <Exclude Files="$(BundleDirectory)\autostart.json" />
       </Files>
       <ComponentRef Id="ApplicationStartMenuShortcuts" />
       <ComponentRef Id="ApplicationDesktopShortcut" />
-      <ComponentRef Id="GeneratedSettingsCleanup" />
-      <ComponentRef Id="ManagerStateCleanup" />
-      <ComponentRef Id="ManagerLogsCleanup" />
     </Feature>
   </Package>
 </Wix>

@@ -148,7 +148,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 The bundle `servers.json` registers all 19 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
 
-Editable environment variables are written to each server folder as `<server>.env`, for example `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`. Use `edit-env-mcp-jira.cmd` or edit that file directly, then restart the server through `McpManager.exe`. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root when present, plus any explicit `envFiles` listed in `servers.json`.
+The bundle contains default `<server>.env` files. Editable per-user overrides are stored under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`; use `edit-env-mcp-jira.cmd` or the Manager dashboard, then restart the server. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root plus explicit `envFiles` from `servers.json` before applying the per-user override.
 
 If you patch an existing bundle with the new manager, run `sync-env-files.ps1` once to split existing `servers.json` environment values into per-server `.env` files and create `edit-env-*.cmd` helpers.
 
@@ -185,7 +185,7 @@ Build the Windows installer with:
 .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-The MSI is written to `installer\output`. Distribute that MSI file by itself; users do not need the `mcp-bundle` directory, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. It includes all 19 MCP servers, the shared runtime, Start Menu and desktop shortcuts, upgrade support, and clean uninstall behavior. External applications such as Git, Docker, kubectl, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. The MSI is currently unsigned, so production distribution should apply the organization's code-signing certificate.
+The MSI is written to `installer\output`. Distribute that MSI file by itself; users do not need the `mcp-bundle` directory, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. It includes all 19 MCP servers, the shared runtime, Start Menu and desktop shortcuts, upgrade support, and clean uninstall behavior. Installation is per-machine under Program Files and prompts for UAC; writable settings, logs, and PID files stay under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`. External applications such as Git, Docker, kubectl, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. The MSI is currently unsigned, so production distribution should apply the organization's code-signing certificate.
 
 The server executables are included, but tools that shell out to external programs still need those programs on the target PC. Items installed by Dockerfiles through `apt-get`, `curl`, or `pip` are not automatically embedded in the Windows exe bundle.
 

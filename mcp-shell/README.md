@@ -51,7 +51,7 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8083/mcp` or legac
 | `MCP_ALLOWED_DIRS` | `/` | Allowed container roots for working directories. |
 | `MCP_PATH_MAPPINGS` | empty | Maps Windows host paths to mounted Linux container paths. |
 | `MCP_SHELL_ALLOWED_COMMANDS` | empty | Optional command allowlist. Empty means any command. |
-| `MCP_SHELL_ALLOWED_ENV` | empty | Optional environment-variable allowlist. Empty means no custom env vars are passed unless the server code allows them. |
+| `MCP_SHELL_ALLOWED_ENV` | empty | Optional environment-variable allowlist. Empty permits all supplied custom variables. |
 
 ## Kubernetes
 

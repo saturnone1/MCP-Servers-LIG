@@ -53,7 +53,7 @@ mcp-bundle\mcp-matlab-win-x64\McpMatlab.exe
 
 번들 안의 `servers.json`은 모두 `process` 방식으로 구성되어 있습니다. 즉 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버 폴더의 `Mcp*.exe`를 직접 실행합니다.
 
-번들 환경변수는 서버별 폴더의 `<server>.env`에서 수정합니다. 예를 들어 `edit-env-mcp-jira.cmd`를 실행하거나 `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`를 수정하고 `McpManager.exe restart mcp-jira`를 실행하면 됩니다. 공통 값은 번들 루트의 `common.env`, 서버별 루트 override는 `mcp-jira.env`처럼 둘 수 있고, 고급 설정은 `servers.json`의 `envFiles` 배열로 추가할 수 있습니다.
+번들의 서버별 `<server>.env`는 기본값으로 사용됩니다. 실제 사용자 수정값은 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`에 저장되며 `edit-env-mcp-jira.cmd` 또는 Manager 화면에서 편집할 수 있습니다. 공통 값과 `servers.json`의 `envFiles`를 먼저 읽고 사용자별 override를 마지막에 적용합니다.
 
 기존 번들에 새 manager만 덮어쓴 경우에는 `sync-env-files.ps1`을 한 번 실행해 `servers.json`의 env 값을 서버별 `.env` 파일로 분리합니다.
 
