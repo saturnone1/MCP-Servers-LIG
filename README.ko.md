@@ -148,7 +148,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 이 번들의 `servers.json`은 19개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
 
-수정 가능한 환경변수는 각 서버 폴더의 `<server>.env`로 생성됩니다. 예를 들어 Jira는 `edit-env-mcp-jira.cmd`를 실행하거나 `mcp-bundle\mcp-jira-win-x64\mcp-jira.env`를 직접 수정한 뒤 `McpManager.exe`로 해당 서버를 재시작하면 됩니다. `McpManager.exe`는 번들 루트의 `common.env`, `<server>.env`, 그리고 `servers.json`에 명시한 `envFiles`도 함께 읽습니다.
+번들의 `<server>.env`는 기본값이며 수정 가능한 사용자별 override는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`에 저장됩니다. `edit-env-mcp-jira.cmd` 또는 Manager 화면에서 수정한 뒤 서버를 재시작하세요. Manager는 번들 루트와 서버 폴더의 기본 env, `servers.json`의 `envFiles`를 먼저 읽고 사용자별 override를 마지막에 적용합니다.
 
 기존 번들에 새 manager만 덮어쓴 경우에는 `sync-env-files.ps1`을 한 번 실행하면 `servers.json`의 env 값이 서버별 `.env` 파일로 분리되고 `edit-env-*.cmd`가 생성됩니다.
 
@@ -185,7 +185,7 @@ Windows 설치 파일은 다음 명령으로 생성합니다.
 .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-결과 MSI는 `installer\output`에 생성됩니다. 사용자에게는 이 MSI 파일 하나만 배포하면 되며 `mcp-bundle`, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일은 필요하지 않습니다. MSI는 MCP 서버 19개, 공유 런타임, 시작 메뉴 및 바탕화면 바로가기, 업그레이드와 제거 기능을 포함합니다. 현재 MSI는 코드 서명되지 않았으므로 정식 배포 시 조직 인증서로 서명하는 것을 권장합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+결과 MSI는 `installer\output`에 생성됩니다. 사용자에게는 이 MSI 파일 하나만 배포하면 되며 `mcp-bundle`, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일은 필요하지 않습니다. MSI는 MCP 서버 19개, 공유 런타임, 시작 메뉴 및 바탕화면 바로가기, 업그레이드와 제거 기능을 포함합니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되어 UAC 승인을 요청하고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 현재 MSI는 코드 서명되지 않았으므로 정식 배포 시 조직 인증서로 서명하는 것을 권장합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
 
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 

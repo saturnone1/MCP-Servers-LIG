@@ -54,7 +54,7 @@ docker build -t local/mcp-shell .
 | `MCP_ALLOWED_DIRS` | `/` | working directory로 접근 가능한 컨테이너 root 경로입니다. |
 | `MCP_PATH_MAPPINGS` | 빈 값 | Windows 호스트 경로를 Linux 컨테이너 경로로 매핑합니다. |
 | `MCP_SHELL_ALLOWED_COMMANDS` | 빈 값 | 선택적 command allowlist입니다. 빈 값이면 모든 command를 허용합니다. |
-| `MCP_SHELL_ALLOWED_ENV` | 빈 값 | 선택적 환경 변수 allowlist입니다. |
+| `MCP_SHELL_ALLOWED_ENV` | 빈 값 | 선택적 환경 변수 allowlist이며 빈 값이면 전달한 변수를 모두 허용합니다. |
 
 ## Kubernetes
 

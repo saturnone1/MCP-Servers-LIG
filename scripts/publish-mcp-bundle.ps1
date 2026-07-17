@@ -225,7 +225,10 @@ foreach ($server in $config.servers) {
 @"
 @echo off
 setlocal
-notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
+set "ENV_DIR=%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env"
+if not exist "%ENV_DIR%" mkdir "%ENV_DIR%"
+if not exist "%ENV_DIR%\$($server.name).env" copy /Y "%~dp0$($server.name)-win-x64\$($server.name).env" "%ENV_DIR%\$($server.name).env" >nul
+notepad.exe "%ENV_DIR%\$($server.name).env"
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "edit-env-$($server.name).cmd") -Encoding ASCII
     $server.env = [pscustomobject]@{}
 }
@@ -285,7 +288,9 @@ pause
 @'
 @echo off
 setlocal
-explorer.exe "%~dp0"
+set "ENV_DIR=%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env"
+if not exist "%ENV_DIR%" mkdir "%ENV_DIR%"
+explorer.exe "%ENV_DIR%"
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'edit-envs.cmd') -Encoding ASCII
 
 $config = Get-Content -LiteralPath (Join-Path $OutputRoot 'servers.json') -Raw | ConvertFrom-Json
@@ -295,11 +300,10 @@ foreach ($server in $config.servers) {
 @"
 @echo off
 setlocal
-if not exist "%~dp0$($server.name)-win-x64\$($server.name).env" (
-  echo # Editable environment variables for $($server.name).>"%~dp0$($server.name)-win-x64\$($server.name).env"
-  echo # Restart the server through McpManager.exe after changing this file.>>"%~dp0$($server.name)-win-x64\$($server.name).env"
-)
-notepad.exe "%~dp0$($server.name)-win-x64\$($server.name).env"
+set "ENV_DIR=%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env"
+if not exist "%ENV_DIR%" mkdir "%ENV_DIR%"
+if not exist "%ENV_DIR%\$($server.name).env" copy /Y "%~dp0$($server.name)-win-x64\$($server.name).env" "%ENV_DIR%\$($server.name).env" >nul
+notepad.exe "%ENV_DIR%\$($server.name).env"
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "edit-env-$($server.name).cmd") -Encoding ASCII
 @"
 @echo off
