@@ -108,7 +108,7 @@ internal static partial class Program
     }
 
     private static void ShowMessage(string message, uint icon) =>
-        NativeMethods.MessageBox(IntPtr.Zero, message, ProductName, icon | 0x00010000);
+        NativeMethods.MessageBox(IntPtr.Zero, message, ProductName, icon | 0x00010000 | 0x00040000);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct TokenElevation
