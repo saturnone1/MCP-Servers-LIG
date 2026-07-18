@@ -10,7 +10,7 @@
 
 ## 배포
 
-생성된 `LIG-AI-MCP-Setup-<version>-win-x64.exe` 파일 하나만 배포합니다. Setup 자체가 설치 시작 전에 UAC 관리자 권한을 요청하며, 내장 MSI를 관리자와 SYSTEM이 접근할 수 있는 전용 작업 폴더에 풀어 설치합니다. `mcp-bundle` 폴더, MSI, ZIP, WiX 도구 또는 별도의 .NET/ASP.NET Core 런타임 설치 파일은 필요하지 않습니다.
+생성된 `LIG-AI-MCP-Setup-<version>-win-x64.exe` 파일 하나만 배포합니다. Setup 자체가 설치 시작 전에 UAC 관리자 권한을 요청하며, 내장 MSI를 관리자와 SYSTEM이 접근할 수 있는 전용 작업 폴더에 풀고 기본 진행 창과 완료 창을 표시합니다. 앱 목록과 시작 메뉴의 제거는 관리자 권한 전용 Uninstaller가 담당하며 제거 진행 창과 완료 창을 직접 표시합니다. `mcp-bundle` 폴더, MSI, ZIP, WiX 도구 또는 별도의 .NET/ASP.NET Core 런타임 설치 파일은 필요하지 않습니다.
 
 MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET Core 10 런타임이 포함됩니다. 다만 다음 프로그램과 접속 정보는 사용하는 MCP 기능에 따라 대상 PC에 별도로 준비해야 합니다.
 
@@ -27,7 +27,7 @@ MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET 
 설치 프로그램은 다음을 제공합니다.
 
 - UAC 상승 후 컴퓨터 전체에 설치
-- 앱 목록에서 변경/복구 대신 제거만 제공하고, 실패한 업그레이드는 이전 설치로 롤백
+- 앱 목록에서 관리자 권한 Uninstaller를 통한 제거만 제공하고, 실패한 업그레이드는 이전 설치로 롤백
 - 번들 공유 .NET 및 ASP.NET Core 런타임 포함
 - 실행할 때마다 UAC 관리자 권한을 요청하며 작업표시줄에 제품 아이콘이 표시되는 self-contained `McpManager.exe`
 - 시작 메뉴와 바탕화면의 `LIG AI MCP` 바로가기
