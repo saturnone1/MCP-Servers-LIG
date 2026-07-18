@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
+WindowsConsoleBranding.InitializeProcess();
 
 var manager = new McpManager(AppContext.BaseDirectory, args);
 await manager.Run();
@@ -143,6 +144,7 @@ internal sealed class McpManager
     private async Task RunInteractive()
     {
         Console.Title = "LIG AI MCP - LIG Defense & Aerospace";
+        WindowsConsoleBranding.ApplyToConsoleWindow();
         var cursorWasVisible = TryGetCursorVisible();
         PrepareInteractiveConsole();
         var config = await LoadConfig();
@@ -1889,6 +1891,77 @@ internal sealed class ChildProcessJob : IDisposable
     [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseHandle(IntPtr handle);
+}
+
+internal static class WindowsConsoleBranding
+{
+    private const uint WmSetIcon = 0x0080;
+    private static readonly IntPtr IconSmall = IntPtr.Zero;
+    private static readonly IntPtr IconBig = new(1);
+    private static IntPtr _largeIcon;
+    private static IntPtr _smallIcon;
+
+    public static void InitializeProcess()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        _ = SetCurrentProcessExplicitAppUserModelID("LIGDefenseAerospace.LIGAIMCP.Manager");
+    }
+
+    public static void ApplyToConsoleWindow()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var window = GetConsoleWindow();
+        var executable = Environment.ProcessPath;
+        if (window == IntPtr.Zero || string.IsNullOrWhiteSpace(executable))
+            return;
+
+        var large = new IntPtr[1];
+        var small = new IntPtr[1];
+        if (ExtractIconEx(executable, 0, large, small, 1) == 0)
+            return;
+
+        _largeIcon = large[0];
+        _smallIcon = small[0];
+        if (_largeIcon != IntPtr.Zero)
+            _ = SendMessage(window, WmSetIcon, IconBig, _largeIcon);
+        if (_smallIcon != IntPtr.Zero)
+            _ = SendMessage(window, WmSetIcon, IconSmall, _smallIcon);
+
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => ReleaseIcons();
+    }
+
+    private static void ReleaseIcons()
+    {
+        if (_largeIcon != IntPtr.Zero)
+        {
+            _ = DestroyIcon(_largeIcon);
+            _largeIcon = IntPtr.Zero;
+        }
+        if (_smallIcon != IntPtr.Zero)
+        {
+            _ = DestroyIcon(_smallIcon);
+            _smallIcon = IntPtr.Zero;
+        }
+    }
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetConsoleWindow();
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint ExtractIconEx(string file, int iconIndex, IntPtr[] largeIcons, IntPtr[] smallIcons, uint iconCount);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr icon);
 }
 
 internal sealed class ManagerConfig
