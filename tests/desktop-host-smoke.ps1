@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+. (Join-Path $PSScriptRoot 'mcp-http.ps1')
 
 $servers = @(
     @{ Name = 'mcp-matlab'; ProcessName = 'McpMatlab'; Port = 42195; Script = 'mcp-matlab\scripts\run-dev.ps1'; ExpectedTools = @('config', 'official_mcp_tools_list', 'official_mcp_tool_call', 'simulink_find_system', 'simulink_simulate'); ExtraCalls = @(
@@ -32,38 +33,25 @@ function ConvertFrom-SseJson([string]$Content) {
 }
 
 function New-McpSession([string]$BaseUrl) {
-    $headers = @{
-        Accept = 'application/json, text/event-stream'
-        'Content-Type' = 'application/json'
-    }
     $body = New-McpBody 1 'initialize' @{
         protocolVersion = '2025-06-18'
         capabilities = @{}
         clientInfo = @{ name = 'desktop-host-smoke'; version = '1.0' }
     }
-    $init = Invoke-WebRequest -Uri "$BaseUrl/mcp" -Method Post -Headers $headers -Body $body -TimeoutSec 60
+    $init = Invoke-McpHttpPost -Uri "$BaseUrl/mcp" -Body $body
     $sessionId = [string]$init.Headers['Mcp-Session-Id']
     if ([string]::IsNullOrWhiteSpace($sessionId)) {
         throw "No Mcp-Session-Id returned from $BaseUrl"
     }
 
     $initialized = @{ jsonrpc = '2.0'; method = 'notifications/initialized'; params = @{} } | ConvertTo-Json -Depth 10
-    Invoke-WebRequest -Uri "$BaseUrl/mcp" -Method Post -Headers @{
-        Accept = 'application/json, text/event-stream'
-        'Content-Type' = 'application/json'
-        'Mcp-Session-Id' = $sessionId
-    } -Body $initialized -TimeoutSec 60 | Out-Null
+    Invoke-McpHttpPost -Uri "$BaseUrl/mcp" -Body $initialized -SessionId $sessionId | Out-Null
 
     return $sessionId
 }
 
 function Invoke-Mcp([string]$BaseUrl, [string]$SessionId, [int]$Id, [string]$Method, [hashtable]$Params = @{}) {
-    $headers = @{
-        Accept = 'application/json, text/event-stream'
-        'Content-Type' = 'application/json'
-        'Mcp-Session-Id' = $SessionId
-    }
-    $response = Invoke-WebRequest -Uri "$BaseUrl/mcp" -Method Post -Headers $headers -Body (New-McpBody $Id $Method $Params) -TimeoutSec 60
+    $response = Invoke-McpHttpPost -Uri "$BaseUrl/mcp" -Body (New-McpBody $Id $Method $Params) -SessionId $SessionId
     return ConvertFrom-SseJson $response.Content
 }
 

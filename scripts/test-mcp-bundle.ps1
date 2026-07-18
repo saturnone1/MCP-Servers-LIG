@@ -8,6 +8,8 @@ $configPath = Join-Path $BundleRoot 'servers.json'
 $managerPath = Join-Path $BundleRoot 'McpManager.exe'
 $launcherPath = Join-Path $BundleRoot 'LIG-AI-MCP.cmd'
 $bundledDotnetPath = Join-Path $BundleRoot 'dotnet\dotnet.exe'
+$managerProject = Join-Path $PSScriptRoot '..\mcp-manager\src\McpManager.csproj'
+$managerDll = Join-Path $PSScriptRoot '..\mcp-manager\src\bin\Release\net10.0\McpManager.dll'
 
 if (-not (Test-Path -LiteralPath $configPath)) {
     throw "Bundle config not found: $configPath"
@@ -115,7 +117,38 @@ foreach ($entry in $optionalDependencies.GetEnumerator()) {
 
 Write-Host ""
 Write-Host "== Manager view"
-& $launcherPath list all
+dotnet build $managerProject -c Release --no-restore | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    throw "Manager validation build failed with exit code $LASTEXITCODE."
+}
+
+$previousConfig = [Environment]::GetEnvironmentVariable('MCP_MANAGER_CONFIG', 'Process')
+$previousState = [Environment]::GetEnvironmentVariable('MCP_MANAGER_STATE_DIR', 'Process')
+$validationState = Join-Path ([IO.Path]::GetTempPath()) ("lig-mcp-manager-validation-" + [Guid]::NewGuid().ToString('N'))
+try {
+    $env:MCP_MANAGER_CONFIG = $configPath
+    $env:MCP_MANAGER_STATE_DIR = $validationState
+    $managerOutput = @(& dotnet $managerDll list all 2>&1)
+    $managerExitCode = $LASTEXITCODE
+    $managerOutput | ForEach-Object { Write-Host $_ }
+    if ($managerExitCode -ne 0) {
+        throw "Manager list validation failed with exit code $managerExitCode."
+    }
+
+    $managerText = $managerOutput -join [Environment]::NewLine
+    foreach ($server in $config.servers) {
+        if ($managerText -notmatch [Regex]::Escape([string]$server.name)) {
+            throw "Manager output did not include bundle server: $($server.name)"
+        }
+    }
+}
+finally {
+    [Environment]::SetEnvironmentVariable('MCP_MANAGER_CONFIG', $previousConfig, 'Process')
+    [Environment]::SetEnvironmentVariable('MCP_MANAGER_STATE_DIR', $previousState, 'Process')
+    if (Test-Path -LiteralPath $validationState) {
+        Remove-Item -LiteralPath $validationState -Recurse -Force
+    }
+}
 
 if ($missing.Count -gt 0) {
     throw "Bundle has missing server executables."

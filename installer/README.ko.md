@@ -3,7 +3,13 @@
 `scripts\build-installer.ps1`은 Windows x64 MCP 번들을 게시하고 MSI 및 UAC 상승용 단일 `Setup.exe`로 압축합니다. Setup은 시작할 때 바로 관리자 권한을 요청한 뒤 내장 MSI를 Windows Installer로 실행하므로 비승격 MSI 실행으로 인한 2502/2503 오류를 방지합니다.
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.0.0
+.\scripts\build-installer.ps1
+```
+
+버전은 `installer\VERSION`에서 읽습니다. 정식 배포 시에는 다음처럼 코드 서명 인증서 지문을 지정합니다.
+
+```powershell
+.\scripts\build-installer.ps1 -CertificateThumbprint '<인증서 지문>'
 ```
 
 사용자에게 제공되는 결과 파일은 `installer\output\LIG-AI-MCP-Setup-<version>-win-x64.exe` 하나뿐입니다. MSI는 Setup에 내장되는 중간 빌드 파일이며 사용자 배포 폴더에는 생성하지 않습니다. 빌드 도구 WiX 5.0.2는 저장소의 무시된 `.tools\wix`에 설치됩니다.
@@ -22,7 +28,7 @@ MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET 
 - DB 및 원격 API MCP: 연결 문자열, URL, 계정 또는 토큰
 - HWP 고급 변환: 필요에 따라 `hwp5txt` 또는 LibreOffice
 
-현재 Setup과 MSI는 코드 서명되지 않았습니다. 조직 외부 또는 보안 정책이 강한 환경에 배포하면 Windows가 알 수 없는 게시자 경고를 표시할 수 있으므로 정식 배포 전 조직의 코드 서명 인증서로 서명하는 것을 권장합니다.
+인증서 지문을 지정하면 제품 실행 파일, MSI 및 최종 Setup을 SHA-256과 타임스탬프로 서명합니다. 인증서를 지정하지 않으면 빌드는 계속되지만 서명되지 않았다는 경고를 표시합니다.
 
 설치 프로그램은 다음을 제공합니다.
 
@@ -32,12 +38,12 @@ MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET 
 - 실행할 때마다 UAC 관리자 권한을 요청하며 작업표시줄에 제품 아이콘이 표시되는 self-contained `McpManager.exe`
 - 시작 메뉴와 바탕화면의 `LIG AI MCP` 바로가기
 - Windows 앱 목록을 통한 업그레이드 및 제거
-- 제거 시 로그, PID 상태 및 자동실행 설정 정리
+- 제거 시 모든 로컬 사용자 프로필의 로그, PID 상태 및 자동실행 설정 정리
 
 이미 게시한 번들을 다시 압축만 하려면 다음 명령을 사용합니다.
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.0.0 -SkipBundle
+.\scripts\build-installer.ps1 -SkipBundle
 ```
 
 릴리스 설치본에는 PDB와 `*.old` 백업 파일을 포함하지 않습니다. `autostart.json`도 설치 파일에 넣지 않으며 각 사용자가 설치 후 등록한 자동실행 설정만 사용합니다.

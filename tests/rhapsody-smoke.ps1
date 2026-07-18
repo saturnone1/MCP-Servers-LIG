@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'mcp-http.ps1')
 
 function New-McpBody([int]$Id, [string]$Method, [hashtable]$Params) {
     return @{ jsonrpc = '2.0'; id = $Id; method = $Method; params = $Params } | ConvertTo-Json -Depth 20
@@ -20,12 +21,7 @@ function ConvertFrom-SseJson([string]$Content) {
 }
 
 function Invoke-Mcp([string]$BaseUrl, [string]$SessionId, [int]$Id, [string]$Method, [hashtable]$Params = @{}) {
-    $headers = @{
-        Accept = 'application/json, text/event-stream'
-        'Content-Type' = 'application/json'
-        'Mcp-Session-Id' = $SessionId
-    }
-    $response = Invoke-WebRequest -Uri "$BaseUrl/mcp" -Method Post -Headers $headers -Body (New-McpBody $Id $Method $Params) -TimeoutSec 120
+    $response = Invoke-McpHttpPost -Uri "$BaseUrl/mcp" -Body (New-McpBody $Id $Method $Params) -SessionId $SessionId
     return ConvertFrom-SseJson $response.Content
 }
 
@@ -62,26 +58,18 @@ try {
         throw 'mcp-rhapsody did not become healthy.'
     }
 
-    $headers = @{
-        Accept = 'application/json, text/event-stream'
-        'Content-Type' = 'application/json'
-    }
-    $init = Invoke-WebRequest -Uri "$baseUrl/mcp" -Method Post -Headers $headers -Body (New-McpBody 1 'initialize' @{
+    $init = Invoke-McpHttpPost -Uri "$baseUrl/mcp" -Body (New-McpBody 1 'initialize' @{
         protocolVersion = '2025-06-18'
         capabilities = @{}
         clientInfo = @{ name = 'rhapsody-smoke'; version = '1.0' }
-    }) -TimeoutSec 20
+    })
     $sessionId = [string]$init.Headers['Mcp-Session-Id']
     if ([string]::IsNullOrWhiteSpace($sessionId)) {
         throw 'No Mcp-Session-Id returned.'
     }
 
     $initialized = @{ jsonrpc = '2.0'; method = 'notifications/initialized'; params = @{} } | ConvertTo-Json -Depth 10
-    Invoke-WebRequest -Uri "$baseUrl/mcp" -Method Post -Headers @{
-        Accept = 'application/json, text/event-stream'
-        'Content-Type' = 'application/json'
-        'Mcp-Session-Id' = $sessionId
-    } -Body $initialized -TimeoutSec 20 | Out-Null
+    Invoke-McpHttpPost -Uri "$baseUrl/mcp" -Body $initialized -SessionId $sessionId | Out-Null
 
     $toolsJson = Invoke-Mcp $baseUrl $sessionId 2 'tools/list'
     $toolNames = @($toolsJson.result.tools | ForEach-Object name)

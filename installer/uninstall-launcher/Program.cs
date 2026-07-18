@@ -38,10 +38,12 @@ internal static partial class Program
             if (productCode is null)
             {
                 RemoveCustomArpEntry();
-                CleanupApplicationData();
+                var pendingCleanup = CleanupApplicationData();
                 if (!quiet)
-                    ShowMessage("LIG AI MCP는 이미 제거되어 있습니다.", MessageBoxIconInformation);
-                return 0;
+                    ShowMessage(pendingCleanup.Length == 0
+                        ? "LIG AI MCP는 이미 제거되어 있습니다. 남은 데이터도 정리했습니다."
+                        : "LIG AI MCP는 이미 제거되어 있습니다. 잠긴 데이터는 Windows를 다시 시작할 때 정리됩니다.", MessageBoxIconInformation);
+                return pendingCleanup.Length == 0 ? 0 : 3010;
             }
 
             var logPath = Path.Combine(Path.GetTempPath(), $"LIG-AI-MCP-Uninstall-{DateTime.Now:yyyyMMdd-HHmmss}.log");
@@ -64,11 +66,12 @@ internal static partial class Program
 
             if (installer.ExitCode is 0 or 1605 or 3010)
             {
-                CleanupApplicationData();
-                var restartMessage = installer.ExitCode == 3010 ? "\n완전한 정리를 위해 Windows를 다시 시작해 주세요." : string.Empty;
+                var pendingCleanup = CleanupApplicationData();
+                var restartRequired = installer.ExitCode == 3010 || pendingCleanup.Length > 0;
+                var restartMessage = restartRequired ? "\n잠긴 파일을 완전히 정리하려면 Windows를 다시 시작해 주세요." : string.Empty;
                 if (!quiet)
                     ShowMessage($"{ProductName} 제거가 완료되었습니다.{restartMessage}", MessageBoxIconInformation);
-                return installer.ExitCode;
+                return restartRequired ? 3010 : 0;
             }
 
             if (!quiet)
@@ -190,22 +193,94 @@ internal static partial class Program
         }
     }
 
-    private static void CleanupApplicationData()
+    private static string[] CleanupApplicationData()
     {
-        DeleteKnownDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LIG AI MCP"));
-        DeleteKnownDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LIG AI MCP"));
+        var pending = new List<string>();
+        foreach (var path in EnumerateCleanupDirectories())
+        {
+            if (DeleteKnownDirectory(path))
+                continue;
+            ScheduleDirectoryTreeDeletion(path);
+            pending.Add(path);
+        }
+        return pending.ToArray();
     }
 
-    private static void DeleteKnownDirectory(string path)
+    private static string[] EnumerateCleanupDirectories()
     {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LIG AI MCP"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LIG AI MCP")
+        };
+
         try
         {
-            if (Directory.Exists(path))
-                Directory.Delete(path, recursive: true);
+            using var profiles = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList");
+            foreach (var sid in profiles?.GetSubKeyNames() ?? [])
+            {
+                using var profile = profiles!.OpenSubKey(sid);
+                var rawPath = profile?.GetValue("ProfileImagePath") as string;
+                if (string.IsNullOrWhiteSpace(rawPath))
+                    continue;
+                var profileRoot = Path.GetFullPath(Environment.ExpandEnvironmentVariables(rawPath));
+                paths.Add(Path.Combine(profileRoot, "AppData", "Local", "LIG AI MCP"));
+            }
         }
         catch
         {
-            // Installation files are already removed; locked logs can be cleared after restart.
+            // The current user and common data locations are still cleaned.
+        }
+
+        return paths.ToArray();
+    }
+
+    private static bool DeleteKnownDirectory(string path)
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            try
+            {
+                if (!Directory.Exists(path))
+                    return true;
+                NormalizeAttributes(path);
+                Directory.Delete(path, recursive: true);
+                return true;
+            }
+            catch when (attempt < 3)
+            {
+                Thread.Sleep(250);
+            }
+        }
+        return !Directory.Exists(path);
+    }
+
+    private static void NormalizeAttributes(string path)
+    {
+        foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+        {
+            try { File.SetAttributes(file, FileAttributes.Normal); }
+            catch { /* A locked file will be scheduled for deletion. */ }
+        }
+    }
+
+    private static void ScheduleDirectoryTreeDeletion(string path)
+    {
+        if (!Directory.Exists(path))
+            return;
+
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                _ = NativeMethods.MoveFileEx(file, null, MoveFileDelayUntilReboot);
+            foreach (var directory in Directory.EnumerateDirectories(path, "*", SearchOption.AllDirectories)
+                         .OrderByDescending(directory => directory.Length))
+                _ = NativeMethods.MoveFileEx(directory, null, MoveFileDelayUntilReboot);
+            _ = NativeMethods.MoveFileEx(path, null, MoveFileDelayUntilReboot);
+        }
+        catch
+        {
+            // The completion result reports that a restart is still required.
         }
     }
 
