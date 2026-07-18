@@ -1,12 +1,12 @@
 # LIG AI MCP 설치 파일
 
-`scripts\build-installer.ps1`은 Windows x64 MCP 번들을 게시하고 MSI 및 UAC 상승용 단일 `Setup.exe`로 압축합니다.
+`scripts\build-installer.ps1`은 Windows x64 MCP 번들을 게시하고 MSI 및 UAC 상승용 단일 `Setup.exe`로 압축합니다. Setup은 시작할 때 바로 관리자 권한을 요청한 뒤 내장 MSI를 Windows Installer로 실행하므로 비승격 MSI 실행으로 인한 2502/2503 오류를 방지합니다.
 
 ```powershell
 .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-일반 사용자용 결과 파일은 `installer\output\LIG-AI-MCP-Setup-<version>-win-x64.exe`입니다. 관리자 배포용 MSI는 실수로 더블클릭하지 않도록 `installer\output\admin\LIG-AI-MCP-Admin-Deploy-<version>-win-x64.msi`로 분리됩니다. 빌드 도구 WiX 5.0.2는 저장소의 무시된 `.tools\wix`에, bootstrapper extension cache는 무시된 `.wix`에 설치됩니다.
+일반 사용자용 결과 파일은 `installer\output\LIG-AI-MCP-Setup-<version>-win-x64.exe`입니다. 관리자 배포용 MSI는 실수로 더블클릭하지 않도록 `installer\output\admin\LIG-AI-MCP-Admin-Deploy-<version>-win-x64.msi`로 분리됩니다. 빌드 도구 WiX 5.0.2는 저장소의 무시된 `.tools\wix`에 설치됩니다.
 
 ## 배포
 
@@ -41,4 +41,4 @@ MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET 
 
 릴리스 설치본에는 PDB와 `*.old` 백업 파일을 포함하지 않습니다. `autostart.json`도 설치 파일에 넣지 않으며 각 사용자가 설치 후 등록한 자동실행 설정만 사용합니다.
 
-업그레이드 설치본을 만들 때는 이전 설치본보다 높은 `-Version` 값을 사용해야 합니다. Setup과 MSI가 각각 고정된 `UpgradeCode`를 유지하므로 새 Setup을 실행하면 기존 버전을 감지해 업그레이드합니다.
+업그레이드 설치본을 만들 때는 이전 설치본보다 높은 `-Version` 값을 사용해야 합니다. 내장 MSI가 고정된 `UpgradeCode`를 유지하므로 새 Setup을 실행하면 기존 버전을 감지해 업그레이드합니다.

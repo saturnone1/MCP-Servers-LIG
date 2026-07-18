@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\mcp-manager\src\assets\mcp-manager.ico</ApplicationIcon>
+    <AssemblyName>LIG-AI-MCP-Setup</AssemblyName>
+    <RootNamespace>LigAiMcp.Setup</RootNamespace>
+    <Version>$(SetupVersion)</Version>
+    <FileVersion>$(SetupVersion)</FileVersion>
+    <AssemblyVersion>$(SetupVersion)</AssemblyVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MsiPath)' != ''">
+    <EmbeddedResource Include="$(MsiPath)" LogicalName="LIG.AI.MCP.payload.msi" />
+  </ItemGroup>
+</Project>

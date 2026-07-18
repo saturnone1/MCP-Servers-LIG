@@ -11,13 +11,12 @@ $installerRoot = Join-Path $repoRoot 'installer'
 $outputRoot = Join-Path $installerRoot 'output'
 $adminOutputRoot = Join-Path $outputRoot 'admin'
 $objectRoot = Join-Path $installerRoot 'obj'
-$bundleObjectRoot = Join-Path $objectRoot 'bundle'
+$launcherProject = Join-Path $installerRoot 'setup-launcher\SetupLauncher.csproj'
+$launcherOutputRoot = Join-Path $objectRoot 'setup-launcher'
 $iconPng = Join-Path $repoRoot 'mcp-manager\src\assets\mcp-manager-icon-preview.png'
 $iconIco = Join-Path $repoRoot 'mcp-manager\src\assets\mcp-manager.ico'
 $wixRoot = Join-Path $repoRoot '.tools\wix'
 $wix = Join-Path $wixRoot 'wix.exe'
-$bootstrapperExtension = 'WixToolset.BootstrapperApplications.wixext'
-$bootstrapperExtensionVersion = '5.0.2'
 
 if ($Version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') {
     throw "Version must contain three or four numeric parts: $Version"
@@ -40,15 +39,7 @@ if (-not (Test-Path -LiteralPath $wix)) {
     }
 }
 
-$installedExtensions = @(& $wix extension list 2>$null)
-if (-not ($installedExtensions | Where-Object { $_ -match "^$([regex]::Escape($bootstrapperExtension))\s" })) {
-    & $wix extension add "$bootstrapperExtension/$bootstrapperExtensionVersion"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to install the local WiX bootstrapper extension (exit $LASTEXITCODE)."
-    }
-}
-
-New-Item -ItemType Directory -Force -Path $outputRoot, $adminOutputRoot, $objectRoot, $bundleObjectRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $outputRoot, $adminOutputRoot, $objectRoot, $launcherOutputRoot | Out-Null
 $msiPath = Join-Path $adminOutputRoot "LIG-AI-MCP-Admin-Deploy-$Version-$Runtime.msi"
 & $wix build `
     (Join-Path $installerRoot 'Product.wxs') `
@@ -65,21 +56,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $setupPath = Join-Path $outputRoot "LIG-AI-MCP-Setup-$Version-$Runtime.exe"
-& $wix build `
-    (Join-Path $installerRoot 'Bundle.wxs') `
-    -arch x64 `
-    -ext $bootstrapperExtension `
-    -d "ProductVersion=$Version" `
-    -d "MsiPath=$msiPath" `
-    -d "IconPath=$iconIco" `
-    -d "LogoPath=$iconPng" `
-    -intermediateFolder $bundleObjectRoot `
-    -defaultCompressionLevel high `
-    -pdbType none `
-    -out $setupPath
+dotnet publish $launcherProject `
+    -c Release `
+    -r $Runtime `
+    --self-contained true `
+    -o $launcherOutputRoot `
+    -p:SetupVersion=$Version `
+    -p:MsiPath=$msiPath
 if ($LASTEXITCODE -ne 0) {
-    throw "WiX bootstrapper build failed with exit code $LASTEXITCODE."
+    throw "Elevated setup launcher build failed with exit code $LASTEXITCODE."
 }
+$publishedSetup = Join-Path $launcherOutputRoot 'LIG-AI-MCP-Setup.exe'
+if (-not (Test-Path -LiteralPath $publishedSetup)) {
+    throw "The elevated setup launcher was not published: $publishedSetup"
+}
+Copy-Item -LiteralPath $publishedSetup -Destination $setupPath -Force
 
 $bundleBytes = (Get-ChildItem -LiteralPath $bundleRoot -Recurse -File | Measure-Object Length -Sum).Sum
 $msi = Get-Item -LiteralPath $msiPath
