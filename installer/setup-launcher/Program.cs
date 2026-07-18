@@ -26,16 +26,23 @@ internal static partial class Program
             await using var payload = assembly.GetManifestResourceStream(PayloadResource)
                 ?? throw new InvalidOperationException("설치 프로그램에 MSI payload가 없습니다.");
 
-            msiPath = Path.Combine(Path.GetTempPath(), $"LIG-AI-MCP-{Guid.NewGuid():N}.msi");
+            var installerRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "LIG AI MCP",
+                "Installer");
+            Directory.CreateDirectory(installerRoot);
+
+            msiPath = Path.Combine(installerRoot, $"LIG-AI-MCP-{Guid.NewGuid():N}.msi");
             await using (var output = new FileStream(msiPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 await payload.CopyToAsync(output);
 
-            var logPath = Path.Combine(Path.GetTempPath(), $"LIG-AI-MCP-Setup-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            var logPath = Path.Combine(installerRoot, $"LIG-AI-MCP-Setup-{DateTime.Now:yyyyMMdd-HHmmss}.log");
             var startInfo = new ProcessStartInfo
             {
                 FileName = Path.Combine(Environment.SystemDirectory, "msiexec.exe"),
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                WorkingDirectory = installerRoot
             };
             startInfo.ArgumentList.Add("/i");
             startInfo.ArgumentList.Add(msiPath);
