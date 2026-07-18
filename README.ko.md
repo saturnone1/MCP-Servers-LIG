@@ -185,7 +185,7 @@ Windows 설치 파일은 다음 명령으로 생성합니다.
 .\scripts\build-installer.ps1 -Version 1.0.0
 ```
 
-일반 사용자용 `Setup.exe`는 `installer\output`에, 관리자 배포용 MSI는 `installer\output\admin`에 분리되어 생성됩니다. 일반 사용자에게는 UAC 상승을 직접 처리하는 `Setup.exe` 하나만 배포하며, MSI는 관리자 터미널이나 조직 배포 시스템에서 사용합니다. 사용자는 `mcp-bundle`, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 19개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기, 업그레이드·복구·제거 기능을 포함합니다. 바로가기는 `.cmd`가 아닌 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 현재 설치 파일은 코드 서명되지 않았으므로 정식 배포 시 조직 인증서로 서명하는 것을 권장합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+일반 사용자용 `Setup.exe`는 `installer\output`에, 관리자 배포용 MSI는 `installer\output\admin`에 분리되어 생성됩니다. 일반 사용자에게는 UAC 상승을 직접 처리하는 `Setup.exe` 하나만 배포합니다. Setup은 내장 MSI를 꺼내기 전에 먼저 관리자 권한을 얻으므로 비승격 Windows Installer 실행에서 발생하는 2502/2503 오류를 방지합니다. MSI는 관리자 터미널이나 조직 배포 시스템에서 사용합니다. 사용자는 `mcp-bundle`, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 19개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기, 업그레이드·복구·제거 기능을 포함합니다. 바로가기는 `.cmd`가 아닌 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 현재 설치 파일은 코드 서명되지 않았으므로 정식 배포 시 조직 인증서로 서명하는 것을 권장합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
 
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 
