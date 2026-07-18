@@ -13,6 +13,8 @@ $objectRoot = Join-Path $installerRoot 'obj'
 $payloadRoot = Join-Path $objectRoot 'payload'
 $launcherProject = Join-Path $installerRoot 'setup-launcher\SetupLauncher.csproj'
 $launcherOutputRoot = Join-Path $objectRoot 'setup-launcher'
+$uninstallProject = Join-Path $installerRoot 'uninstall-launcher\UninstallLauncher.csproj'
+$uninstallOutputRoot = Join-Path $objectRoot 'uninstall-launcher'
 $iconPng = Join-Path $repoRoot 'mcp-manager\src\assets\mcp-manager-icon-preview.png'
 $iconIco = Join-Path $repoRoot 'mcp-manager\src\assets\mcp-manager.ico'
 $wixRoot = Join-Path $repoRoot '.tools\wix'
@@ -54,7 +56,22 @@ if (Test-Path -LiteralPath $outputRoot) {
     }
 }
 
-New-Item -ItemType Directory -Force -Path $outputRoot, $objectRoot, $payloadRoot, $launcherOutputRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $outputRoot, $objectRoot, $payloadRoot, $launcherOutputRoot, $uninstallOutputRoot | Out-Null
+dotnet publish $uninstallProject `
+    -c Release `
+    -r $Runtime `
+    --self-contained true `
+    -o $uninstallOutputRoot `
+    -p:SetupVersion=$Version
+if ($LASTEXITCODE -ne 0) {
+    throw "Elevated uninstaller build failed with exit code $LASTEXITCODE."
+}
+$publishedUninstaller = Join-Path $uninstallOutputRoot 'LIG-AI-MCP-Uninstall.exe'
+if (-not (Test-Path -LiteralPath $publishedUninstaller)) {
+    throw "The elevated uninstaller was not published: $publishedUninstaller"
+}
+Copy-Item -LiteralPath $publishedUninstaller -Destination (Join-Path $bundleRoot 'LIG-AI-MCP-Uninstall.exe') -Force
+
 $msiPath = Join-Path $payloadRoot "LIG-AI-MCP-Payload-$Version-$Runtime.msi"
 & $wix build `
     (Join-Path $installerRoot 'Product.wxs') `

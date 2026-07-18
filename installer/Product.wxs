@@ -16,9 +16,22 @@
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
     <Property Id="ARPNOMODIFY" Value="1" />
     <Property Id="ARPNOREPAIR" Value="1" />
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="LIG AI MCP" />
+      <Directory Id="INSTALLFOLDER" Name="LIG AI MCP">
+        <Component Id="CustomArpRegistration" Guid="3F7B4A2D-05C1-4DCF-9C8F-80AD30FB59F1">
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="DisplayName" Type="string" Value="LIG AI MCP Server Suite" KeyPath="yes" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="DisplayVersion" Type="string" Value="[ProductVersion]" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="Publisher" Type="string" Value="LIG Defense &amp; Aerospace" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="DisplayIcon" Type="string" Value="[INSTALLFOLDER]McpManager.exe" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="InstallLocation" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="UninstallString" Type="string" Value="&quot;[INSTALLFOLDER]LIG-AI-MCP-Uninstall.exe&quot;" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="QuietUninstallString" Type="string" Value="&quot;[INSTALLFOLDER]LIG-AI-MCP-Uninstall.exe&quot; --quiet" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="NoModify" Type="integer" Value="1" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="NoRepair" Type="integer" Value="1" />
+        </Component>
+      </Directory>
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
@@ -34,8 +47,7 @@
           <Shortcut
             Id="UninstallStartMenuShortcut"
             Name="Uninstall LIG AI MCP"
-            Target="[System64Folder]msiexec.exe"
-            Arguments="/x [ProductCode]" />
+            Target="[INSTALLFOLDER]LIG-AI-MCP-Uninstall.exe" />
           <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
           <RegistryValue
               Root="HKLM"
@@ -73,6 +85,7 @@
       </Files>
       <ComponentRef Id="ApplicationStartMenuShortcuts" />
       <ComponentRef Id="ApplicationDesktopShortcut" />
+      <ComponentRef Id="CustomArpRegistration" />
     </Feature>
   </Package>
 </Wix>

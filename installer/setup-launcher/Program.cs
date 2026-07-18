@@ -46,7 +46,7 @@ internal static partial class Program
             };
             startInfo.ArgumentList.Add("/i");
             startInfo.ArgumentList.Add(msiPath);
-            startInfo.ArgumentList.Add(quiet ? "/qn" : "/passive");
+            startInfo.ArgumentList.Add(quiet ? "/qn" : "/qb!");
             startInfo.ArgumentList.Add("/norestart");
             startInfo.ArgumentList.Add("/L*v");
             startInfo.ArgumentList.Add(logPath);
