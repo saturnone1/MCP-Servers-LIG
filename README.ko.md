@@ -182,10 +182,12 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 Windows 설치 파일은 다음 명령으로 생성합니다.
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.0.0
+.\scripts\build-installer.ps1
 ```
 
-사용자에게 제공되는 설치 파일은 `installer\output`의 `Setup.exe` 하나뿐이며 MSI는 그 안에 내장되는 빌드 재료로만 사용합니다. Setup 자체가 먼저 UAC 관리자 권한을 요청하고 명시적인 설치 진행 창과 최상단 완료 창을 표시합니다. 앱 목록과 시작 메뉴에는 관리자 권한을 자체 요청하고 실행 중 프로세스를 정리한 뒤 제거 진행 창과 완료 창을 표시하는 전용 Uninstaller가 등록됩니다. 사용자는 `mcp-bundle`, MSI, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 19개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기와 실패 시 복구되는 업그레이드를 포함합니다. `McpManager.exe`는 실행할 때마다 관리자 권한을 요청하고 여기서 시작한 서버는 권한을 상속하지만, 개별 MCP 서버 EXE는 LLM이 직접 실행할 수 있도록 승격을 강제하지 않습니다. 바로가기는 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 현재 설치 파일은 코드 서명되지 않았으므로 정식 배포 시 조직 인증서로 서명하는 것을 권장합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+기본 버전은 `installer\VERSION`에서 읽으며, 의도적으로 다른 릴리스를 만들 때만 `-Version`으로 덮어씁니다. 정식 서명 빌드는 `-CertificateThumbprint <thumbprint>`를 전달하거나 `LIG_SIGNING_CERT_THUMBPRINT` 환경 변수를 설정하면 제품 실행 파일, 내장 MSI 및 최종 Setup을 모두 서명합니다.
+
+사용자에게 제공되는 설치 파일은 `installer\output`의 `Setup.exe` 하나뿐이며 MSI는 그 안에 내장되는 빌드 재료로만 사용합니다. Setup 자체가 먼저 UAC 관리자 권한을 요청하고 명시적인 설치 진행 창과 최상단 완료 창을 표시합니다. 앱 목록과 시작 메뉴에는 관리자 권한을 자체 요청하고 실행 중 프로세스를 정리한 뒤 제거 진행 창과 완료 창을 표시하는 전용 Uninstaller가 등록됩니다. 사용자는 `mcp-bundle`, MSI, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 19개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기와 실패 시 복구되는 업그레이드를 포함합니다. `McpManager.exe`는 실행할 때마다 관리자 권한을 요청하고 여기서 시작한 서버는 권한을 상속하지만, 개별 MCP 서버 EXE는 LLM이 직접 실행할 수 있도록 승격을 강제하지 않습니다. 바로가기는 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 인증서를 지정하지 않으면 설치 파일은 서명되지 않으며 빌드가 명확한 경고를 출력합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
 
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 
