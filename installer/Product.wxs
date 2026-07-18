@@ -8,10 +8,14 @@
     InstallerVersion="500">
 
     <SummaryInformation Description="LIG AI MCP Server Suite" />
-    <MajorUpgrade DowngradeErrorMessage="A newer version of LIG AI MCP Server Suite is already installed." />
+    <MajorUpgrade
+      Schedule="afterInstallInitialize"
+      DowngradeErrorMessage="A newer version of LIG AI MCP Server Suite is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
     <Icon Id="AppIcon" SourceFile="$(IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+    <Property Id="ARPNOREPAIR" Value="1" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="LIG AI MCP" />

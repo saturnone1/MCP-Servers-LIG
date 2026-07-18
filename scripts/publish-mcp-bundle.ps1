@@ -255,42 +255,42 @@ if ($BundleDotnetRuntime -and -not $SelfContained) {
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" %*
+start "" /wait "%~dp0McpManager.exe" %*
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'mcp-manager.cmd') -Encoding ASCII
 
 @'
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" %*
+start "" /wait "%~dp0McpManager.exe" %*
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'LIG-AI-MCP.cmd') -Encoding ASCII
 
 @'
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" start all
+start "" /wait "%~dp0McpManager.exe" start all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'start-all.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" stop all
+start "" /wait "%~dp0McpManager.exe" stop all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'stop-all.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" status all
+start "" /wait "%~dp0McpManager.exe" status all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'status.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" urls all
+start "" /wait "%~dp0McpManager.exe" urls all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $OutputRoot 'urls.cmd') -Encoding ASCII
 @'
@@ -317,14 +317,14 @@ notepad.exe "%ENV_DIR%\$($server.name).env"
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" start $($server.name)
+start "" /wait "%~dp0McpManager.exe" start $($server.name)
 pause
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "start-$($server.name).cmd") -Encoding ASCII
 @"
 @echo off
 setlocal
 if exist "%~dp0runtime-env.cmd" call "%~dp0runtime-env.cmd"
-"%~dp0McpManager.exe" stop $($server.name)
+start "" /wait "%~dp0McpManager.exe" stop $($server.name)
 pause
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "stop-$($server.name).cmd") -Encoding ASCII
 }

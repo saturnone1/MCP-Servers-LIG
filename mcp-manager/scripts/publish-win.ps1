@@ -51,29 +51,29 @@ pause
 @'
 @echo off
 setlocal
-"%~dp0McpManager.exe" %*
+start "" /wait "%~dp0McpManager.exe" %*
 '@ | Set-Content -LiteralPath (Join-Path $Output 'mcp-manager.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
-"%~dp0McpManager.exe" %*
+start "" /wait "%~dp0McpManager.exe" %*
 '@ | Set-Content -LiteralPath (Join-Path $Output 'LIG-AI-MCP.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
-"%~dp0McpManager.exe" start all
+start "" /wait "%~dp0McpManager.exe" start all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $Output 'start-all.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
-"%~dp0McpManager.exe" stop all
+start "" /wait "%~dp0McpManager.exe" stop all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $Output 'stop-all.cmd') -Encoding ASCII
 @'
 @echo off
 setlocal
-"%~dp0McpManager.exe" status all
+start "" /wait "%~dp0McpManager.exe" status all
 pause
 '@ | Set-Content -LiteralPath (Join-Path $Output 'status.cmd') -Encoding ASCII
 
@@ -82,13 +82,13 @@ foreach ($server in $config.servers) {
 @"
 @echo off
 setlocal
-"%~dp0McpManager.exe" start $($server.name)
+start "" /wait "%~dp0McpManager.exe" start $($server.name)
 pause
 "@ | Set-Content -LiteralPath (Join-Path $Output "start-$($server.name).cmd") -Encoding ASCII
 @"
 @echo off
 setlocal
-"%~dp0McpManager.exe" stop $($server.name)
+start "" /wait "%~dp0McpManager.exe" stop $($server.name)
 pause
 "@ | Set-Content -LiteralPath (Join-Path $Output "stop-$($server.name).cmd") -Encoding ASCII
 }

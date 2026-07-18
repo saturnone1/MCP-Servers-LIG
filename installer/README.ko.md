@@ -27,8 +27,9 @@ MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET 
 설치 프로그램은 다음을 제공합니다.
 
 - UAC 상승 후 컴퓨터 전체에 설치
+- 앱 목록에서 변경/복구 대신 제거만 제공하고, 실패한 업그레이드는 이전 설치로 롤백
 - 번들 공유 .NET 및 ASP.NET Core 런타임 포함
-- 작업표시줄에 제품 아이콘이 표시되도록 self-contained `McpManager.exe`를 바로 실행
+- 실행할 때마다 UAC 관리자 권한을 요청하며 작업표시줄에 제품 아이콘이 표시되는 self-contained `McpManager.exe`
 - 시작 메뉴와 바탕화면의 `LIG AI MCP` 바로가기
 - Windows 앱 목록을 통한 업그레이드 및 제거
 - 제거 시 로그, PID 상태 및 자동실행 설정 정리
