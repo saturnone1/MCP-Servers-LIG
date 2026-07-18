@@ -9,8 +9,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $bundleRoot = Join-Path $repoRoot 'mcp-bundle'
 $installerRoot = Join-Path $repoRoot 'installer'
 $outputRoot = Join-Path $installerRoot 'output'
-$adminOutputRoot = Join-Path $outputRoot 'admin'
 $objectRoot = Join-Path $installerRoot 'obj'
+$payloadRoot = Join-Path $objectRoot 'payload'
 $launcherProject = Join-Path $installerRoot 'setup-launcher\SetupLauncher.csproj'
 $launcherOutputRoot = Join-Path $objectRoot 'setup-launcher'
 $iconPng = Join-Path $repoRoot 'mcp-manager\src\assets\mcp-manager-icon-preview.png'
@@ -39,8 +39,23 @@ if (-not (Test-Path -LiteralPath $wix)) {
     }
 }
 
-New-Item -ItemType Directory -Force -Path $outputRoot, $adminOutputRoot, $objectRoot, $launcherOutputRoot | Out-Null
-$msiPath = Join-Path $adminOutputRoot "LIG-AI-MCP-Admin-Deploy-$Version-$Runtime.msi"
+if (Test-Path -LiteralPath $outputRoot) {
+    Get-ChildItem -LiteralPath $outputRoot -File -Filter 'LIG-AI-MCP-Setup-*-*.exe' |
+        Remove-Item -Force
+
+    $legacyAdminOutput = Join-Path $outputRoot 'admin'
+    if (Test-Path -LiteralPath $legacyAdminOutput) {
+        $resolvedLegacyAdminOutput = (Resolve-Path -LiteralPath $legacyAdminOutput).Path
+        $expectedLegacyAdminOutput = [IO.Path]::GetFullPath($legacyAdminOutput)
+        if ($resolvedLegacyAdminOutput -ne $expectedLegacyAdminOutput) {
+            throw "Unexpected legacy installer output path: $resolvedLegacyAdminOutput"
+        }
+        Remove-Item -LiteralPath $resolvedLegacyAdminOutput -Recurse -Force
+    }
+}
+
+New-Item -ItemType Directory -Force -Path $outputRoot, $objectRoot, $payloadRoot, $launcherOutputRoot | Out-Null
+$msiPath = Join-Path $payloadRoot "LIG-AI-MCP-Payload-$Version-$Runtime.msi"
 & $wix build `
     (Join-Path $installerRoot 'Product.wxs') `
     -arch x64 `
@@ -75,6 +90,6 @@ Copy-Item -LiteralPath $publishedSetup -Destination $setupPath -Force
 $bundleBytes = (Get-ChildItem -LiteralPath $bundleRoot -Recurse -File | Measure-Object Length -Sum).Sum
 $msi = Get-Item -LiteralPath $msiPath
 $setup = Get-Item -LiteralPath $setupPath
-Write-Host "Installer created: $($msi.FullName)"
-Write-Host "Elevating setup created: $($setup.FullName)"
+Write-Host "Internal MSI payload created: $($msi.FullName)"
+Write-Host "Single elevating installer created: $($setup.FullName)"
 Write-Host ("Bundle: {0:N1} MiB, MSI: {1:N1} MiB, setup: {2:N1} MiB" -f ($bundleBytes / 1MB), ($msi.Length / 1MB), ($setup.Length / 1MB))
