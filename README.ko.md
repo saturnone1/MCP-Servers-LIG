@@ -2,7 +2,7 @@
 
 영어 버전: [README.md](README.md)
 
-이 저장소는 Docker로 각각 빌드할 수 있는 원격 MCP 서버 15개와 Windows 호스트용 desktop 자동화 MCP 서버 4개를 담고 있습니다. 모든 서버는 C#/.NET ASP.NET Core 앱이며 `ModelContextProtocol.AspNetCore`를 사용합니다. 공통으로 Streamable HTTP는 `/mcp`, legacy SSE는 `/sse`와 `/message`를 제공하고 `/healthz`를 제공합니다.
+이 저장소는 범용 원격 MCP 서버 15개와 Windows 호스트 또는 데이터 처리 MCP 서버 5개를 담고 있습니다. 모든 서버는 C#/.NET ASP.NET Core 앱이며 `ModelContextProtocol.AspNetCore`를 사용합니다. 공통으로 Streamable HTTP는 `/mcp`, legacy SSE는 `/sse`와 `/message`를 제공하고 `/healthz`를 제공합니다.
 
 이 이미지들은 신뢰할 수 있는 로컬 테스트용입니다. 기본값은 쓰기/실행 기능을 열어 두고, 컨테이너 내부 허용 경로도 `/`로 둡니다. 다만 호스트 파일시스템 접근은 Docker 볼륨으로 마운트한 범위에만 한정됩니다.
 
@@ -29,6 +29,7 @@
 | `mcp-matlab` | 42195 | 공식 `matlab/matlab-mcp-core-server` 계보 | MATLAB CLI/COM을 감싸고 공식 MCP bridge hook을 둔 Windows 호스트 C# 서버 | MATLAB 탐지, batch/script 실행, COM eval, workspace 요약 |
 | `mcp-autocad` | 42196 | 오픈소스 AutoCAD MCP COM 자동화 패턴 | AutoCAD COM을 감싸는 Windows 호스트 C# 서버 | drawing 열기, layer/entity 조회, command 전송, layer/line 생성, 저장 |
 | `mcp-solidworks` | 42197 | 오픈소스 SolidWorks MCP COM 자동화 패턴 | SolidWorks COM을 감싸는 Windows 호스트 C# 서버 | CAD 문서 열기, feature/component 조회, mass property, rebuild/save/export |
+| `mcp-pdf` | 42199 | Docling 기반 신규 로컬 구현 | local/remote Docling adapter를 갖춘 C# PDF dataset controller | 비동기 수집, OCR/text/table/image 추출, 구조 청킹, PDF 정보 열람, embedding, SQLite/PostgreSQL/Qdrant, JSONL/Parquet |
 
 ## 연결 주소
 
@@ -55,6 +56,7 @@ Docker 이미지는 컨테이너 내부 `8080` 포트에서 실행됩니다. Win
 | `mcp-matlab` | `http://localhost:42195/mcp` | `http://localhost:42195/sse` |
 | `mcp-autocad` | `http://localhost:42196/mcp` | `http://localhost:42196/sse` |
 | `mcp-solidworks` | `http://localhost:42197/mcp` | `http://localhost:42197/sse` |
+| `mcp-pdf` | `http://localhost:42199/mcp` | `http://localhost:42199/sse` |
 
 ## MCP API 형태
 
@@ -146,7 +148,7 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-이 번들의 `servers.json`은 19개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
+이 번들의 `servers.json`은 20개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
 
 번들의 `<server>.env`는 기본값이며 수정 가능한 사용자별 override는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`에 저장됩니다. `edit-env-mcp-jira.cmd` 또는 Manager 화면에서 수정한 뒤 서버를 재시작하세요. Manager는 번들 루트와 서버 폴더의 기본 env, `servers.json`의 `envFiles`를 먼저 읽고 사용자별 override를 마지막에 적용합니다.
 
@@ -187,7 +189,7 @@ Windows 설치 파일은 다음 명령으로 생성합니다.
 
 기본 버전은 `installer\VERSION`에서 읽으며, 의도적으로 다른 릴리스를 만들 때만 `-Version`으로 덮어씁니다. 정식 서명 빌드는 `-CertificateThumbprint <thumbprint>`를 전달하거나 `LIG_SIGNING_CERT_THUMBPRINT` 환경 변수를 설정하면 제품 실행 파일, 내장 MSI 및 최종 Setup을 모두 서명합니다.
 
-사용자에게 제공되는 설치 파일은 `installer\output`의 `Setup.exe` 하나뿐이며 MSI는 그 안에 내장되는 빌드 재료로만 사용합니다. Setup 자체가 먼저 UAC 관리자 권한을 요청하고 명시적인 설치 진행 창과 최상단 완료 창을 표시합니다. 앱 목록과 시작 메뉴에는 관리자 권한을 자체 요청하고 실행 중 프로세스를 정리한 뒤 제거 진행 창과 완료 창을 표시하는 전용 Uninstaller가 등록됩니다. 사용자는 `mcp-bundle`, MSI, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 19개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기와 실패 시 복구되는 업그레이드를 포함합니다. `McpManager.exe`는 실행할 때마다 관리자 권한을 요청하고 여기서 시작한 서버는 권한을 상속하지만, 개별 MCP 서버 EXE는 LLM이 직접 실행할 수 있도록 승격을 강제하지 않습니다. 바로가기는 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 인증서를 지정하지 않으면 설치 파일은 서명되지 않으며 빌드가 명확한 경고를 출력합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+사용자에게 제공되는 설치 파일은 `installer\output`의 `Setup.exe` 하나뿐이며 MSI는 그 안에 내장되는 빌드 재료로만 사용합니다. Setup 자체가 먼저 UAC 관리자 권한을 요청하고 명시적인 설치 진행 창과 최상단 완료 창을 표시합니다. 앱 목록과 시작 메뉴에는 관리자 권한을 자체 요청하고 실행 중 프로세스를 정리한 뒤 제거 진행 창과 완료 창을 표시하는 전용 Uninstaller가 등록됩니다. 사용자는 `mcp-bundle`, MSI, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 20개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기와 실패 시 복구되는 업그레이드를 포함합니다. `McpManager.exe`는 실행할 때마다 관리자 권한을 요청하고 여기서 시작한 서버는 권한을 상속하지만, 개별 MCP 서버 EXE는 LLM이 직접 실행할 수 있도록 승격을 강제하지 않습니다. 바로가기는 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. Docling, `pdftoppm` 등 선택 기능의 외부 프로그램은 해당 기능을 사용할 때 별도로 필요합니다. 인증서를 지정하지 않으면 설치 파일은 서명되지 않으며 빌드가 명확한 경고를 출력합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
 
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 

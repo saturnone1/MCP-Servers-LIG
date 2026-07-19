@@ -220,7 +220,7 @@ foreach ($relativePath in $portConfigFiles) {
     $config = Get-Content -LiteralPath (Join-Path $repo $relativePath) -Raw | ConvertFrom-Json
     foreach ($server in $config.servers) {
         if ($server.port -ge 8080 -and $server.port -le 8098) {
-            $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42198 range")
+            $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42199 range")
         }
     }
 }

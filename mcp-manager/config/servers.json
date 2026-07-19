@@ -290,6 +290,26 @@
       ],
       "workingDirectory": "{repo}\\windows-host-publish\\mcp-solidworks-win-x64",
       "executable": "McpSolidWorks.exe"
+    },
+    {
+      "name": "mcp-pdf",
+      "kind": "process",
+      "port": 42199,
+      "groups": [
+        "windows",
+        "document",
+        "knowledge"
+      ],
+      "workingDirectory": "{repo}\\windows-host-publish\\mcp-pdf-win-x64",
+      "executable": "McpPdf.exe",
+      "env": {
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_PDF_WRITES": "true",
+        "DOCLING_MODE": "remote",
+        "DOCLING_SERVICE_URL": "http://127.0.0.1:5001",
+        "DOCLING_USE_ASYNC": "true",
+        "PDF_EMBEDDING_PROVIDER": "none"
+      }
     }
   ]
 }
