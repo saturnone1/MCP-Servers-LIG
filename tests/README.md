@@ -1,5 +1,9 @@
 # MCP Smoke Tests
 
+`pdf-smoke.ps1` starts `mcp-pdf` on port 42199 with isolated temporary storage, verifies `/healthz`, opens a Streamable HTTP MCP session, checks the core PDF tool surface, and calls `config`.
+
+`pdf-real-e2e.ps1` runs a real PDF through Docling and verifies ingestion, metadata, sampled page reading and rendering, derived-term keyword searches, JSONL/Parquet exports, SQLite operation tracking, source change detection, deduplication, and optional destructive chunk management in an isolated data directory.
+
 ## `static-side-effect-scan.ps1`
 
 Verifies that safe inspection paths such as `config`, `detect_installations`, and `/healthz` do not contain calls that can start desktop software or external child processes. It also checks that desktop COM servers keep registration checks, active-object reuse, and instance creation as separate helper paths.

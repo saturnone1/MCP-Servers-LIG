@@ -101,6 +101,7 @@ Write-Host "== Optional external PATH dependencies"
 $optionalDependencies = [ordered]@{
     'mcp-office' = @('antiword')
     'mcp-hwp'    = @('hwp5txt', 'soffice')
+    'mcp-pdf'    = @('docling', 'pdftoppm')
 }
 
 foreach ($entry in $optionalDependencies.GetEnumerator()) {

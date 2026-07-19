@@ -2,7 +2,7 @@
 
 Korean version: [README.ko.md](README.ko.md)
 
-This workspace contains fifteen independent Docker-buildable remote MCP servers plus four Windows-host desktop automation MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
+This workspace contains fifteen general remote MCP servers plus five Windows-host or data-processing MCP servers. Each server is implemented as a C#/.NET ASP.NET Core app using `ModelContextProtocol.AspNetCore`, exposes Streamable HTTP at `/mcp`, supports legacy SSE at `/sse` and `/message`, and provides `/healthz`.
 
 These images are intended for trusted local testing. Write and execute capabilities are enabled by default, and allowed paths default to `/` inside the container. Host filesystem access is still limited by Docker volume mounts.
 
@@ -29,6 +29,7 @@ These images are intended for trusted local testing. Write and execute capabilit
 | `mcp-matlab` | 42195 | Official `matlab/matlab-mcp-core-server` lineage | Windows-host C# wrapper around MATLAB CLI/COM plus official MCP bridge hook | Detect MATLAB, run batch/script, COM eval, workspace summary |
 | `mcp-autocad` | 42196 | Open-source AutoCAD MCP COM automation pattern | Windows-host C# AutoCAD COM wrapper | Open drawings, list layers/entities, send commands, create layer/line, save |
 | `mcp-solidworks` | 42197 | Open-source SolidWorks MCP COM automation pattern | Windows-host C# SolidWorks COM wrapper | Open CAD docs, list features/components, mass properties, rebuild/save/export |
+| `mcp-pdf` | 42199 | Local implementation using Docling | C# PDF dataset controller with local/remote Docling adapters | Async ingest, OCR/text/table/image extraction, structural chunks, evidence reading, embeddings, SQLite/PostgreSQL/Qdrant, JSONL/Parquet |
 
 ## Connections
 
@@ -55,6 +56,7 @@ Docker images listen on port `8080` inside the container. Windows-host desktop s
 | `mcp-matlab` | `http://localhost:42195/mcp` | `http://localhost:42195/sse` |
 | `mcp-autocad` | `http://localhost:42196/mcp` | `http://localhost:42196/sse` |
 | `mcp-solidworks` | `http://localhost:42197/mcp` | `http://localhost:42197/sse` |
+| `mcp-pdf` | `http://localhost:42199/mcp` | `http://localhost:42199/sse` |
 
 ## MCP API Shape
 
@@ -146,7 +148,7 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-The bundle `servers.json` registers all 19 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
+The bundle `servers.json` registers all 20 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
 
 The bundle contains default `<server>.env` files. Editable per-user overrides are stored under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`; use `edit-env-mcp-jira.cmd` or the Manager dashboard, then restart the server. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root plus explicit `envFiles` from `servers.json` before applying the per-user override.
 
@@ -187,7 +189,7 @@ Build the Windows installer with:
 
 The default version comes from `installer\VERSION`. Override it with `-Version` only for an intentional release. For production signing, pass `-CertificateThumbprint <thumbprint>` or set `LIG_SIGNING_CERT_THUMBPRINT`; the build signs product executables, the MSI payload, and the final Setup.
 
-The build writes exactly one user-facing `Setup.exe` to `installer\output`; the MSI is an internal build payload embedded in that executable and is not distributed separately. Setup requests elevation before extracting the payload to a machine-accessible staging directory and invokes Windows Installer with an explicit basic progress window, avoiding non-elevated execution and 2502/2503 errors. Apps and the Start Menu register a dedicated self-elevating Uninstaller that stops installed processes, runs removal with its own progress UI, and shows a topmost completion result. Users do not need the `mcp-bundle` directory, MSI, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. The installer includes all 19 MCP servers, the shared runtime, a self-contained Manager with the product icon embedded, Start Menu and desktop shortcuts, and rollback-safe upgrades. `McpManager.exe` requests administrator elevation on every launch; servers started by it inherit that token, while individual server executables remain directly launchable by MCP clients. The shortcuts launch `McpManager.exe` directly so the product icon is used on the taskbar. Installation is per-machine under Program Files; writable settings, logs, and PID files stay under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`. External applications such as Git, Docker, kubectl, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. Without a configured certificate the setup remains unsigned and the build prints an explicit warning.
+The build writes exactly one user-facing `Setup.exe` to `installer\output`; the MSI is an internal build payload embedded in that executable and is not distributed separately. Setup requests elevation before extracting the payload to a machine-accessible staging directory and invokes Windows Installer with an explicit basic progress window, avoiding non-elevated execution and 2502/2503 errors. Apps and the Start Menu register a dedicated self-elevating Uninstaller that stops installed processes, runs removal with its own progress UI, and shows a topmost completion result. Users do not need the `mcp-bundle` directory, MSI, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. The installer includes all 20 MCP servers, the shared runtime, a self-contained Manager with the product icon embedded, Start Menu and desktop shortcuts, and rollback-safe upgrades. `McpManager.exe` requests administrator elevation on every launch; servers started by it inherit that token, while individual server executables remain directly launchable by MCP clients. The shortcuts launch `McpManager.exe` directly so the product icon is used on the taskbar. Installation is per-machine under Program Files; writable settings, logs, and PID files stay under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`. External applications such as Git, Docker, kubectl, Docling, `pdftoppm`, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. Without a configured certificate the setup remains unsigned and the build prints an explicit warning.
 
 The server executables are included, but tools that shell out to external programs still need those programs on the target PC. Items installed by Dockerfiles through `apt-get`, `curl`, or `pip` are not automatically embedded in the Windows exe bundle.
 

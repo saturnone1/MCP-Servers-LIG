@@ -18,7 +18,7 @@
 
 생성된 `LIG-AI-MCP-Setup-<version>-win-x64.exe` 파일 하나만 배포합니다. Setup 자체가 설치 시작 전에 UAC 관리자 권한을 요청하며, 내장 MSI를 관리자와 SYSTEM이 접근할 수 있는 전용 작업 폴더에 풀고 기본 진행 창과 완료 창을 표시합니다. 앱 목록과 시작 메뉴의 제거는 관리자 권한 전용 Uninstaller가 담당하며 제거 진행 창과 완료 창을 직접 표시합니다. `mcp-bundle` 폴더, MSI, ZIP, WiX 도구 또는 별도의 .NET/ASP.NET Core 런타임 설치 파일은 필요하지 않습니다.
 
-MSI에는 MCP 매니저, MCP 서버 19개, OfficeCLI 및 공유 .NET 10/ASP.NET Core 10 런타임이 포함됩니다. 다만 다음 프로그램과 접속 정보는 사용하는 MCP 기능에 따라 대상 PC에 별도로 준비해야 합니다.
+MSI에는 MCP 매니저, MCP 서버 20개, OfficeCLI 및 공유 .NET 10/ASP.NET Core 10 런타임이 포함됩니다. 다만 다음 프로그램과 접속 정보는 사용하는 MCP 기능에 따라 대상 PC에 별도로 준비해야 합니다. MCP-PDF의 변환 기능에는 Docling Serve 또는 로컬 Docling CLI가 필요하고 페이지 렌더링에는 `pdftoppm` 호환 실행 파일이 필요합니다.
 
 - Git MCP: `git.exe`
 - Docker MCP: Docker CLI와 Docker Desktop/daemon

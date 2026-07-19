@@ -14,7 +14,8 @@ $servers = @(
     @{ Name = 'mcp-rhapsody'; Script = 'mcp-rhapsody\scripts\publish-win.ps1'; Folder = 'mcp-rhapsody-win-x64' },
     @{ Name = 'mcp-matlab'; Script = 'mcp-matlab\scripts\publish-win.ps1'; Folder = 'mcp-matlab-win-x64' },
     @{ Name = 'mcp-autocad'; Script = 'mcp-autocad\scripts\publish-win.ps1'; Folder = 'mcp-autocad-win-x64' },
-    @{ Name = 'mcp-solidworks'; Script = 'mcp-solidworks\scripts\publish-win.ps1'; Folder = 'mcp-solidworks-win-x64' }
+    @{ Name = 'mcp-solidworks'; Script = 'mcp-solidworks\scripts\publish-win.ps1'; Folder = 'mcp-solidworks-win-x64' },
+    @{ Name = 'mcp-pdf'; Script = 'mcp-pdf\scripts\publish-win.ps1'; Folder = 'mcp-pdf-win-x64' }
 )
 
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
