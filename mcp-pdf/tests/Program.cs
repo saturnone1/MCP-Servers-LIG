@@ -32,6 +32,14 @@ try
     Assert(parsed.Artifacts.Count == 1 && File.Exists(parsed.Artifacts[0].Path), "embedded image extraction");
 
     var now = DateTimeOffset.UtcNow;
+    var bundledServerDirectory = Path.Combine(temp, "bundle", "mcp-pdf-win-x64");
+    var bundledRenderer = Path.Combine(temp, "bundle", "dependencies", "poppler", "Library", "bin", "pdftoppm.exe");
+    Directory.CreateDirectory(Path.GetDirectoryName(bundledRenderer)!);
+    await File.WriteAllBytesAsync(bundledRenderer, []);
+    Assert(PdfSettings.ResolvePdfRenderCommand(null, bundledServerDirectory) == bundledRenderer, "bundled Poppler discovery");
+    Assert(PdfSettings.ResolvePdfRenderCommand("pdftoppm", bundledServerDirectory) == bundledRenderer, "legacy renderer default upgrades to bundled Poppler");
+    Assert(PdfSettings.ResolvePdfRenderCommand("D:\\custom\\pdftoppm.exe", bundledServerDirectory) == "D:\\custom\\pdftoppm.exe", "configured renderer precedence");
+
     var document = new DocumentRecord("doc_test", Path.Combine(temp, "sample.pdf"), "sample.pdf", "sha256", 100, parsed.Title, parsed.PageCount, 1, "completed", now, now);
     var parserProfile = new PdfProfile("balanced-ko", "auto", ["kor", "eng"], "accurate", true, true, false, false);
     var chunkProfile = new ChunkProfile("test", 12, 24, 1, true, true, true, 2, 2);

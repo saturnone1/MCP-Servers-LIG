@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'balanced-ko',
     [string]$ChunkProfile = 'rag-default',
     [string]$DoclingUrl = 'http://127.0.0.1:5001',
-    [Parameter(Mandatory = $true)][string]$PdfRenderCommand,
+    [string]$PdfRenderCommand = '',
     [string]$ServerExecutable = '',
     [int]$Port = 42199,
     [int]$TimeoutMinutes = 60,
@@ -104,7 +104,9 @@ try {
     $start.Environment['DOCLING_USE_ASYNC'] = 'true'
     $start.Environment['DOCLING_POLL_INTERVAL_SECONDS'] = '2'
     $start.Environment['PDF_MAX_CONCURRENT_JOBS'] = '1'
-    $start.Environment['PDF_RENDER_COMMAND'] = $PdfRenderCommand
+    if (-not [string]::IsNullOrWhiteSpace($PdfRenderCommand)) {
+        $start.Environment['PDF_RENDER_COMMAND'] = $PdfRenderCommand
+    }
     $process = [Diagnostics.Process]::Start($start)
     $stdoutTask = $process.StandardOutput.ReadToEndAsync()
     $stderrTask = $process.StandardError.ReadToEndAsync()
@@ -211,7 +213,8 @@ try {
         emptyPages = $validation.emptyPages; oversizedChunks = $validation.oversizedChunks; duplicateRatio = $validation.duplicateRatio
         ocrPages = $validation.ocrPages; processingEvents = $events.Count; sampledPages = $sampleRange; renderedImages = @($render.images).Count
         searches = $searches; jsonl = $jsonl; parquet = $parquet; storageOperation = $storage[0].status
-        duplicateStage = $duplicateJob.currentStage; changeDetection = $changeDetection; cancellation = $cancellationStatus; dataDirectory = $DataDirectory; serverLog = $serverLog
+        duplicateStage = $duplicateJob.currentStage; changeDetection = $changeDetection; cancellation = $cancellationStatus
+        renderer = $config.optional.renderer; dataDirectory = $DataDirectory; serverLog = $serverLog
     } | ConvertTo-Json -Depth 20
 }
 finally {
