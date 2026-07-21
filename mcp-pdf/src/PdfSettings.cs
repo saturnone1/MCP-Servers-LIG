@@ -75,8 +75,27 @@ public sealed class PdfSettings
             PostgreSqlConnectionString = Environment.GetEnvironmentVariable("PDF_POSTGRES_CONNECTION_STRING"),
             QdrantUrl = (Environment.GetEnvironmentVariable("PDF_QDRANT_URL") ?? "http://127.0.0.1:6333").TrimEnd('/'),
             QdrantApiKey = Environment.GetEnvironmentVariable("PDF_QDRANT_API_KEY"),
-            PdfRenderCommand = Environment.GetEnvironmentVariable("PDF_RENDER_COMMAND") ?? "pdftoppm"
+            PdfRenderCommand = ResolvePdfRenderCommand(Environment.GetEnvironmentVariable("PDF_RENDER_COMMAND"))
         };
+    }
+
+    public static string ResolvePdfRenderCommand(string? configured = null, string? baseDirectory = null)
+    {
+        var normalizedConfiguration = configured?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedConfiguration) &&
+            !string.Equals(normalizedConfiguration, "pdftoppm", StringComparison.OrdinalIgnoreCase))
+            return normalizedConfiguration;
+
+        var applicationDirectory = Path.GetFullPath(baseDirectory ?? AppContext.BaseDirectory);
+        var candidates = new[]
+        {
+            Path.Combine(applicationDirectory, "dependencies", "poppler", "Library", "bin", "pdftoppm.exe"),
+            Path.Combine(applicationDirectory, "..", "dependencies", "poppler", "Library", "bin", "pdftoppm.exe")
+        };
+        foreach (var candidate in candidates.Select(Path.GetFullPath))
+            if (File.Exists(candidate)) return candidate;
+
+        return string.IsNullOrWhiteSpace(normalizedConfiguration) ? "pdftoppm" : normalizedConfiguration;
     }
 
     public string RequireAllowedPdf(string path)
