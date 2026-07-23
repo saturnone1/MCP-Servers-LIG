@@ -15,6 +15,18 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
+# Remove artifacts retired with MCP-PDF so old bundles cannot silently retain the server.
+$outputPrefix = [IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+foreach ($relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler')) {
+    $stalePath = [IO.Path]::GetFullPath((Join-Path $OutputRoot $relativePath))
+    if (-not $stalePath.StartsWith($outputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unexpected retired artifact path: $stalePath"
+    }
+    if (Test-Path -LiteralPath $stalePath) {
+        Remove-Item -LiteralPath $stalePath -Recurse -Force
+    }
+}
+
 function Stop-ExistingBundleProcesses {
     param(
         [Parameter(Mandatory = $true)] [string] $BundleRoot
@@ -145,8 +157,7 @@ $servers = @(
     @{ Name = 'mcp-rhapsody'; Script = 'mcp-rhapsody\scripts\publish-win.ps1'; Folder = 'mcp-rhapsody-win-x64' },
     @{ Name = 'mcp-matlab'; Script = 'mcp-matlab\scripts\publish-win.ps1'; Folder = 'mcp-matlab-win-x64' },
     @{ Name = 'mcp-autocad'; Script = 'mcp-autocad\scripts\publish-win.ps1'; Folder = 'mcp-autocad-win-x64' },
-    @{ Name = 'mcp-solidworks'; Script = 'mcp-solidworks\scripts\publish-win.ps1'; Folder = 'mcp-solidworks-win-x64' },
-    @{ Name = 'mcp-pdf'; Project = 'mcp-pdf\src\McpPdf.csproj'; Folder = 'mcp-pdf-win-x64' }
+    @{ Name = 'mcp-solidworks'; Script = 'mcp-solidworks\scripts\publish-win.ps1'; Folder = 'mcp-solidworks-win-x64' }
 )
 
 foreach ($server in $servers) {

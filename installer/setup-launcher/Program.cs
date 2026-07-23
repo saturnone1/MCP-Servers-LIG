@@ -10,34 +10,17 @@ internal static partial class Program
     private const string ProductName = "LIG AI MCP Server Suite";
     private const string PayloadResource = "LIG.AI.MCP.payload.msi";
     private const uint MessageBoxIconError = 0x10;
-    private const uint MessageBoxIconQuestion = 0x20;
     private const uint MessageBoxIconInformation = 0x40;
-    private const uint MessageBoxYesNoCancel = 0x03;
-    private const int MessageBoxResultCancel = 2;
-    private const int MessageBoxResultYes = 6;
-    private const int ErrorInstallUserExit = 1602;
 
     [STAThread]
     private static async Task<int> Main(string[] args)
     {
         var quiet = args.Any(argument => string.Equals(argument, "--quiet", StringComparison.OrdinalIgnoreCase));
-        var forcePoppler = args.Any(argument => string.Equals(argument, "--with-poppler", StringComparison.OrdinalIgnoreCase));
-        var skipPoppler = args.Any(argument => string.Equals(argument, "--without-poppler", StringComparison.OrdinalIgnoreCase));
         string? msiPath = null;
         try
         {
-            if (forcePoppler && skipPoppler)
-                throw new ArgumentException("--with-poppler와 --without-poppler를 동시에 사용할 수 없습니다.");
             if (!IsProcessElevated())
                 throw new InvalidOperationException("설치 프로그램이 관리자 권한으로 실행되지 않았습니다.");
-
-            var includePoppler = !skipPoppler;
-            if (!quiet && !forcePoppler && !skipPoppler)
-            {
-                var selection = AskPopplerInstallation();
-                if (selection == MessageBoxResultCancel) return ErrorInstallUserExit;
-                includePoppler = selection == MessageBoxResultYes;
-            }
 
             var assembly = Assembly.GetExecutingAssembly();
             await using var payload = assembly.GetManifestResourceStream(PayloadResource)
@@ -64,7 +47,7 @@ internal static partial class Program
             startInfo.ArgumentList.Add("/i");
             startInfo.ArgumentList.Add(msiPath);
             startInfo.ArgumentList.Add(quiet ? "/qn" : "/qb!");
-            startInfo.ArgumentList.Add(includePoppler ? "ADDLOCAL=Core,Poppler" : "ADDLOCAL=Core");
+            startInfo.ArgumentList.Add("ADDLOCAL=Core");
             startInfo.ArgumentList.Add("/norestart");
             startInfo.ArgumentList.Add("/L*v");
             startInfo.ArgumentList.Add(logPath);
@@ -127,15 +110,6 @@ internal static partial class Program
 
     private static void ShowMessage(string message, uint icon) =>
         NativeMethods.MessageBox(IntPtr.Zero, message, ProductName, icon | 0x00010000 | 0x00040000);
-
-    private static int AskPopplerInstallation() => NativeMethods.MessageBox(
-        IntPtr.Zero,
-        "PDF 페이지 렌더링 도구 Poppler를 함께 설치하시겠습니까?\n\n" +
-        "MCP-PDF가 원본 PDF 페이지를 PNG로 열람할 때 사용합니다.\n" +
-        "PDF 수집, 청킹 및 검색 기능에는 필수가 아닙니다.\n" +
-        "설치 용량은 약 53MB이며, '예'를 권장합니다.",
-        ProductName,
-        MessageBoxYesNoCancel | MessageBoxIconQuestion | 0x00010000 | 0x00040000);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct TokenElevation

@@ -20,9 +20,6 @@
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="LIG AI MCP">
-        <Directory Id="DEPENDENCIESFOLDER" Name="dependencies">
-          <Directory Id="POPPLERFOLDER" Name="poppler" />
-        </Directory>
         <Component Id="CustomArpRegistration" Guid="3F7B4A2D-05C1-4DCF-9C8F-80AD30FB59F1">
           <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="DisplayName" Type="string" Value="LIG AI MCP Server Suite" KeyPath="yes" />
           <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LIG-AI-MCP-Server-Suite" Name="DisplayVersion" Type="string" Value="[ProductVersion]" />
@@ -85,14 +82,10 @@
     <Feature Id="Core" Title="LIG AI MCP Server Suite" Level="1">
       <Files Include="$(BundleDirectory)\**" Directory="INSTALLFOLDER">
         <Exclude Files="$(BundleDirectory)\autostart.json" />
-        <Exclude Files="$(BundleDirectory)\dependencies\poppler\**" />
       </Files>
       <ComponentRef Id="ApplicationStartMenuShortcuts" />
       <ComponentRef Id="ApplicationDesktopShortcut" />
       <ComponentRef Id="CustomArpRegistration" />
-    </Feature>
-    <Feature Id="Poppler" Title="PDF page rendering tools (Poppler)" Description="Installs the optional pdftoppm renderer used by MCP-PDF." Level="1">
-      <Files Include="$(PopplerDirectory)\**" Directory="POPPLERFOLDER" />
     </Feature>
   </Package>
 </Wix>

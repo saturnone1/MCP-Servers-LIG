@@ -2,7 +2,6 @@ param(
     [string] $Version = '',
     [string] $Runtime = 'win-x64',
     [switch] $SkipBundle,
-    [string] $PopplerRoot = '',
     [string] $CertificateThumbprint = '',
     [string] $TimestampServer = 'http://timestamp.digicert.com'
 )
@@ -23,7 +22,6 @@ $iconIco = Join-Path $repoRoot 'mcp-manager\src\assets\mcp-manager.ico'
 $wixRoot = Join-Path $repoRoot '.tools\wix'
 $wix = Join-Path $wixRoot 'wix.exe'
 $versionFile = Join-Path $installerRoot 'VERSION'
-$popplerNotice = Join-Path $repoRoot 'mcp-pdf\third-party\poppler\NOTICE.txt'
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     if (-not (Test-Path -LiteralPath $versionFile)) {
@@ -47,96 +45,6 @@ if (-not $SkipBundle) {
 if (-not (Test-Path -LiteralPath (Join-Path $bundleRoot 'McpManager.exe'))) {
     throw 'The MCP bundle is missing. Run without -SkipBundle to publish it first.'
 }
-
-function Resolve-PopplerRoot([string] $ConfiguredRoot) {
-    $candidates = [Collections.Generic.List[string]]::new()
-    if (-not [string]::IsNullOrWhiteSpace($ConfiguredRoot)) {
-        $candidates.Add($ConfiguredRoot)
-    }
-
-    $environmentRoot = [Environment]::GetEnvironmentVariable('LIG_POPPLER_ROOT')
-    if (-not [string]::IsNullOrWhiteSpace($environmentRoot)) {
-        $candidates.Add($environmentRoot)
-    }
-
-    $command = Get-Command pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($command) {
-        $candidates.Add((Split-Path (Split-Path (Split-Path $command.Source))))
-    }
-
-    $wingetPattern = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Microsoft\WinGet\Packages\oschwartz10612.Poppler_*'
-    foreach ($packageDirectory in @(Get-ChildItem -Path $wingetPattern -Directory -ErrorAction SilentlyContinue)) {
-        foreach ($distributionDirectory in @(Get-ChildItem -LiteralPath $packageDirectory.FullName -Directory -Filter 'poppler-*' -ErrorAction SilentlyContinue)) {
-            $candidates.Add($distributionDirectory.FullName)
-        }
-    }
-
-    foreach ($candidate in $candidates | Select-Object -Unique) {
-        $expanded = [Environment]::ExpandEnvironmentVariables($candidate)
-        if (-not (Test-Path -LiteralPath $expanded -PathType Container)) { continue }
-        $resolved = (Resolve-Path -LiteralPath $expanded).Path
-        if (Test-Path -LiteralPath (Join-Path $resolved 'Library\bin\pdftoppm.exe') -PathType Leaf) {
-            return $resolved
-        }
-    }
-
-    throw 'A portable Poppler distribution was not found. Install oschwartz10612.Poppler or pass -PopplerRoot / set LIG_POPPLER_ROOT. The directory must contain Library\bin\pdftoppm.exe.'
-}
-
-function Stage-PopplerPayload([string] $SourceRoot) {
-    $dependencyRoot = Join-Path $bundleRoot 'dependencies'
-    $targetRoot = Join-Path $dependencyRoot 'poppler'
-    $expectedTarget = [IO.Path]::GetFullPath($targetRoot)
-    $expectedBundlePrefix = [IO.Path]::GetFullPath($bundleRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-    if (-not $expectedTarget.StartsWith($expectedBundlePrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Unexpected Poppler staging target: $expectedTarget"
-    }
-
-    if (Test-Path -LiteralPath $targetRoot) {
-        Remove-Item -LiteralPath $targetRoot -Recurse -Force
-    }
-    New-Item -ItemType Directory -Force -Path $targetRoot | Out-Null
-    Get-ChildItem -LiteralPath $SourceRoot -Force | Copy-Item -Destination $targetRoot -Recurse -Force
-    Copy-Item -LiteralPath $popplerNotice -Destination (Join-Path $targetRoot 'LIG-POPPLER-NOTICE.txt') -Force
-
-    $renderer = Join-Path $targetRoot 'Library\bin\pdftoppm.exe'
-    if (-not (Test-Path -LiteralPath $renderer -PathType Leaf)) {
-        throw "Staged Poppler renderer is missing: $renderer"
-    }
-    $versionStart = [Diagnostics.ProcessStartInfo]::new($renderer)
-    $versionStart.UseShellExecute = $false
-    $versionStart.CreateNoWindow = $true
-    $versionStart.RedirectStandardOutput = $true
-    $versionStart.RedirectStandardError = $true
-    $versionStart.Arguments = '-v'
-    $versionProcess = [Diagnostics.Process]::Start($versionStart)
-    try {
-        $versionStdout = $versionProcess.StandardOutput.ReadToEnd()
-        $versionStderr = $versionProcess.StandardError.ReadToEnd()
-        $versionProcess.WaitForExit()
-        $rendererExitCode = $versionProcess.ExitCode
-    }
-    finally {
-        $versionProcess.Dispose()
-    }
-    $rendererVersion = (($versionStdout, $versionStderr) -join ' ').Trim()
-    if ($rendererExitCode -ne 0) {
-        throw "Staged Poppler renderer failed its version check: $rendererVersion"
-    }
-    $rendererHash = (Get-FileHash -LiteralPath $renderer -Algorithm SHA256).Hash.ToLowerInvariant()
-    @(
-        'Optional Poppler payload staged by LIG AI MCP installer build.',
-        "Distribution: $([IO.Path]::GetFileName($SourceRoot))",
-        "Renderer: $rendererVersion",
-        "pdftoppm.exe SHA-256: $rendererHash"
-    ) | Set-Content -LiteralPath (Join-Path $targetRoot 'LIG-POPPLER-PAYLOAD.txt') -Encoding UTF8
-    $payloadBytes = (Get-ChildItem -LiteralPath $targetRoot -Recurse -File | Measure-Object Length -Sum).Sum
-    Write-Host ("Staged optional Poppler payload: {0} ({1:N1} MiB)" -f $targetRoot, ($payloadBytes / 1MB))
-    return $targetRoot
-}
-
-$resolvedPopplerRoot = Resolve-PopplerRoot $PopplerRoot
-$popplerPayloadRoot = Stage-PopplerPayload $resolvedPopplerRoot
 
 if (-not (Test-Path -LiteralPath $wix)) {
     New-Item -ItemType Directory -Force -Path $wixRoot | Out-Null
@@ -215,7 +123,6 @@ $msiPath = Join-Path $payloadRoot "LIG-AI-MCP-Payload-$Version-$Runtime.msi"
     -arch x64 `
     -d "ProductVersion=$Version" `
     -d "BundleDirectory=$bundleRoot" `
-    -d "PopplerDirectory=$popplerPayloadRoot" `
     -d "IconPath=$iconIco" `
     -intermediateFolder $objectRoot `
     -defaultCompressionLevel high `

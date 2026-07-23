@@ -98,36 +98,9 @@ foreach ($entry in $dependencies.GetEnumerator()) {
 
 Write-Host ""
 Write-Host "== Optional external PATH dependencies"
-$bundledPdfRenderer = Join-Path $BundleRoot 'dependencies\poppler\Library\bin\pdftoppm.exe'
 $optionalDependencies = [ordered]@{
     'mcp-office' = @('antiword')
     'mcp-hwp'    = @('hwp5txt', 'soffice')
-    'mcp-pdf'    = @('docling')
-}
-if (-not (Test-Path -LiteralPath $bundledPdfRenderer)) {
-    $optionalDependencies['mcp-pdf'] += 'pdftoppm'
-}
-
-if (Test-Path -LiteralPath $bundledPdfRenderer) {
-    $previousErrorPreference = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = 'Continue'
-        $rendererOutput = @(& $bundledPdfRenderer -v 2>&1)
-        $rendererExitCode = $LASTEXITCODE
-    }
-    finally {
-        $ErrorActionPreference = $previousErrorPreference
-    }
-    if ($rendererExitCode -ne 0) {
-        Write-Host ("MISS mcp-pdf            bundled Poppler failed: {0}" -f ($rendererOutput -join ' ')) -ForegroundColor Red
-        $missing += $bundledPdfRenderer
-    }
-    else {
-        Write-Host ("OK   {0,-18} {1}" -f 'mcp-pdf', $bundledPdfRenderer)
-    }
-}
-else {
-    Write-Host "INFO mcp-pdf            optional bundled Poppler payload not staged" -ForegroundColor Cyan
 }
 
 foreach ($entry in $optionalDependencies.GetEnumerator()) {
