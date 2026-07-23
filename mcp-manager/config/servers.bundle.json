@@ -324,30 +324,6 @@
       "env": {
         "MCP_ALLOWED_DIRS": "*"
       }
-    },
-    {
-      "name": "mcp-pdf",
-      "kind": "process",
-      "port": 42199,
-      "groups": [
-        "windows",
-        "bundle",
-        "document",
-        "knowledge"
-      ],
-      "workingDirectory": "{manager}\\mcp-pdf-win-x64",
-      "executable": "McpPdf.exe",
-      "env": {
-        "MCP_ALLOWED_DIRS": "*",
-        "MCP_ENABLE_PDF_WRITES": "true",
-        "DOCLING_MODE": "remote",
-        "DOCLING_SERVICE_URL": "http://127.0.0.1:5001",
-        "DOCLING_USE_ASYNC": "true",
-        "PDF_EMBEDDING_PROVIDER": "none",
-        "PDF_EMBEDDING_ENDPOINT": "http://127.0.0.1:11434/v1/embeddings",
-        "PDF_EMBEDDING_MODEL": "nomic-embed-text",
-        "PDF_QDRANT_URL": "http://127.0.0.1:6333"
-      }
     }
   ]
 }
