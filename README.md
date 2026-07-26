@@ -146,7 +146,7 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-The bundle `servers.json` registers all 20 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
+The bundle `servers.json` registers all 19 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
 
 The bundle contains default `<server>.env` files. Editable per-user overrides are stored under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`; use `edit-env-mcp-jira.cmd` or the Manager dashboard, then restart the server. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root plus explicit `envFiles` from `servers.json` before applying the per-user override.
 

@@ -15,18 +15,6 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
-# Remove artifacts retired with MCP-PDF so old bundles cannot silently retain the server.
-$outputPrefix = [IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-foreach ($relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler')) {
-    $stalePath = [IO.Path]::GetFullPath((Join-Path $OutputRoot $relativePath))
-    if (-not $stalePath.StartsWith($outputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Unexpected retired artifact path: $stalePath"
-    }
-    if (Test-Path -LiteralPath $stalePath) {
-        Remove-Item -LiteralPath $stalePath -Recurse -Force
-    }
-}
-
 function Stop-ExistingBundleProcesses {
     param(
         [Parameter(Mandatory = $true)] [string] $BundleRoot
@@ -64,6 +52,18 @@ function Stop-ExistingBundleProcesses {
 }
 
 Stop-ExistingBundleProcesses -BundleRoot $OutputRoot
+
+# Remove artifacts retired with MCP-PDF after stopping an older 20-server bundle.
+$outputPrefix = [IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+foreach ($relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler')) {
+    $stalePath = [IO.Path]::GetFullPath((Join-Path $OutputRoot $relativePath))
+    if (-not $stalePath.StartsWith($outputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unexpected retired artifact path: $stalePath"
+    }
+    if (Test-Path -LiteralPath $stalePath) {
+        Remove-Item -LiteralPath $stalePath -Recurse -Force
+    }
+}
 
 function Copy-BundledDotnetRuntime {
     param(

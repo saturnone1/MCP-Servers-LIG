@@ -216,13 +216,48 @@ $portConfigFiles = @(
     'mcp-manager/config/servers.json',
     'mcp-manager/config/servers.bundle.json'
 )
+$expectedServers = @(
+    'mcp-office', 'mcp-filesystem', 'mcp-git', 'mcp-shell', 'mcp-dotnet', 'mcp-mssql',
+    'mcp-hwp', 'mcp-kubernetes', 'mcp-docker', 'mcp-prometheus', 'mcp-postgresql',
+    'mcp-gitlab', 'mcp-jira', 'mcp-loki', 'mcp-confluence', 'mcp-rhapsody',
+    'mcp-matlab', 'mcp-autocad', 'mcp-solidworks'
+)
 foreach ($relativePath in $portConfigFiles) {
     $config = Get-Content -LiteralPath (Join-Path $repo $relativePath) -Raw | ConvertFrom-Json
+    $actualServers = @($config.servers | ForEach-Object { $_.name })
+    $missingServers = @($expectedServers | Where-Object { $_ -notin $actualServers })
+    $unexpectedServers = @($actualServers | Where-Object { $_ -notin $expectedServers })
+    if ($actualServers.Count -ne $expectedServers.Count -or $missingServers.Count -gt 0 -or $unexpectedServers.Count -gt 0) {
+        $failures.Add("${relativePath}: expected the 19-server release set; missing=[$($missingServers -join ',')] unexpected=[$($unexpectedServers -join ',')]")
+    }
+    if (@($actualServers | Select-Object -Unique).Count -ne $actualServers.Count) {
+        $failures.Add("${relativePath}: contains duplicate server names")
+    }
+    $actualPorts = @($config.servers | ForEach-Object { [int]$_.port })
+    $expectedPorts = @(42180..42198)
+    $missingPorts = @($expectedPorts | Where-Object { $_ -notin $actualPorts })
+    $unexpectedPorts = @($actualPorts | Where-Object { $_ -notin $expectedPorts })
+    if ($missingPorts.Count -gt 0 -or $unexpectedPorts.Count -gt 0 -or
+        @($actualPorts | Select-Object -Unique).Count -ne $actualPorts.Count) {
+        $failures.Add("${relativePath}: expected unique ports 42180-42198; missing=[$($missingPorts -join ',')] unexpected=[$($unexpectedPorts -join ',')]")
+    }
     foreach ($server in $config.servers) {
         if ($server.port -ge 8080 -and $server.port -le 8098) {
-            $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42199 range")
+            $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42198 range")
         }
     }
+}
+
+$bundlePublishText = Get-Content -LiteralPath (Join-Path $repo 'scripts/publish-mcp-bundle.ps1') -Raw
+$stopIndex = $bundlePublishText.IndexOf('Stop-ExistingBundleProcesses -BundleRoot $OutputRoot', [StringComparison]::Ordinal)
+$retiredCleanupIndex = $bundlePublishText.IndexOf("foreach (`$relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler'))", [StringComparison]::Ordinal)
+if ($stopIndex -lt 0 -or $retiredCleanupIndex -le $stopIndex) {
+    $failures.Add('scripts/publish-mcp-bundle.ps1: running legacy servers must stop before retired MCP-PDF artifacts are removed')
+}
+
+$readmeText = Get-Content -LiteralPath (Join-Path $repo 'README.md') -Raw
+if (Test-ContainsOrdinal $readmeText 'registers all 20 servers') {
+    $failures.Add('README.md: bundle server count is stale; the release contains 19 servers')
 }
 
 $managerText = Get-Content -LiteralPath (Join-Path $repo 'mcp-manager/src/Program.cs') -Raw
