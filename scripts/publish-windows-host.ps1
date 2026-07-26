@@ -25,6 +25,18 @@ if (-not $stalePdfOutput.StartsWith($outputPrefix, [StringComparison]::OrdinalIg
     throw "Unexpected retired artifact path: $stalePdfOutput"
 }
 if (Test-Path -LiteralPath $stalePdfOutput) {
+    $stalePdfExe = Join-Path $stalePdfOutput 'McpPdf.exe'
+    if (Test-Path -LiteralPath $stalePdfExe) {
+        $resolvedExe = (Resolve-Path -LiteralPath $stalePdfExe).Path
+        Get-Process -ErrorAction SilentlyContinue | Where-Object {
+            try { $_.Path -and ([string]::Equals($_.Path, $resolvedExe, [StringComparison]::OrdinalIgnoreCase)) }
+            catch { $false }
+        } | ForEach-Object {
+            Write-Host ("Stopping retired mcp-pdf PID {0}" -f $_.Id)
+            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+            try { Wait-Process -Id $_.Id -Timeout 10 -ErrorAction SilentlyContinue } catch { }
+        }
+    }
     Remove-Item -LiteralPath $stalePdfOutput -Recurse -Force
 }
 
