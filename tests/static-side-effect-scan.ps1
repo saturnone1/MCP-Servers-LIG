@@ -242,8 +242,35 @@ foreach ($relativePath in $portConfigFiles) {
         $failures.Add("${relativePath}: expected unique ports 42180-42198; missing=[$($missingPorts -join ',')] unexpected=[$($unexpectedPorts -join ',')]")
     }
     foreach ($server in $config.servers) {
+        if ($null -eq $server.env -or @($server.env.PSObject.Properties).Count -eq 0) {
+            $failures.Add("${relativePath}: $($server.name) must publish editable environment defaults")
+        }
         if ($server.port -ge 8080 -and $server.port -le 8098) {
             $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42198 range")
+        }
+    }
+}
+
+$ignoredRuntimeEnv = @('ASPNETCORE_URLS', 'PATH', 'PATHEXT', 'DOTNET_HOST_PATH', 'DOTNET_ROOT', 'COMSPEC')
+$dynamicServerEnv = @{
+    'mcp-shell' = @('MCP_SHELL_ALLOWED_COMMANDS', 'MCP_SHELL_ALLOWED_ENV')
+    'mcp-dotnet' = @('MCP_DOTNET_CLI_PATH')
+}
+foreach ($relativePath in $portConfigFiles) {
+    $environmentCatalog = Get-Content -LiteralPath (Join-Path $repo $relativePath) -Raw | ConvertFrom-Json
+    foreach ($server in $environmentCatalog.servers) {
+        $sourcePath = Join-Path $repo "$($server.name)\src\Program.cs"
+        $sourceText = Get-Content -LiteralPath $sourcePath -Raw
+        $requiredEnv = @([regex]::Matches($sourceText, 'GetEnvironmentVariable\("([A-Z][A-Z0-9_]*)"\)') |
+            ForEach-Object { $_.Groups[1].Value } |
+            Where-Object { $_ -notin $ignoredRuntimeEnv })
+        if ($dynamicServerEnv.ContainsKey($server.name)) {
+            $requiredEnv += $dynamicServerEnv[$server.name]
+        }
+        $publishedEnv = @($server.env.PSObject.Properties.Name)
+        $missingEnv = @($requiredEnv | Select-Object -Unique | Where-Object { $_ -notin $publishedEnv })
+        if ($missingEnv.Count -gt 0) {
+            $failures.Add("${relativePath}: $($server.name) omits supported environment variables [$($missingEnv -join ',')]")
         }
     }
 }
@@ -253,6 +280,9 @@ $stopIndex = $bundlePublishText.IndexOf('Stop-ExistingBundleProcesses -BundleRoo
 $retiredCleanupIndex = $bundlePublishText.IndexOf("foreach (`$relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler'))", [StringComparison]::Ordinal)
 if ($stopIndex -lt 0 -or $retiredCleanupIndex -le $stopIndex) {
     $failures.Add('scripts/publish-mcp-bundle.ps1: running legacy servers must stop before retired MCP-PDF artifacts are removed')
+}
+if (Test-ContainsOrdinal $bundlePublishText '$server.env = [pscustomobject]@{}') {
+    $failures.Add('scripts/publish-mcp-bundle.ps1: published environment defaults must remain in servers.json')
 }
 
 $readmeText = Get-Content -LiteralPath (Join-Path $repo 'README.md') -Raw
@@ -271,6 +301,15 @@ foreach ($required in @(
     if (-not (Test-ContainsOrdinal $managerText $required)) {
         $failures.Add("mcp-manager/src/Program.cs: missing manager lifecycle/autostart behavior '$required'")
     }
+}
+
+$defaultEnvIndex = $managerText.IndexOf('foreach (var env in server.Env)', [StringComparison]::Ordinal)
+$envFileIndex = $managerText.IndexOf('foreach (var envFile in ResolveEnvFiles(server))', [StringComparison]::Ordinal)
+if ($defaultEnvIndex -lt 0 -or $envFileIndex -lt 0 -or $defaultEnvIndex -gt $envFileIndex) {
+    $failures.Add('mcp-manager/src/Program.cs: user env files must override server environment defaults')
+}
+if (-not (Test-ContainsOrdinal $managerText 'existingKeys.Add(pair.Key)')) {
+    $failures.Add('mcp-manager/src/Program.cs: editable env files must merge newly published defaults during upgrades')
 }
 
 if ($failures.Count -gt 0) {

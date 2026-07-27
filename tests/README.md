@@ -21,6 +21,8 @@ Runs the current priority verification sequence:
 
 MATLAB, AutoCAD, and SolidWorks are covered by `desktop-host-smoke.ps1` because they use separate Windows desktop host ports and are not Docker services.
 
+`manager-env-smoke.ps1` verifies that all 19 servers create editable files from their published environment defaults and that upgrading an existing partial file preserves user values while adding newly supported keys.
+
 Run:
 
 ```powershell

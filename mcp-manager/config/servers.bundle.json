@@ -32,7 +32,8 @@
       "executable": "McpFilesystem.exe",
       "env": {
         "MCP_ALLOWED_DIRS": "*",
-        "MCP_ENABLE_WRITES": "true"
+        "MCP_ENABLE_WRITES": "true",
+        "MCP_PATH_MAPPINGS": ""
       }
     },
     {
@@ -48,7 +49,8 @@
       "executable": "McpGit.exe",
       "env": {
         "MCP_ALLOWED_DIRS": "*",
-        "MCP_ENABLE_GIT_WRITES": "true"
+        "MCP_ENABLE_GIT_WRITES": "true",
+        "MCP_PATH_MAPPINGS": ""
       }
     },
     {
@@ -64,7 +66,10 @@
       "executable": "McpShell.exe",
       "env": {
         "MCP_ALLOWED_DIRS": "*",
-        "MCP_ENABLE_SHELL": "true"
+        "MCP_ENABLE_SHELL": "true",
+        "MCP_SHELL_ALLOWED_COMMANDS": "",
+        "MCP_SHELL_ALLOWED_ENV": "",
+        "MCP_PATH_MAPPINGS": ""
       }
     },
     {
@@ -80,7 +85,9 @@
       "executable": "McpDotnet.exe",
       "env": {
         "MCP_ALLOWED_DIRS": "*",
-        "MCP_ENABLE_DOTNET_WRITES": "true"
+        "MCP_ENABLE_DOTNET_WRITES": "true",
+        "MCP_DOTNET_CLI_PATH": "",
+        "MCP_PATH_MAPPINGS": ""
       }
     },
     {
@@ -114,7 +121,8 @@
         "MCP_ALLOWED_DIRS": "*",
         "MCP_PATH_MAPPINGS": "",
         "SOFFICE_PATH": "soffice",
-        "HWP5TXT_PATH": "hwp5txt"
+        "HWP5TXT_PATH": "hwp5txt",
+        "MCP_ENABLE_HWP_WRITES": "true"
       }
     },
     {
@@ -133,7 +141,8 @@
         "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_KUBERNETES_WRITES": "true",
         "MCP_ENABLE_RAW_KUBECTL": "true",
-        "KUBECTL_PATH": "kubectl"
+        "KUBECTL_PATH": "kubectl",
+        "MCP_PATH_MAPPINGS": ""
       }
     },
     {
@@ -257,6 +266,7 @@
         "CONFLUENCE_PAT": "",
         "CONFLUENCE_USERNAME": "",
         "CONFLUENCE_API_TOKEN": "",
+        "CONFLUENCE_PASSWORD": "",
         "CONFLUENCE_COOKIE": "",
         "MCP_ENABLE_CONFLUENCE_WRITES": "true"
       }
@@ -274,7 +284,13 @@
       "workingDirectory": "{manager}\\mcp-rhapsody-win-x64",
       "executable": "McpRhapsody.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "*"
+        "RHAPSODY_INSTALL_DIR": "",
+        "RHAPSODY_EXE_PATH": "",
+        "RHAPSODY_CLI_PATH": "",
+        "RHAPSODY_COM_PROGID": "",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_RHAPSODY_WRITES": "true",
+        "MCP_ENABLE_RHAPSODY_CLI": "true"
       }
     },
     {
@@ -290,7 +306,14 @@
       "workingDirectory": "{manager}\\mcp-matlab-win-x64",
       "executable": "McpMatlab.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "*"
+        "MATLAB_ROOT": "",
+        "MATLAB_EXE_PATH": "",
+        "MATLAB_COM_PROGID": "Matlab.Application",
+        "MATLAB_MCP_CORE_SERVER_PATH": "{manager}\\mcp-matlab-win-x64\\official\\matlab-mcp-core-server-win64.exe",
+        "MATLAB_MCP_CORE_SERVER_ARGS": "",
+        "POWERSHELL_EXE_PATH": "powershell",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_MATLAB_WRITES": "true"
       }
     },
     {
@@ -306,7 +329,10 @@
       "workingDirectory": "{manager}\\mcp-autocad-win-x64",
       "executable": "McpAutoCad.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "*"
+        "AUTOCAD_EXE_PATH": "",
+        "AUTOCAD_COM_PROGID": "AutoCAD.Application",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_AUTOCAD_WRITES": "true"
       }
     },
     {
@@ -322,7 +348,10 @@
       "workingDirectory": "{manager}\\mcp-solidworks-win-x64",
       "executable": "McpSolidWorks.exe",
       "env": {
-        "MCP_ALLOWED_DIRS": "*"
+        "SOLIDWORKS_EXE_PATH": "",
+        "SOLIDWORKS_COM_PROGID": "SldWorks.Application",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_SOLIDWORKS_WRITES": "true"
       }
     }
   ]

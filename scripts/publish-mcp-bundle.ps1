@@ -247,10 +247,10 @@ foreach ($server in $config.servers) {
 setlocal
 set "ENV_DIR=%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env"
 if not exist "%ENV_DIR%" mkdir "%ENV_DIR%"
+if exist "%~dp0McpManager.exe" "%~dp0McpManager.exe" env $($server.name) >nul
 if not exist "%ENV_DIR%\$($server.name).env" copy /Y "%~dp0$($server.name)-win-x64\$($server.name).env" "%ENV_DIR%\$($server.name).env" >nul
 notepad.exe "%ENV_DIR%\$($server.name).env"
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "edit-env-$($server.name).cmd") -Encoding ASCII
-    $server.env = [pscustomobject]@{}
 }
 $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
@@ -322,6 +322,7 @@ foreach ($server in $config.servers) {
 setlocal
 set "ENV_DIR=%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env"
 if not exist "%ENV_DIR%" mkdir "%ENV_DIR%"
+if exist "%~dp0McpManager.exe" "%~dp0McpManager.exe" env $($server.name) >nul
 if not exist "%ENV_DIR%\$($server.name).env" copy /Y "%~dp0$($server.name)-win-x64\$($server.name).env" "%ENV_DIR%\$($server.name).env" >nul
 notepad.exe "%ENV_DIR%\$($server.name).env"
 "@ | Set-Content -LiteralPath (Join-Path $OutputRoot "edit-env-$($server.name).cmd") -Encoding ASCII

@@ -14,7 +14,11 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "MCP_ENABLE_OFFICE_WRITES": "true",
+        "OFFICECLI_PATH": "officecli",
+        "ANTIWORD_PATH": "antiword"
       }
     },
     {
@@ -31,7 +35,9 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "MCP_ENABLE_WRITES": "true"
       }
     },
     {
@@ -48,7 +54,9 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "MCP_ENABLE_GIT_WRITES": "true"
       }
     },
     {
@@ -65,7 +73,11 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "MCP_ENABLE_SHELL": "true",
+        "MCP_SHELL_ALLOWED_COMMANDS": "",
+        "MCP_SHELL_ALLOWED_ENV": ""
       }
     },
     {
@@ -82,7 +94,10 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "MCP_ENABLE_DOTNET_WRITES": "true",
+        "MCP_DOTNET_CLI_PATH": ""
       }
     },
     {
@@ -99,7 +114,9 @@
         "C:\\:/host/c"
       ],
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace;C:\\=/host/c",
+        "MSSQL_CONNECTION_STRING": "",
+        "MCP_ENABLE_SQL_WRITES": "true"
       }
     },
     {
@@ -116,7 +133,11 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "SOFFICE_PATH": "soffice",
+        "HWP5TXT_PATH": "hwp5txt",
+        "MCP_ENABLE_HWP_WRITES": "true"
       }
     },
     {
@@ -135,7 +156,11 @@
       ],
       "mountHostDrives": true,
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "MCP_ENABLE_KUBERNETES_WRITES": "true",
+        "MCP_ENABLE_RAW_KUBECTL": "true",
+        "KUBECTL_PATH": "kubectl"
       }
     },
     {
@@ -152,7 +177,9 @@
         "/var/run/docker.sock:/var/run/docker.sock"
       ],
       "env": {
-        "MCP_PATH_MAPPINGS": "{repo}=/workspace"
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ENABLE_DOCKER_WRITES": "true",
+        "DOCKER_PATH": "docker"
       }
     },
     {
@@ -166,7 +193,11 @@
       ],
       "volumes": [
         "{repo}:/workspace"
-      ]
+      ],
+      "env": {
+        "PROMETHEUS_BASE_URL": "http://host.docker.internal:9090",
+        "PROMETHEUS_BEARER_TOKEN": ""
+      }
     },
     {
       "name": "mcp-postgresql",
@@ -179,7 +210,11 @@
       ],
       "volumes": [
         "{repo}:/workspace"
-      ]
+      ],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "",
+        "MCP_ENABLE_POSTGRES_WRITES": "true"
+      }
     },
     {
       "name": "mcp-gitlab",
@@ -192,7 +227,12 @@
       ],
       "volumes": [
         "{repo}:/workspace"
-      ]
+      ],
+      "env": {
+        "GITLAB_BASE_URL": "http://gitlab.local",
+        "GITLAB_TOKEN": "",
+        "MCP_ENABLE_GITLAB_WRITES": "true"
+      }
     },
     {
       "name": "mcp-jira",
@@ -205,7 +245,14 @@
       ],
       "volumes": [
         "{repo}:/workspace"
-      ]
+      ],
+      "env": {
+        "JIRA_BASE_URL": "http://jira.local",
+        "JIRA_BEARER_TOKEN": "",
+        "JIRA_EMAIL": "",
+        "JIRA_API_TOKEN": "",
+        "MCP_ENABLE_JIRA_WRITES": "true"
+      }
     },
     {
       "name": "mcp-loki",
@@ -218,7 +265,14 @@
       ],
       "volumes": [
         "{repo}:/workspace"
-      ]
+      ],
+      "env": {
+        "LOKI_BASE_URL": "http://host.docker.internal:3100",
+        "LOKI_BEARER_TOKEN": "",
+        "LOKI_USERNAME": "",
+        "LOKI_PASSWORD": "",
+        "LOKI_TENANT_ID": ""
+      }
     },
     {
       "name": "mcp-confluence",
@@ -239,6 +293,7 @@
         "CONFLUENCE_PAT": "",
         "CONFLUENCE_USERNAME": "",
         "CONFLUENCE_API_TOKEN": "",
+        "CONFLUENCE_PASSWORD": "",
         "CONFLUENCE_COOKIE": "",
         "MCP_ENABLE_CONFLUENCE_WRITES": "true"
       }
@@ -253,7 +308,16 @@
         "modeling"
       ],
       "workingDirectory": "{repo}\\windows-host-publish\\mcp-rhapsody-win-x64",
-      "executable": "McpRhapsody.exe"
+      "executable": "McpRhapsody.exe",
+      "env": {
+        "RHAPSODY_INSTALL_DIR": "",
+        "RHAPSODY_EXE_PATH": "",
+        "RHAPSODY_CLI_PATH": "",
+        "RHAPSODY_COM_PROGID": "",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_RHAPSODY_WRITES": "true",
+        "MCP_ENABLE_RHAPSODY_CLI": "true"
+      }
     },
     {
       "name": "mcp-matlab",
@@ -265,7 +329,17 @@
         "engineering"
       ],
       "workingDirectory": "{repo}\\windows-host-publish\\mcp-matlab-win-x64",
-      "executable": "McpMatlab.exe"
+      "executable": "McpMatlab.exe",
+      "env": {
+        "MATLAB_ROOT": "",
+        "MATLAB_EXE_PATH": "",
+        "MATLAB_COM_PROGID": "Matlab.Application",
+        "MATLAB_MCP_CORE_SERVER_PATH": "{repo}\\windows-host-publish\\mcp-matlab-win-x64\\official\\matlab-mcp-core-server-win64.exe",
+        "MATLAB_MCP_CORE_SERVER_ARGS": "",
+        "POWERSHELL_EXE_PATH": "powershell",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_MATLAB_WRITES": "true"
+      }
     },
     {
       "name": "mcp-autocad",
@@ -277,7 +351,13 @@
         "cad"
       ],
       "workingDirectory": "{repo}\\windows-host-publish\\mcp-autocad-win-x64",
-      "executable": "McpAutoCad.exe"
+      "executable": "McpAutoCad.exe",
+      "env": {
+        "AUTOCAD_EXE_PATH": "",
+        "AUTOCAD_COM_PROGID": "AutoCAD.Application",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_AUTOCAD_WRITES": "true"
+      }
     },
     {
       "name": "mcp-solidworks",
@@ -289,7 +369,13 @@
         "cad"
       ],
       "workingDirectory": "{repo}\\windows-host-publish\\mcp-solidworks-win-x64",
-      "executable": "McpSolidWorks.exe"
+      "executable": "McpSolidWorks.exe",
+      "env": {
+        "SOLIDWORKS_EXE_PATH": "",
+        "SOLIDWORKS_COM_PROGID": "SldWorks.Application",
+        "MCP_ALLOWED_DIRS": "*",
+        "MCP_ENABLE_SOLIDWORKS_WRITES": "true"
+      }
     }
   ]
 }

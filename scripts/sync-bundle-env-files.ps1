@@ -70,7 +70,6 @@ foreach ($server in $config.servers) {
         foreach ($property in @($server.env.PSObject.Properties)) {
             $envValues[$property.Name] = $property.Value
         }
-        $server.env = [pscustomobject]@{}
     }
     if ($defaultEnv.ContainsKey($server.name)) {
         foreach ($key in $defaultEnv[$server.name].Keys) {

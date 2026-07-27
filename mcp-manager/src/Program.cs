@@ -598,24 +598,7 @@ internal sealed class McpManager
 
     private void OpenEnvEditor(ServerConfig server)
     {
-        var managerDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var editCmd = Path.Combine(managerDirectory, $"edit-env-{server.Name}.cmd");
-        if (File.Exists(editCmd))
-        {
-            Process.Start(new ProcessStartInfo(editCmd) { UseShellExecute = true, WorkingDirectory = managerDirectory });
-            return;
-        }
-
-        var envPath = ResolveEditableEnvPath(server);
-        Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
-        if (!File.Exists(envPath))
-        {
-            File.WriteAllLines(envPath,
-            [
-                $"# {server.Name} 환경변수 파일입니다.",
-                "# 값을 바꾼 뒤 LIG AI MCP에서 서버를 재시작하세요."
-            ]);
-        }
+        var envPath = EnsureEditableEnvFile(server);
         Process.Start(new ProcessStartInfo("notepad.exe", envPath) { UseShellExecute = true });
     }
 
@@ -624,7 +607,7 @@ internal sealed class McpManager
         var envPath = EnsureEditableEnvFile(server);
         var entries = ReadEditableEnvEntries(envPath);
         var selected = 0;
-        var message = "Enter 수정, A 추가, D 삭제, N 메모장, R 다시읽기, B 뒤로";
+        var message = "Enter 수정, A 추가, D 기본값 복원/삭제, N 메모장, R 다시읽기, B 뒤로";
 
         while (true)
         {
@@ -646,7 +629,7 @@ internal sealed class McpManager
             else
             {
                 selected = Math.Clamp(selected, 0, entries.Count - 1);
-                var tableHeight = Math.Max(4, SafeHeight() - 13);
+                var tableHeight = Math.Max(4, SafeHeight() - 14);
                 var start = Math.Clamp(selected - tableHeight / 2, 0, Math.Max(0, entries.Count - tableHeight));
                 foreach (var (entry, index) in entries.Select((entry, index) => (entry, index)).Skip(start).Take(tableHeight))
                 {
@@ -659,11 +642,20 @@ internal sealed class McpManager
                 }
             }
 
+            if (entries.Count > 0)
+            {
+                var selectedEntry = entries[Math.Clamp(selected, 0, entries.Count - 1)];
+                var defaultValue = server.Env.TryGetValue(selectedEntry.Key, out var configuredDefault)
+                    ? MaskEnvValue(selectedEntry.Key, configuredDefault)
+                    : "(사용자 추가 항목)";
+                WriteField("선택 기본값", defaultValue);
+            }
+
             WriteColorLine(new string('-', SafeWidth()), ConsoleColor.DarkGray);
             WriteColor(" 상태 ", ConsoleColor.DarkCyan);
             WriteColorLine(message, MessageColor(message));
             WriteColor(" 단축키 ", ConsoleColor.DarkCyan);
-            WriteColorLine("↑/↓ 이동  Enter 수정  A 추가  D 삭제  N 메모장  R 다시읽기  B 뒤로", ConsoleColor.DarkGray);
+            WriteColorLine("↑/↓ 이동  Enter 수정  A 추가  D 기본값/삭제  N 메모장  R 다시읽기  B 뒤로", ConsoleColor.DarkGray);
 
             if (Console.IsInputRedirected)
                 return;
@@ -717,17 +709,20 @@ internal sealed class McpManager
                         break;
                     }
                     var removedKey = entries[selected].Key;
-                    if (Confirm($"'{removedKey}' 환경변수를 삭제할까요?"))
+                    if (server.Env.TryGetValue(removedKey, out var defaultValue))
+                    {
+                        entries[selected] = entries[selected] with { Value = defaultValue };
+                        WriteEditableEnvEntries(envPath, server.Name, entries);
+                        message = $"{removedKey} 기본값 복원 완료.";
+                    }
+                    else if (Confirm($"사용자 추가 항목 '{removedKey}'을 삭제할까요?"))
                     {
                         entries.RemoveAt(selected);
                         if (selected >= entries.Count) selected = Math.Max(0, entries.Count - 1);
                         WriteEditableEnvEntries(envPath, server.Name, entries);
                         message = $"{removedKey} 삭제 완료.";
                     }
-                    else
-                    {
-                        message = "삭제를 취소했습니다.";
-                    }
+                    else message = "삭제를 취소했습니다.";
                     break;
                 case ConsoleKey.N:
                     OpenEnvEditor(server);
@@ -770,10 +765,19 @@ internal sealed class McpManager
         ValidateEnvKey(key);
         var envPath = EnsureEditableEnvFile(server);
         var entries = ReadEditableEnvEntries(envPath);
+        if (server.Env.TryGetValue(key, out var defaultValue))
+        {
+            entries.RemoveAll(entry => string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase));
+            entries.Add(new EnvEntry(key, defaultValue));
+            entries = entries.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).ToList();
+            WriteEditableEnvEntries(envPath, server.Name, entries);
+            WriteColorLine($"{server.Name}: {key} 기본값 복원 완료. 서버를 재시작하면 적용됩니다.", ConsoleColor.Green);
+            return;
+        }
         var removed = entries.RemoveAll(entry => string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase));
         WriteEditableEnvEntries(envPath, server.Name, entries);
         WriteColorLine(removed > 0
-            ? $"{server.Name}: {key} 삭제 완료. 서버를 재시작하면 적용됩니다."
+            ? $"{server.Name}: 사용자 추가 항목 {key} 삭제 완료. 서버를 재시작하면 적용됩니다."
             : $"{server.Name}: {key} 값이 없습니다.", removed > 0 ? ConsoleColor.Green : ConsoleColor.Yellow);
     }
 
@@ -786,12 +790,20 @@ internal sealed class McpManager
     {
         var envPath = ResolveEditableEnvPath(server);
         Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
-        if (!File.Exists(envPath))
+        var entries = ReadEditableEnvEntries(envPath);
+        var existingKeys = entries.Select(entry => entry.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var changed = !File.Exists(envPath);
+        foreach (var pair in server.Env.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var entries = server.Env
-                .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(pair => new EnvEntry(pair.Key, pair.Value))
-                .ToList();
+            if (existingKeys.Add(pair.Key))
+            {
+                entries.Add(new EnvEntry(pair.Key, pair.Value));
+                changed = true;
+            }
+        }
+        if (changed)
+        {
+            entries = entries.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase).ToList();
             WriteEditableEnvEntries(envPath, server.Name, entries);
         }
         return envPath;
@@ -1559,13 +1571,13 @@ internal sealed class McpManager
     private Dictionary<string, string> BuildEnvironment(ServerConfig server)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var env in server.Env)
+            result[env.Key] = Expand(env.Value);
         foreach (var envFile in ResolveEnvFiles(server))
         {
             foreach (var env in ReadEnvFile(envFile))
                 result[env.Key] = Expand(env.Value);
         }
-        foreach (var env in server.Env)
-            result[env.Key] = Expand(env.Value);
         return result;
     }
 

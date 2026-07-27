@@ -148,7 +148,7 @@ mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 
 The bundle `servers.json` registers all 19 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
 
-The bundle contains default `<server>.env` files. Editable per-user overrides are stored under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`; use `edit-env-mcp-jira.cmd` or the Manager dashboard, then restart the server. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root plus explicit `envFiles` from `servers.json` before applying the per-user override.
+Every server publishes its supported environment-variable catalog and defaults in `servers.json`. Editable per-user values are stored under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`; use `edit-env-mcp-jira.cmd` or the Manager dashboard, then restart the server. The Manager creates these files with all defaults and, during upgrades, adds newly supported keys without overwriting existing user values. Runtime precedence is server defaults, bundled/explicit env files, then the per-user file. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root plus explicit `envFiles` from `servers.json`.
 
 If you patch an existing bundle with the new manager, run `sync-env-files.ps1` once to split existing `servers.json` environment values into per-server `.env` files and create `edit-env-*.cmd` helpers.
 
@@ -169,7 +169,7 @@ Select a server and press `P` to register or unregister it for automatic startup
 .\mcp-bundle\LIG-AI-MCP.cmd autostart list
 ```
 
-In the interactive dashboard, select a server and press `E` to edit its environment variables without opening a text editor. Use `A` to add, `Enter` to edit, `D` to delete, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
+In the interactive dashboard, select a server and press `E` to see every supported environment variable, its current value, and the selected variable's default. Use `A` to add, `Enter` to edit, `D` to restore a published default or delete a user-added key, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
 
 The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. These launchers call `runtime-env.cmd`, so the bundled shared runtime is used automatically and the target Windows PC does not need .NET installed globally.
 
