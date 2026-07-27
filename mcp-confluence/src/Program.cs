@@ -244,10 +244,20 @@ internal static class Guard
         }
     }
     public static string? Username => Environment.GetEnvironmentVariable("CONFLUENCE_USERNAME");
-    public static string? ApiToken => Environment.GetEnvironmentVariable("CONFLUENCE_API_TOKEN") ?? Environment.GetEnvironmentVariable("CONFLUENCE_PASSWORD");
-    public static string? BearerToken => Environment.GetEnvironmentVariable("CONFLUENCE_BEARER_TOKEN") ?? Environment.GetEnvironmentVariable("CONFLUENCE_PAT");
+    public static string? ApiToken => FirstNonEmpty("CONFLUENCE_API_TOKEN", "CONFLUENCE_PASSWORD");
+    public static string? BearerToken => FirstNonEmpty("CONFLUENCE_BEARER_TOKEN", "CONFLUENCE_PAT");
     public static string? Cookie => Environment.GetEnvironmentVariable("CONFLUENCE_COOKIE");
     public static bool WritesEnabled => !string.Equals(Environment.GetEnvironmentVariable("MCP_ENABLE_CONFLUENCE_WRITES"), "false", StringComparison.OrdinalIgnoreCase);
+
+    private static string? FirstNonEmpty(params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+        }
+        return null;
+    }
 
     public static void RequireWrites()
     {

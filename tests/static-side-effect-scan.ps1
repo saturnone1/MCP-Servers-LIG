@@ -250,6 +250,10 @@ foreach ($relativePath in $portConfigFiles) {
         }
     }
 }
+if (-not (Test-ContainsOrdinal $confluenceText 'FirstNonEmpty("CONFLUENCE_BEARER_TOKEN", "CONFLUENCE_PAT")') -or
+    -not (Test-ContainsOrdinal $confluenceText 'FirstNonEmpty("CONFLUENCE_API_TOKEN", "CONFLUENCE_PASSWORD")')) {
+    $failures.Add('mcp-confluence/src/Program.cs: empty primary auth values must fall back to PAT/password compatibility values')
+}
 
 $ignoredRuntimeEnv = @('ASPNETCORE_URLS', 'PATH', 'PATHEXT', 'DOTNET_HOST_PATH', 'DOTNET_ROOT', 'COMSPEC')
 $dynamicServerEnv = @{
@@ -296,11 +300,23 @@ foreach ($required in @(
     'AssignProcessToJobObject',
     'StartAutostartServers',
     'autostart.json',
-    'ToggleAutostart'
+    'ToggleAutostart',
+    'candidate.MainModule?.FileName',
+    'ProcessIdentity(process.Id, process.StartTime.ToUniversalTime().Ticks)',
+    'foreach (var arg in server.Args)',
+    'var captureOutput = _interactiveProcessJob is not null',
+    'JsonSerializer.Deserialize<string>(value)',
+    '"COOKIE"'
 )) {
     if (-not (Test-ContainsOrdinal $managerText $required)) {
         $failures.Add("mcp-manager/src/Program.cs: missing manager lifecycle/autostart behavior '$required'")
     }
+}
+
+$bundleConfig = Get-Content -LiteralPath (Join-Path $repo 'mcp-manager/config/servers.bundle.json') -Raw | ConvertFrom-Json
+$officeConfig = $bundleConfig.servers | Where-Object name -eq 'mcp-office' | Select-Object -First 1
+if ($officeConfig.env.ANTIWORD_PATH -ne 'antiword') {
+    $failures.Add('mcp-manager/config/servers.bundle.json: ANTIWORD_PATH should allow normal PATH resolution when antiword is not bundled')
 }
 
 $defaultEnvIndex = $managerText.IndexOf('foreach (var env in server.Env)', [StringComparison]::Ordinal)

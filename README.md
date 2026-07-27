@@ -171,6 +171,8 @@ Select a server and press `P` to register or unregister it for automatic startup
 
 In the interactive dashboard, select a server and press `E` to see every supported environment variable, its current value, and the selected variable's default. Use `A` to add, `Enter` to edit, `D` to restore a published default or delete a user-added key, `N` to open Notepad, and `B` to go back. Restart the server after changing environment values.
 
+Tokens, passwords, connection strings, PATs, cookies, and credentials are masked in the dashboard and `env` command output. Their actual values remain in the per-user env file and are passed to the server process.
+
 The bundle also creates double-click command files: `start-all.cmd`, `stop-all.cmd`, `status.cmd`, plus per-server `start-mcp-*.cmd` and `stop-mcp-*.cmd`. These launchers call `runtime-env.cmd`, so the bundled shared runtime is used automatically and the target Windows PC does not need .NET installed globally.
 
 Check the bundle structure and external CLI availability with:

@@ -62,6 +62,27 @@ try {
         throw 'remove-env did not restore the published default.'
     }
 
+    $matlabPath = 'C:\Program Files\MATLAB\R2026a\bin\matlab.exe'
+    & dotnet $managerDll set-env mcp-matlab MATLAB_EXE_PATH $matlabPath | Out-Null
+    $matlabEnvPath = Join-Path $envDir 'mcp-matlab.env'
+    $encodedPath = ((Get-Content -LiteralPath $matlabEnvPath) | Where-Object { $_ -like 'MATLAB_EXE_PATH=*' } | Select-Object -First 1).Substring('MATLAB_EXE_PATH='.Length)
+    $decodedPath = $encodedPath | ConvertFrom-Json
+    if ($decodedPath -ne $matlabPath) {
+        throw 'A quoted Windows path did not round-trip through the editable env file.'
+    }
+
+    $secret = 'release-secret-token-123'
+    & dotnet $managerDll set-env mcp-jira JIRA_API_TOKEN $secret | Out-Null
+    $jiraOutput = (& dotnet $managerDll env mcp-jira | Out-String)
+    if ($jiraOutput.Contains($secret, [StringComparison]::Ordinal)) {
+        throw 'The env command exposed an API token in plain text.'
+    }
+    & dotnet $managerDll set-env mcp-confluence CONFLUENCE_COOKIE $secret | Out-Null
+    $confluenceOutput = (& dotnet $managerDll env mcp-confluence | Out-String)
+    if ($confluenceOutput.Contains($secret, [StringComparison]::Ordinal)) {
+        throw 'The env command exposed a session cookie in plain text.'
+    }
+
     Write-Host 'Manager environment defaults and upgrade migration smoke passed.' -ForegroundColor Green
 }
 finally {

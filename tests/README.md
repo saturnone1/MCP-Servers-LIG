@@ -23,6 +23,8 @@ MATLAB, AutoCAD, and SolidWorks are covered by `desktop-host-smoke.ps1` because 
 
 `manager-env-smoke.ps1` verifies that all 19 servers create editable files from their published environment defaults and that upgrading an existing partial file preserves user values while adding newly supported keys.
 
+`manager-process-smoke.ps1` verifies PID/executable identity checks, process argument forwarding, detached CLI startup, and explicit child-process shutdown.
+
 Run:
 
 ```powershell

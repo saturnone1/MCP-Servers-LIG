@@ -16,7 +16,7 @@
         "MCP_ENABLE_OFFICE_WRITES": "true",
         "MCP_PATH_MAPPINGS": "",
         "OFFICECLI_PATH": "{manager}\\mcp-office-win-x64\\tools\\officecli.exe",
-        "ANTIWORD_PATH": "{manager}\\mcp-office-win-x64\\tools\\antiword.exe"
+        "ANTIWORD_PATH": "antiword"
       }
     },
     {

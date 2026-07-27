@@ -745,7 +745,7 @@ internal sealed class McpManager
         var envPath = EnsureEditableEnvFile(server);
         Console.WriteLine($"{server.Name} env: {envPath}");
         foreach (var entry in ReadEditableEnvEntries(envPath))
-            Console.WriteLine($"{entry.Key}={entry.Value}");
+            Console.WriteLine($"{entry.Key}={MaskEnvValue(entry.Key, entry.Value)}");
     }
 
     private void SetEnvValue(ServerConfig server, string key, string value)
@@ -859,7 +859,7 @@ internal sealed class McpManager
         WriteField("현재값", MaskEnvValue(key, currentValue));
         WriteColorLine("새 값을 입력하세요. 빈 값도 저장됩니다. 취소하려면 Ctrl+C 대신 ESC 화면으로 돌아가려면 그냥 Enter 후 다시 수정하세요.", ConsoleColor.DarkGray);
         Console.WriteLine();
-        value = PromptLine("새 값", currentValue);
+        value = PromptLine("새 값", currentValue, key);
         return true;
     }
 
@@ -874,12 +874,12 @@ internal sealed class McpManager
             return false;
         }
         ValidateEnvKey(key);
-        var value = PromptLine("값", entries.FirstOrDefault(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase)).Value ?? "");
+        var value = PromptLine("값", entries.FirstOrDefault(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase)).Value ?? "", key);
         entry = new EnvEntry(key.Trim(), value);
         return true;
     }
 
-    private static string PromptLine(string label, string defaultValue)
+    private static string PromptLine(string label, string defaultValue, string? maskKey = null)
     {
         var previousCursor = TryGetCursorVisible();
         try { Console.CursorVisible = true; } catch { }
@@ -887,7 +887,7 @@ internal sealed class McpManager
         {
             WriteColor($"{label}", ConsoleColor.DarkCyan);
             if (!string.IsNullOrEmpty(defaultValue))
-                WriteColor($" [{MaskEnvValue(label, defaultValue)}]", ConsoleColor.DarkGray);
+                WriteColor($" [{MaskEnvValue(maskKey ?? label, defaultValue)}]", ConsoleColor.DarkGray);
             WriteColor(": ", ConsoleColor.Gray);
             var input = Console.ReadLine();
             return input is null || input.Length == 0 ? defaultValue : input;
@@ -924,8 +924,18 @@ internal sealed class McpManager
 
     private static string UnquoteEnvValue(string value)
     {
-        if (value.Length >= 2 &&
-            ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\''))))
+        if (value.Length >= 2 && value.StartsWith('"') && value.EndsWith('"'))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<string>(value) ?? "";
+            }
+            catch (JsonException)
+            {
+                return value[1..^1];
+            }
+        }
+        if (value.Length >= 2 && value.StartsWith('\'') && value.EndsWith('\''))
             return value[1..^1];
         return value;
     }
@@ -934,7 +944,7 @@ internal sealed class McpManager
     {
         value = value.Replace("\r", "").Replace("\n", "\\n");
         if (value.Length == 0 || value.Any(char.IsWhiteSpace) || value.Contains('#') || value.Contains('"'))
-            return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+            return JsonSerializer.Serialize(value);
         return value;
     }
 
@@ -943,7 +953,7 @@ internal sealed class McpManager
         if (string.IsNullOrEmpty(value))
             return "(빈 값)";
 
-        var sensitiveTokens = new[] { "TOKEN", "PASSWORD", "SECRET", "KEY", "CONNECTION_STRING", "CONNSTR", "PAT" };
+        var sensitiveTokens = new[] { "TOKEN", "PASSWORD", "SECRET", "KEY", "CONNECTION_STRING", "CONNSTR", "PAT", "COOKIE", "CREDENTIAL" };
         if (!sensitiveTokens.Any(token => key.Contains(token, StringComparison.OrdinalIgnoreCase)))
             return TrimCell(value, Math.Max(10, SafeWidth() - 42));
 
@@ -1382,10 +1392,16 @@ internal sealed class McpManager
     private async Task StartProcess(ServerConfig server)
     {
         var pidPath = PidPath(server);
-        if (TryReadProcess(pidPath, out var existing) && !existing.HasExited)
+        if (TryReadProcess(server, out var existing))
         {
-            Console.WriteLine($"{server.Name} 이미 실행 중입니다. PID {existing.Id}");
-            return;
+            using (existing)
+            {
+                if (!existing.HasExited)
+                {
+                    Console.WriteLine($"{server.Name} 이미 실행 중입니다. PID {existing.Id}");
+                    return;
+                }
+            }
         }
 
         var workingDirectory = Expand(server.WorkingDirectory);
@@ -1393,16 +1409,17 @@ internal sealed class McpManager
         if (!File.Exists(executable))
             throw new FileNotFoundException($"{server.Name} 실행 파일을 찾을 수 없습니다. 먼저 Windows 호스트 패키지를 publish 하세요.", executable);
 
-        var stdout = Path.Combine(_logDir, $"{server.Name}.out.log");
-        var stderr = Path.Combine(_logDir, $"{server.Name}.err.log");
+        var captureOutput = _interactiveProcessJob is not null;
         var psi = new ProcessStartInfo(executable)
         {
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
+            RedirectStandardOutput = captureOutput,
+            RedirectStandardError = captureOutput,
             CreateNoWindow = true
         };
+        foreach (var arg in server.Args)
+            psi.ArgumentList.Add(Expand(arg));
         foreach (var env in BuildEnvironment(server))
             psi.Environment[env.Key] = env.Value;
         ApplyBundledDotnetEnvironment(psi.Environment);
@@ -1419,9 +1436,13 @@ internal sealed class McpManager
             await process.WaitForExitAsync();
             throw;
         }
-        _ = Pump(process.StandardOutput, stdout);
-        _ = Pump(process.StandardError, stderr);
-        await File.WriteAllTextAsync(pidPath, process.Id.ToString());
+        if (captureOutput)
+        {
+            _ = Pump(process.StandardOutput, Path.Combine(_logDir, $"{server.Name}.out.log"));
+            _ = Pump(process.StandardError, Path.Combine(_logDir, $"{server.Name}.err.log"));
+        }
+        var identity = new ProcessIdentity(process.Id, process.StartTime.ToUniversalTime().Ticks);
+        await File.WriteAllTextAsync(pidPath, JsonSerializer.Serialize(identity, JsonOptions()));
         if (_interactiveProcessJob is not null)
             _interactiveOwnedServers.Add(server.Name);
         Console.WriteLine($"{server.Name} 시작됨. PID {process.Id}");
@@ -1438,11 +1459,17 @@ internal sealed class McpManager
         }
 
         var pidPath = PidPath(server);
-        if (TryReadProcess(pidPath, out var process) && !process.HasExited)
+        if (TryReadProcess(server, out var process))
         {
-            process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync();
-            Console.WriteLine($"중지됨. PID {process.Id}");
+            using (process)
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    await process.WaitForExitAsync();
+                    Console.WriteLine($"중지됨. PID {process.Id}");
+                }
+            }
         }
         if (File.Exists(pidPath))
             File.Delete(pidPath);
@@ -1501,7 +1528,10 @@ internal sealed class McpManager
 
     private string ProcessStatus(ServerConfig server)
     {
-        return TryReadProcess(PidPath(server), out var process) && !process.HasExited ? $"pid {process.Id}" : "stopped";
+        if (!TryReadProcess(server, out var process))
+            return "stopped";
+        using (process)
+            return process.HasExited ? "stopped" : $"pid {process.Id}";
     }
 
     private async Task<string> Health(ServerConfig server)
@@ -1639,25 +1669,51 @@ internal sealed class McpManager
             if (equals <= 0) continue;
 
             var key = line[..equals].Trim();
-            var value = line[(equals + 1)..].Trim();
-            if (value.Length >= 2 &&
-                ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\''))))
-            {
-                value = value[1..^1];
-            }
-            result[key] = value;
+            var value = UnquoteEnvValue(line[(equals + 1)..].Trim());
+            if (IsValidEnvKey(key))
+                result[key] = value;
         }
         return result;
     }
 
-    private static bool TryReadProcess(string pidPath, out Process process)
+    private bool TryReadProcess(ServerConfig server, out Process process)
     {
         process = null!;
         try
         {
+            var pidPath = PidPath(server);
             if (!File.Exists(pidPath)) return false;
-            var pid = int.Parse(File.ReadAllText(pidPath).Trim());
-            process = Process.GetProcessById(pid);
+            var rawIdentity = File.ReadAllText(pidPath).Trim();
+            ProcessIdentity identity;
+            if (int.TryParse(rawIdentity, out var legacyPid))
+                identity = new ProcessIdentity(legacyPid, null);
+            else
+                identity = JsonSerializer.Deserialize<ProcessIdentity>(rawIdentity, JsonOptions())
+                    ?? throw new InvalidOperationException("Invalid process identity file.");
+
+            var candidate = Process.GetProcessById(identity.Pid);
+            if (candidate.HasExited)
+            {
+                candidate.Dispose();
+                return false;
+            }
+
+            var expectedPath = Path.GetFullPath(ResolveExecutable(server));
+            var actualPath = candidate.MainModule?.FileName;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            if (string.IsNullOrWhiteSpace(actualPath) || !string.Equals(Path.GetFullPath(actualPath), expectedPath, comparison))
+            {
+                candidate.Dispose();
+                return false;
+            }
+            if (identity.StartTimeUtcTicks is long expectedStartTime &&
+                candidate.StartTime.ToUniversalTime().Ticks != expectedStartTime)
+            {
+                candidate.Dispose();
+                return false;
+            }
+
+            process = candidate;
             return true;
         }
         catch
@@ -1982,6 +2038,8 @@ internal sealed class ManagerConfig
 }
 
 internal readonly record struct EnvEntry(string Key, string Value);
+
+internal sealed record ProcessIdentity(int Pid, long? StartTimeUtcTicks);
 
 internal sealed class ServerConfig
 {
