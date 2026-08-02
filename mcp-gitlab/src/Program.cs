@@ -89,17 +89,52 @@ public sealed class GitLabTools
     public static async Task<ApiResult> CreateOrUpdateFile(string project, string filePath, string branch, string content, string commitMessage)
     {
         Guard.RequireWrites();
-        var path = $"/api/v4/projects/{EncodeProject(project)}/repository/files/{EncodePath(filePath)}";
-        var body = new Dictionary<string, object?>
-        {
-            ["branch"] = branch,
-            ["content"] = content,
-            ["commit_message"] = commitMessage
-        };
-        var update = await Send(HttpMethod.Put, path, body: body);
+        var update = await PutFileContent(project, filePath, branch, content, commitMessage);
         if (update.StatusCode != 404) return update;
-        return await Send(HttpMethod.Post, path, body: body);
+        return await Send(HttpMethod.Post,
+            $"/api/v4/projects/{EncodeProject(project)}/repository/files/{EncodePath(filePath)}",
+            body: new Dictionary<string, object?>
+            {
+                ["branch"] = branch,
+                ["content"] = content,
+                ["commit_message"] = commitMessage
+            });
     }
+
+    [McpServerTool]
+    [Description("Append content to the end of an existing GitLab repository file without regenerating the whole body. Fetches raw content, appends the fragment, and commits.")]
+    public static async Task<ApiResult> AppendToFile(string project, string filePath, string branch, string content, string commitMessage)
+    {
+        Guard.RequireWrites();
+        var existing = await FetchRawFile(project, filePath, branch);
+        if (!existing.Success) return existing;
+        return await PutFileContent(project, filePath, branch, existing.Body + content, commitMessage);
+    }
+
+    [McpServerTool]
+    [Description("Prepend content to the beginning of an existing GitLab repository file.")]
+    public static async Task<ApiResult> PrependToFile(string project, string filePath, string branch, string content, string commitMessage)
+    {
+        Guard.RequireWrites();
+        var existing = await FetchRawFile(project, filePath, branch);
+        if (!existing.Success) return existing;
+        return await PutFileContent(project, filePath, branch, content + existing.Body, commitMessage);
+    }
+
+    private static Task<ApiResult> FetchRawFile(string project, string filePath, string branch) =>
+        Send(HttpMethod.Get,
+            $"/api/v4/projects/{EncodeProject(project)}/repository/files/{EncodePath(filePath)}/raw",
+            new Dictionary<string, string> { ["ref"] = branch });
+
+    private static Task<ApiResult> PutFileContent(string project, string filePath, string branch, string content, string commitMessage) =>
+        Send(HttpMethod.Put,
+            $"/api/v4/projects/{EncodeProject(project)}/repository/files/{EncodePath(filePath)}",
+            body: new Dictionary<string, object?>
+            {
+                ["branch"] = branch,
+                ["content"] = content,
+                ["commit_message"] = commitMessage
+            });
 
     private static async Task<ApiResult> Send(HttpMethod method, string path, Dictionary<string, string>? query = null, object? body = null)
     {

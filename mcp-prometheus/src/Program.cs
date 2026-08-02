@@ -138,7 +138,7 @@ public sealed class PrometheusTools
         return parameters;
     }
 
-    private static HttpClient CreateClient() => new() { Timeout = TimeSpan.FromHours(24) };
+    private static HttpClient CreateClient() => new() { Timeout = TimeSpan.FromHours(1) };
 }
 
 internal static class Guard

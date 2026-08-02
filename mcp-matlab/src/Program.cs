@@ -183,7 +183,13 @@ public sealed class MatlabTools
         return CommandRunner.Run(matlab, ["-batch", command], Environment.CurrentDirectory, Math.Clamp(timeoutMs, 1000, 86400000), 64 * 1024 * 1024);
     }
 
-    private static string EscapeMatlab(string value) => value.Replace("'", "''", StringComparison.Ordinal);
+    private static string EscapeMatlab(string value)
+    {
+        if (value is null) return string.Empty;
+        if (value.Contains('\r') || value.Contains('\n') || value.Contains('\0'))
+            throw new ArgumentException("MATLAB single-quoted strings cannot contain newlines or NUL characters. Compose multi-line commands as separate statements joined with ';'.", nameof(value));
+        return value.Replace("'", "''", StringComparison.Ordinal);
+    }
 }
 
 internal static class MatlabDetection
@@ -494,6 +500,7 @@ internal static class CommandRunner
 {
     public static async Task<CommandResult> Run(string fileName, string[] args, string workingDirectory, int timeoutMs, int maxOutputBytes)
     {
+        using var cts = new CancellationTokenSource(timeoutMs);
         var psi = new ProcessStartInfo(fileName)
         {
             WorkingDirectory = workingDirectory,
@@ -503,10 +510,13 @@ internal static class CommandRunner
         };
         foreach (var arg in args) psi.ArgumentList.Add(arg);
         using var process = StartProcess(fileName, psi);
-        var stdoutTask = ReadLimited(process.StandardOutput, maxOutputBytes);
-        var stderrTask = ReadLimited(process.StandardError, maxOutputBytes);
-        var exitTask = process.WaitForExitAsync();
-        if (await Task.WhenAny(exitTask, Task.Delay(timeoutMs)).ConfigureAwait(false) != exitTask)
+        var stdoutTask = ReadLimited(process.StandardOutput, maxOutputBytes, cts.Token);
+        var stderrTask = ReadLimited(process.StandardError, maxOutputBytes, cts.Token);
+        try
+        {
+            await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
         {
             try { process.Kill(entireProcessTree: true); } catch { }
             throw new TimeoutException($"Command timed out after {timeoutMs} ms.");
@@ -514,19 +524,28 @@ internal static class CommandRunner
         return new CommandResult(process.ExitCode, await stdoutTask.ConfigureAwait(false), await stderrTask.ConfigureAwait(false));
     }
 
-    private static async Task<string> ReadLimited(StreamReader reader, int maxBytes)
+    private static async Task<string> ReadLimited(StreamReader reader, int maxBytes, CancellationToken token)
     {
         var buffer = new char[4096];
         var builder = new StringBuilder();
         var count = 0;
-        while (true)
+        try
         {
-            var read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false);
-            if (read <= 0) break;
-            count += Encoding.UTF8.GetByteCount(buffer.AsSpan(0, read));
-            if (count > maxBytes) break;
-            builder.Append(buffer, 0, read);
+            while (true)
+            {
+                var read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), token).ConfigureAwait(false);
+                if (read <= 0) break;
+                var chunkBytes = Encoding.UTF8.GetByteCount(buffer.AsSpan(0, read));
+                if (count + chunkBytes > maxBytes)
+                {
+                    builder.Append("\n[truncated]");
+                    break;
+                }
+                builder.Append(buffer, 0, read);
+                count += chunkBytes;
+            }
         }
+        catch (OperationCanceledException) { }
         return builder.ToString();
     }
 

@@ -50,6 +50,15 @@ Connect MCP clients with Streamable HTTP at `http://localhost:42198/mcp` or lega
 | `create_page` | Creates a page with storage-format body. |
 | `update_page` | Updates a page using the next version number. |
 | `delete_content` | Deletes or trashes a content item. |
+| `update_page_auto` | Updates a page without managing versions manually. Fetches current version/space/title and retries once on 409. |
+| `append_to_page` | Appends a storage-format fragment to the end of a page without regenerating the body. |
+| `prepend_to_page` | Prepends a storage-format fragment to the beginning of a page without regenerating the body. |
+| `replace_section` | Replaces one section under a matched heading (up to the next same-or-higher-level heading). Fails on ambiguous matches unless `occurrenceIndex` is given. |
+| `append_to_section` | Appends a fragment at the end of a section (before the next boundary heading). |
+| `insert_after_heading` | Inserts a fragment immediately after a matched heading. |
+| `find_replace_text` | Replaces a substring in the page body, verifying occurrence count first to avoid unintended matches. |
+| `get_section` | Reads a single section by heading text without transferring the full page. |
+| `preview_storage` | Validates a storage-format fragment for XHTML well-formedness before committing. |
 
 List/search tools default to the maximum request size of 100 and expose `start` for unrestricted pagination.
 

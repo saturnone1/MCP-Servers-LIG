@@ -19,7 +19,7 @@ app.Run();
 public sealed class ShellTools
 {
     [McpServerTool]
-    [Description("Run a command with arguments.")]
+    [Description("Run a command with arguments. Default timeout is 5 minutes; timeoutMs is clamped to [1000, 86_400_000] ms (max 24h). Default maxOutputBytes is 16 MiB; clamped to [1024, 67_108_864] bytes.")]
     public static Task<CommandResult> RunCommand(
         string command,
         string[]? args = null,

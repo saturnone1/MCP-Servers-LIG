@@ -1,8 +1,11 @@
 using ModelContextProtocol.Server;
 using System.ComponentModel;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Xml;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080");
@@ -144,6 +147,287 @@ public sealed class ConfluenceTools
         Guard.RequireWrites();
         var query = string.IsNullOrWhiteSpace(status) ? null : new Dictionary<string, string> { ["status"] = status };
         return Send(HttpMethod.Delete, "/rest/api/content/" + Uri.EscapeDataString(id), OptionalQuery(query));
+    }
+
+    [McpServerTool]
+    [Description("Update a Confluence page without managing version numbers manually. Fetches current version/space/title, submits with the next version, and retries once on 409 version conflict.")]
+    public static Task<ApiResult> UpdatePageAuto(string id, string storageBody, string? title = null, string? parentId = null, bool minorEdit = false)
+    {
+        Guard.RequireWrites();
+        return UpdateWithFetchedContext(id, _ => storageBody, title, parentId, minorEdit);
+    }
+
+    [McpServerTool]
+    [Description("Append a storage-format fragment to the end of a Confluence page. The LLM sends only the new fragment; existing body and macros are preserved. Retries once on 409 version conflict.")]
+    public static Task<ApiResult> AppendToPage(string id, string storageFragment, bool minorEdit = true)
+    {
+        Guard.RequireWrites();
+        return UpdateWithFetchedContext(id, existing => existing + storageFragment, title: null, parentId: null, minorEdit);
+    }
+
+    [McpServerTool]
+    [Description("Prepend a storage-format fragment to the beginning of a Confluence page. The LLM sends only the new fragment; existing body and macros are preserved. Retries once on 409 version conflict.")]
+    public static Task<ApiResult> PrependToPage(string id, string storageFragment, bool minorEdit = true)
+    {
+        Guard.RequireWrites();
+        return UpdateWithFetchedContext(id, existing => storageFragment + existing, title: null, parentId: null, minorEdit);
+    }
+
+    [McpServerTool]
+    [Description("Replace one heading's section in a Confluence page. Section spans from the matched heading (exclusive) until the next heading of same or higher level. Fails on ambiguous heading matches unless occurrenceIndex is provided.")]
+    public static Task<ApiResult> ReplaceSection(string id, string headingText, string newStorageFragment, int? occurrenceIndex = null, bool caseSensitive = false, bool minorEdit = true)
+    {
+        Guard.RequireWrites();
+        return UpdateWithFetchedContext(id, existing =>
+        {
+            var section = LocateSection(existing, headingText, occurrenceIndex, caseSensitive);
+            return existing[..section.ContentStart] + newStorageFragment + existing[section.ContentEnd..];
+        }, title: null, parentId: null, minorEdit);
+    }
+
+    [McpServerTool]
+    [Description("Append a storage-format fragment to the end of a specific section (right before the next heading of same or higher level). Fails on ambiguous heading matches unless occurrenceIndex is provided.")]
+    public static Task<ApiResult> AppendToSection(string id, string headingText, string storageFragment, int? occurrenceIndex = null, bool caseSensitive = false, bool minorEdit = true)
+    {
+        Guard.RequireWrites();
+        return UpdateWithFetchedContext(id, existing =>
+        {
+            var section = LocateSection(existing, headingText, occurrenceIndex, caseSensitive);
+            return existing[..section.ContentEnd] + storageFragment + existing[section.ContentEnd..];
+        }, title: null, parentId: null, minorEdit);
+    }
+
+    [McpServerTool]
+    [Description("Insert a storage-format fragment immediately after a specific heading (at the top of its section). Fails on ambiguous heading matches unless occurrenceIndex is provided.")]
+    public static Task<ApiResult> InsertAfterHeading(string id, string headingText, string storageFragment, int? occurrenceIndex = null, bool caseSensitive = false, bool minorEdit = true)
+    {
+        Guard.RequireWrites();
+        return UpdateWithFetchedContext(id, existing =>
+        {
+            var section = LocateSection(existing, headingText, occurrenceIndex, caseSensitive);
+            return existing[..section.ContentStart] + storageFragment + existing[section.ContentStart..];
+        }, title: null, parentId: null, minorEdit);
+    }
+
+    [McpServerTool]
+    [Description("Replace substring occurrences in a Confluence page body. Verifies actual count matches expectedOccurrences before writing, preventing unintended matches inside macro parameters. Set expectedOccurrences to null to skip verification.")]
+    public static Task<ApiResult> FindReplaceText(string id, string find, string replace, int? expectedOccurrences = 1, bool minorEdit = true)
+    {
+        Guard.RequireWrites();
+        if (string.IsNullOrEmpty(find))
+            return Task.FromResult(new ApiResult(0, false, "find must be a non-empty string."));
+        return UpdateWithFetchedContext(id, existing =>
+        {
+            var count = CountOccurrences(existing, find);
+            if (count == 0)
+                throw new InvalidOperationException($"'{find}' not found in page body.");
+            if (expectedOccurrences.HasValue && count != expectedOccurrences.Value)
+                throw new InvalidOperationException($"Expected {expectedOccurrences} occurrence(s) of '{find}' but found {count}. Aborting to avoid unintended matches.");
+            return existing.Replace(find, replace);
+        }, title: null, parentId: null, minorEdit);
+    }
+
+    [McpServerTool(ReadOnly = true)]
+    [Description("Read one section from a Confluence page by heading text. Returns storage-format content between the matched heading and the next heading of same or higher level. Set includeHeading=true to include the heading tag itself.")]
+    public static async Task<ApiResult> GetSection(string id, string headingText, int? occurrenceIndex = null, bool caseSensitive = false, bool includeHeading = false)
+    {
+        var fetch = await Send(HttpMethod.Get, "/rest/api/content/" + Uri.EscapeDataString(id),
+            OptionalQuery(new Dictionary<string, string> { ["expand"] = "body.storage" }));
+        if (!fetch.Success)
+            return fetch;
+
+        string body;
+        try
+        {
+            body = ParsePageContext(fetch.Body).Body;
+        }
+        catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or JsonException)
+        {
+            var snippet = fetch.Body.Length > 500 ? fetch.Body[..500] + "..." : fetch.Body;
+            return new ApiResult(0, false, $"Failed to parse page context for id {id}: {ex.Message}. Raw: {snippet}");
+        }
+
+        try
+        {
+            var section = LocateSection(body, headingText, occurrenceIndex, caseSensitive);
+            var start = includeHeading ? section.HeadingStart : section.ContentStart;
+            return new ApiResult(200, true, body[start..section.ContentEnd]);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new ApiResult(0, false, ex.Message);
+        }
+    }
+
+    [McpServerTool(ReadOnly = true)]
+    [Description("Check whether a storage-format fragment is well-formed XHTML before committing it. Returns { valid, error?, headings, length }. Common HTML named entities are treated as valid.")]
+    public static object PreviewStorage(string storageFragment)
+    {
+        var normalized = ReplaceNamedEntities(storageFragment ?? string.Empty);
+        var wrapped = "<root xmlns:ac=\"http://atlassian.com/content\" xmlns:ri=\"http://atlassian.com/resource/identifier\">" + normalized + "</root>";
+        try
+        {
+            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+            using var reader = XmlReader.Create(new StringReader(wrapped), settings);
+            while (reader.Read()) { }
+            return new
+            {
+                valid = true,
+                length = (storageFragment ?? string.Empty).Length,
+                headings = FindAllHeadings(storageFragment ?? string.Empty).Count
+            };
+        }
+        catch (XmlException ex)
+        {
+            return new
+            {
+                valid = false,
+                error = ex.Message,
+                line = ex.LineNumber,
+                column = ex.LinePosition
+            };
+        }
+    }
+
+    private static async Task<ApiResult> UpdateWithFetchedContext(string id, Func<string, string> transform, string? title, string? parentId, bool minorEdit)
+    {
+        var lastResult = new ApiResult(0, false, "no attempt executed");
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var fetch = await Send(HttpMethod.Get, "/rest/api/content/" + Uri.EscapeDataString(id),
+                OptionalQuery(new Dictionary<string, string> { ["expand"] = "version,space,body.storage" }));
+            if (!fetch.Success)
+                return fetch;
+
+            int currentVersion;
+            string spaceKey;
+            string currentTitle;
+            string existingBody;
+            try
+            {
+                (currentVersion, spaceKey, currentTitle, existingBody) = ParsePageContext(fetch.Body);
+            }
+            catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or JsonException)
+            {
+                var snippet = fetch.Body.Length > 500 ? fetch.Body[..500] + "..." : fetch.Body;
+                return new ApiResult(0, false, $"Failed to parse page context for id {id}: {ex.Message}. Raw: {snippet}");
+            }
+
+            string newBody;
+            try
+            {
+                newBody = transform(existingBody);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new ApiResult(0, false, ex.Message);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                return new ApiResult(0, false, ex.Message);
+            }
+
+            var effectiveTitle = string.IsNullOrWhiteSpace(title) ? currentTitle : title!;
+            var body = PageBody("page", effectiveTitle, spaceKey, newBody, currentVersion + 1, parentId, minorEdit, id);
+            lastResult = await Send(HttpMethod.Put, "/rest/api/content/" + Uri.EscapeDataString(id), body: body);
+            if (lastResult.StatusCode != 409)
+                return lastResult;
+        }
+        return lastResult;
+    }
+
+    private static readonly Regex HeadingRegex = new(@"<h([1-6])\b[^>]*>(.*?)</h\1\s*>", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TagStripRegex = new(@"<[^>]+>", RegexOptions.Compiled);
+
+    private sealed record Heading(int Level, string Text, int StartIndex, int EndIndex);
+    private sealed record SectionRange(int HeadingStart, int ContentStart, int ContentEnd);
+
+    private static List<Heading> FindAllHeadings(string body)
+    {
+        var results = new List<Heading>();
+        foreach (Match m in HeadingRegex.Matches(body))
+        {
+            var level = int.Parse(m.Groups[1].Value);
+            var innerHtml = m.Groups[2].Value;
+            var plain = WebUtility.HtmlDecode(TagStripRegex.Replace(innerHtml, "")).Trim();
+            results.Add(new Heading(level, plain, m.Index, m.Index + m.Length));
+        }
+        return results;
+    }
+
+    private static SectionRange LocateSection(string body, string headingText, int? occurrenceIndex, bool caseSensitive)
+    {
+        var headings = FindAllHeadings(body);
+        if (headings.Count == 0)
+            throw new InvalidOperationException("Page body has no <h1>..<h6> headings to target.");
+        var needle = (headingText ?? string.Empty).Trim();
+        var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var matches = headings.Where(h => string.Equals(h.Text, needle, comparison)).ToList();
+        if (matches.Count == 0)
+        {
+            var preview = string.Join(" | ", headings.Take(10).Select(h => $"h{h.Level}:{h.Text}"));
+            throw new InvalidOperationException($"Heading '{needle}' not found. Available (first 10): {preview}");
+        }
+        Heading chosen;
+        if (occurrenceIndex is int idx)
+        {
+            if (idx < 0 || idx >= matches.Count)
+                throw new ArgumentOutOfRangeException(nameof(occurrenceIndex), $"occurrenceIndex {idx} out of range 0..{matches.Count - 1}.");
+            chosen = matches[idx];
+        }
+        else if (matches.Count == 1)
+        {
+            chosen = matches[0];
+        }
+        else
+        {
+            throw new InvalidOperationException($"Heading '{needle}' matched {matches.Count} times; specify occurrenceIndex (0..{matches.Count - 1}).");
+        }
+        var boundary = headings.FirstOrDefault(h => h.StartIndex > chosen.EndIndex && h.Level <= chosen.Level);
+        return new SectionRange(chosen.StartIndex, chosen.EndIndex, boundary?.StartIndex ?? body.Length);
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return 0;
+        var count = 0;
+        var index = 0;
+        while ((index = source.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+        return count;
+    }
+
+    private static readonly Dictionary<string, string> NamedEntityMap = new(StringComparer.Ordinal)
+    {
+        ["nbsp"] = "&#160;", ["copy"] = "&#169;", ["reg"] = "&#174;", ["trade"] = "&#8482;",
+        ["mdash"] = "&#8212;", ["ndash"] = "&#8211;", ["hellip"] = "&#8230;",
+        ["ldquo"] = "&#8220;", ["rdquo"] = "&#8221;", ["lsquo"] = "&#8216;", ["rsquo"] = "&#8217;",
+        ["laquo"] = "&#171;", ["raquo"] = "&#187;", ["middot"] = "&#183;", ["bull"] = "&#8226;",
+        ["deg"] = "&#176;", ["sect"] = "&#167;", ["para"] = "&#182;", ["times"] = "&#215;", ["divide"] = "&#247;"
+    };
+
+    private static readonly Regex NamedEntityRegex = new(@"&([A-Za-z][A-Za-z0-9]{1,31});", RegexOptions.Compiled);
+
+    private static string ReplaceNamedEntities(string input) =>
+        NamedEntityRegex.Replace(input, m =>
+        {
+            var name = m.Groups[1].Value;
+            if (name is "amp" or "lt" or "gt" or "quot" or "apos") return m.Value;
+            return NamedEntityMap.TryGetValue(name, out var numeric) ? numeric : m.Value;
+        });
+
+    private static (int Version, string SpaceKey, string Title, string Body) ParsePageContext(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var version = root.GetProperty("version").GetProperty("number").GetInt32();
+        var spaceKey = root.GetProperty("space").GetProperty("key").GetString() ?? throw new InvalidOperationException("space.key missing");
+        var title = root.GetProperty("title").GetString() ?? throw new InvalidOperationException("title missing");
+        var body = root.GetProperty("body").GetProperty("storage").GetProperty("value").GetString() ?? "";
+        return (version, spaceKey, title, body);
     }
 
     private static Dictionary<string, string>? OptionalQuery(Dictionary<string, string>? query) =>

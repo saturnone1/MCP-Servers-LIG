@@ -28,6 +28,7 @@ public sealed class JiraTools
     public static object Config() => new
     {
         baseUrl = Guard.BaseUrl,
+        apiVersion = Guard.ApiVersion,
         hasBearerToken = !string.IsNullOrWhiteSpace(Guard.BearerToken),
         hasBasicAuth = !string.IsNullOrWhiteSpace(Guard.Email) && !string.IsNullOrWhiteSpace(Guard.ApiToken)
     };
@@ -43,7 +44,7 @@ public sealed class JiraTools
             ["maxResults"] = Math.Clamp(maxResults, 1, 100),
             ["fields"] = fields is { Length: > 0 } ? fields : new[] { "summary", "status", "assignee", "issuetype", "priority", "updated" }
         };
-        return Send(HttpMethod.Post, "/rest/api/3/search", body: body);
+        return Send(HttpMethod.Post, $"/rest/api/{Guard.ApiVersion}/search", body: body);
     }
 
     [McpServerTool(ReadOnly = true)]
@@ -52,7 +53,7 @@ public sealed class JiraTools
     {
         var query = new Dictionary<string, string>();
         if (fields is { Length: > 0 }) query["fields"] = string.Join(",", fields);
-        return Send(HttpMethod.Get, "/rest/api/3/issue/" + Uri.EscapeDataString(issueKey), query);
+        return Send(HttpMethod.Get, $"/rest/api/{Guard.ApiVersion}/issue/" + Uri.EscapeDataString(issueKey), query);
     }
 
     [McpServerTool]
@@ -67,8 +68,29 @@ public sealed class JiraTools
             ["summary"] = summary
         };
         if (!string.IsNullOrWhiteSpace(descriptionText))
-            fields["description"] = AtlassianDoc(descriptionText);
-        return Send(HttpMethod.Post, "/rest/api/3/issue", body: new Dictionary<string, object?> { ["fields"] = fields });
+            fields["description"] = RichText(descriptionText);
+        return Send(HttpMethod.Post, $"/rest/api/{Guard.ApiVersion}/issue", body: new Dictionary<string, object?> { ["fields"] = fields });
+    }
+
+    [McpServerTool]
+    [Description("Update fields on an existing Jira issue. Only fields you pass are changed. descriptionText becomes an ADF doc that preserves paragraph and line breaks. labels replaces the whole label set.")]
+    public static Task<ApiResult> UpdateIssue(string issueKey, string? summary = null, string? descriptionText = null, string[]? labels = null, string? assigneeAccountId = null, string? priority = null)
+    {
+        Guard.RequireWrites();
+        var fields = new Dictionary<string, object?>();
+        if (summary is not null) fields["summary"] = summary;
+        if (descriptionText is not null) fields["description"] = RichText(descriptionText);
+        if (labels is not null) fields["labels"] = labels;
+        if (assigneeAccountId is not null)
+            fields["assignee"] = string.IsNullOrWhiteSpace(assigneeAccountId)
+                ? null
+                : new Dictionary<string, object?> { ["accountId"] = assigneeAccountId };
+        if (priority is not null)
+            fields["priority"] = new Dictionary<string, object?> { ["name"] = priority };
+        if (fields.Count == 0)
+            return Task.FromResult(new ApiResult(0, false, "No fields to update. Provide at least one field."));
+        return Send(HttpMethod.Put, $"/rest/api/{Guard.ApiVersion}/issue/" + Uri.EscapeDataString(issueKey),
+            body: new Dictionary<string, object?> { ["fields"] = fields });
     }
 
     [McpServerTool]
@@ -76,13 +98,13 @@ public sealed class JiraTools
     public static Task<ApiResult> AddComment(string issueKey, string commentText)
     {
         Guard.RequireWrites();
-        return Send(HttpMethod.Post, "/rest/api/3/issue/" + Uri.EscapeDataString(issueKey) + "/comment", body: new Dictionary<string, object?> { ["body"] = AtlassianDoc(commentText) });
+        return Send(HttpMethod.Post, $"/rest/api/{Guard.ApiVersion}/issue/" + Uri.EscapeDataString(issueKey) + "/comment", body: new Dictionary<string, object?> { ["body"] = RichText(commentText) });
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("List available transitions for a Jira issue.")]
     public static Task<ApiResult> ListTransitions(string issueKey) =>
-        Send(HttpMethod.Get, "/rest/api/3/issue/" + Uri.EscapeDataString(issueKey) + "/transitions");
+        Send(HttpMethod.Get, $"/rest/api/{Guard.ApiVersion}/issue/" + Uri.EscapeDataString(issueKey) + "/transitions");
 
     [McpServerTool]
     [Description("Transition a Jira issue.")]
@@ -90,12 +112,12 @@ public sealed class JiraTools
     {
         Guard.RequireWrites();
         var body = new Dictionary<string, object?> { ["transition"] = new Dictionary<string, object?> { ["id"] = transitionId } };
-        return Send(HttpMethod.Post, "/rest/api/3/issue/" + Uri.EscapeDataString(issueKey) + "/transitions", body: body);
+        return Send(HttpMethod.Post, $"/rest/api/{Guard.ApiVersion}/issue/" + Uri.EscapeDataString(issueKey) + "/transitions", body: body);
     }
 
     [McpServerTool(ReadOnly = true)]
     [Description("List Jira projects.")]
-    public static Task<ApiResult> ListProjects() => Send(HttpMethod.Get, "/rest/api/3/project/search");
+    public static Task<ApiResult> ListProjects() => Send(HttpMethod.Get, $"/rest/api/{Guard.ApiVersion}/project/search");
 
     private static async Task<ApiResult> Send(HttpMethod method, string path, Dictionary<string, string>? query = null, object? body = null)
     {
@@ -142,22 +164,38 @@ public sealed class JiraTools
         }
     }
 
-    private static Dictionary<string, object?> AtlassianDoc(string text) => new()
+    private static object RichText(string text) =>
+        Guard.ApiVersion == "2" ? text : AtlassianDoc(text);
+
+    private static Dictionary<string, object?> AtlassianDoc(string text)
     {
-        ["type"] = "doc",
-        ["version"] = 1,
-        ["content"] = new object[]
+        var normalized = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
+        var paragraphs = normalized.Split("\n\n", StringSplitOptions.None);
+        var content = paragraphs.Select(ParagraphNode).ToArray<object>();
+        return new()
         {
-            new Dictionary<string, object?>
-            {
-                ["type"] = "paragraph",
-                ["content"] = new object[]
-                {
-                    new Dictionary<string, object?> { ["type"] = "text", ["text"] = text }
-                }
-            }
+            ["type"] = "doc",
+            ["version"] = 1,
+            ["content"] = content
+        };
+    }
+
+    private static Dictionary<string, object?> ParagraphNode(string paragraph)
+    {
+        var lines = paragraph.Split('\n');
+        var inline = new List<object>();
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (i > 0)
+                inline.Add(new Dictionary<string, object?> { ["type"] = "hardBreak" });
+            if (lines[i].Length > 0)
+                inline.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = lines[i] });
         }
-    };
+        var node = new Dictionary<string, object?> { ["type"] = "paragraph" };
+        if (inline.Count > 0)
+            node["content"] = inline.ToArray();
+        return node;
+    }
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 }
@@ -165,6 +203,15 @@ public sealed class JiraTools
 internal static class Guard
 {
     public static string BaseUrl => (Environment.GetEnvironmentVariable("JIRA_BASE_URL") ?? "http://jira.local").TrimEnd('/') + "/";
+    public static string ApiVersion
+    {
+        get
+        {
+            var configured = Environment.GetEnvironmentVariable("JIRA_API_VERSION");
+            var value = string.IsNullOrWhiteSpace(configured) ? "3" : configured.Trim();
+            return value == "2" ? "2" : "3";
+        }
+    }
     public static string? Email => Environment.GetEnvironmentVariable("JIRA_EMAIL");
     public static string? ApiToken => Environment.GetEnvironmentVariable("JIRA_API_TOKEN");
     public static string? BearerToken => Environment.GetEnvironmentVariable("JIRA_BEARER_TOKEN");

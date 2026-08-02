@@ -140,7 +140,15 @@ internal static class CommandRunner
         }
     }
 
-    private static string Trim(string value, int maxBytes) => Encoding.UTF8.GetByteCount(value) <= maxBytes ? value : value[..Math.Min(value.Length, maxBytes)] + "\n[truncated]";
+    private static string Trim(string value, int maxBytes)
+    {
+        if (Encoding.UTF8.GetByteCount(value) <= maxBytes) return value;
+        var chars = Math.Min(value.Length, maxBytes);
+        while (chars > 0 && Encoding.UTF8.GetByteCount(value.AsSpan(0, chars)) > maxBytes)
+            chars--;
+        if (chars > 0 && char.IsHighSurrogate(value[chars - 1])) chars--;
+        return value[..chars] + "\n[truncated]";
+    }
     private static Process StartProcess(string fileName, ProcessStartInfo startInfo)
     {
         try

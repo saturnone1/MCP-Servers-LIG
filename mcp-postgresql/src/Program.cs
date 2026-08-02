@@ -117,10 +117,11 @@ internal static class Guard
     public static void RequireReadQuery(string sql)
     {
         var trimmed = sql.TrimStart();
+        var stripped = StripSqlLiterals(trimmed);
         var allowed = new[] { "select", "with", "show", "explain" };
         if (!allowed.Any(prefix => trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             throw new UnauthorizedAccessException("Read query must start with SELECT, WITH, SHOW, or EXPLAIN. Use ExecuteNonQuery for writes.");
-        if (HasMultipleStatements(trimmed) || ContainsWriteKeyword(trimmed))
+        if (HasMultipleStatements(stripped) || ContainsWriteKeyword(stripped))
             throw new UnauthorizedAccessException("Read query must be a single read-only SELECT/WITH/SHOW/EXPLAIN statement.");
     }
 
@@ -134,4 +135,13 @@ internal static class Guard
 
     private static bool ContainsWriteKeyword(string sql) =>
         Regex.IsMatch(sql, @"\b(insert|update|delete|merge|drop|alter|create|truncate|copy|call|grant|revoke|vacuum|analyze)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static string StripSqlLiterals(string sql)
+    {
+        sql = Regex.Replace(sql, @"'(?:[^']|'')*'", "''");
+        sql = Regex.Replace(sql, @"""[^""]*""", "\"\"");
+        sql = Regex.Replace(sql, @"--[^\r\n]*", "");
+        sql = Regex.Replace(sql, @"/\*.*?\*/", "", RegexOptions.Singleline);
+        return sql;
+    }
 }

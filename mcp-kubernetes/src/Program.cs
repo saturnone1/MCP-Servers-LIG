@@ -75,6 +75,25 @@ public sealed class KubernetesTools
     }
 
     [McpServerTool]
+    [Description("Apply an inline Kubernetes YAML manifest string. Writes to a temp file, invokes kubectl apply -f, and cleans up. Avoids the two-step workflow of writing the YAML file first.")]
+    public static async Task<CommandResult> ApplyYamlInline(string yaml, string? ns = null)
+    {
+        Guard.RequireKubernetesWrites();
+        var tempPath = Path.Combine(Path.GetTempPath(), $"mcp-k8s-{Guid.NewGuid():N}.yaml");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, yaml, Encoding.UTF8);
+            var args = new List<string> { "apply", "-f", tempPath };
+            if (!string.IsNullOrWhiteSpace(ns)) args.AddRange(["-n", ns]);
+            return await Kubectl([.. args], timeoutMs: 120000);
+        }
+        finally
+        {
+            try { File.Delete(tempPath); } catch { }
+        }
+    }
+
+    [McpServerTool]
     [Description("Delete a Kubernetes resource by kind and name.")]
     public static Task<CommandResult> DeleteResource(string kind, string name, string? ns = null)
     {
@@ -173,7 +192,15 @@ internal static class CommandRunner
         }
     }
 
-    private static string Trim(string value, int maxBytes) => Encoding.UTF8.GetByteCount(value) <= maxBytes ? value : value[..Math.Min(value.Length, maxBytes)] + "\n[truncated]";
+    private static string Trim(string value, int maxBytes)
+    {
+        if (Encoding.UTF8.GetByteCount(value) <= maxBytes) return value;
+        var chars = Math.Min(value.Length, maxBytes);
+        while (chars > 0 && Encoding.UTF8.GetByteCount(value.AsSpan(0, chars)) > maxBytes)
+            chars--;
+        if (chars > 0 && char.IsHighSurrogate(value[chars - 1])) chars--;
+        return value[..chars] + "\n[truncated]";
+    }
     private static Process StartProcess(string fileName, ProcessStartInfo startInfo)
     {
         try

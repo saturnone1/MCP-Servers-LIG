@@ -69,14 +69,17 @@ public sealed class HwpTools
 
     [McpServerTool]
     [Description("Convert .hwp or .hwpx to txt, docx, pdf, or odt. Text output uses the extractor; other formats use LibreOffice.")]
-    public static async Task<CommandResult> Convert(string path, string outputDirectory = "/tmp/hwp-output", string format = "txt", int timeoutMs = 600000)
+    public static async Task<CommandResult> Convert(string path, string outputDirectory = "", string format = "txt", int timeoutMs = 600000)
     {
         Guard.RequireWrites();
         var fullPath = Guard.RequireAllowedPath(path);
         if (!File.Exists(fullPath))
             return new CommandResult(2, "", $"File not found after path mapping: {fullPath}");
 
-        var output = Guard.RequireAllowedPath(outputDirectory);
+        var resolvedOutput = string.IsNullOrWhiteSpace(outputDirectory)
+            ? Path.Combine(Path.GetTempPath(), "hwp-output")
+            : outputDirectory;
+        var output = Guard.RequireAllowedPath(resolvedOutput);
         Directory.CreateDirectory(output);
         var normalizedFormat = Guard.RequireSupportedOutput(format);
 
@@ -88,7 +91,7 @@ public sealed class HwpTools
             return new CommandResult(0, $"Wrote {txtPath}", "");
         }
 
-        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", normalizedFormat, "--outdir", output, fullPath], "/tmp", Math.Clamp(timeoutMs, 1000, 86400000), 67108864);
+        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", normalizedFormat, "--outdir", output, fullPath], Path.GetTempPath(), Math.Clamp(timeoutMs, 1000, 86400000), 67108864);
         var outputPath = Path.Combine(output, Path.GetFileNameWithoutExtension(fullPath) + "." + normalizedFormat);
         var fallback = Directory.EnumerateFiles(output, Path.GetFileNameWithoutExtension(fullPath) + ".*").FirstOrDefault(file => string.Equals(Path.GetExtension(file), "." + normalizedFormat, StringComparison.OrdinalIgnoreCase));
         if (result.ExitCode != 0 || (!File.Exists(outputPath) && fallback is null) || result.Stderr.Contains("source file could not be loaded", StringComparison.OrdinalIgnoreCase))
@@ -111,7 +114,7 @@ public sealed class HwpTools
         if (!Guard.CommandExists(Guard.Hwp5TxtPath))
             return await ExtractHwpTextWithLibreOffice(path, new CommandResult(127, "", $"hwp5txt not found: {Guard.Hwp5TxtPath}"));
 
-        var result = await CommandRunner.Run(Guard.Hwp5TxtPath, [path], "/tmp", 3600000, 67108864);
+        var result = await CommandRunner.Run(Guard.Hwp5TxtPath, [path], Path.GetTempPath(), 3600000, 67108864);
         if (result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.Stdout))
             return result.Stdout;
 
@@ -127,7 +130,7 @@ public sealed class HwpTools
         Directory.CreateDirectory(tempDir);
         try
         {
-        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", "txt:Text", "--outdir", tempDir, path], "/tmp", 3600000, 67108864);
+        var result = await CommandRunner.Run(Guard.SofficePath, ["--headless", "--convert-to", "txt:Text", "--outdir", tempDir, path], Path.GetTempPath(), 3600000, 67108864);
             var txtPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(path) + ".txt");
             if (File.Exists(txtPath))
                 return await File.ReadAllTextAsync(txtPath, Encoding.UTF8);

@@ -1,6 +1,7 @@
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080");
@@ -66,6 +67,24 @@ public sealed class OfficeTools
         var document = Guard.RequireAllowedPath(documentPath);
         var batch = Guard.RequireAllowedPath(batchJsonPath);
         return OfficeCli(120000, "batch", document, batch, "--json");
+    }
+
+    [McpServerTool]
+    [Description("Apply an inline OfficeCLI batch JSON to a document. Writes the JSON to a temporary file, invokes officecli batch, and cleans up. Avoids the two-step workflow of writing a batch file first.")]
+    public static async Task<CommandResult> ApplyBatchInline(string documentPath, string batchJson)
+    {
+        Guard.RequireOfficeWrites();
+        var document = Guard.RequireAllowedPath(documentPath);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"mcp-office-batch-{Guid.NewGuid():N}.json");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, batchJson, Encoding.UTF8);
+            return await OfficeCli(120000, "batch", document, tempPath, "--json");
+        }
+        finally
+        {
+            try { File.Delete(tempPath); } catch { }
+        }
     }
 
     [McpServerTool]

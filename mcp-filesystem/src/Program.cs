@@ -57,6 +57,61 @@ public sealed class FilesystemTools
     }
 
     [McpServerTool]
+    [Description("Append UTF-8 text to a file. Creates the file if it does not exist. Only the new fragment is sent, avoiding whole-file rewrite.")]
+    public static async Task<object> AppendFile(string path, string content)
+    {
+        Guard.RequireWrites();
+        var fullPath = Guard.RequireAllowedPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        await File.AppendAllTextAsync(fullPath, content, Encoding.UTF8);
+        return Info(fullPath);
+    }
+
+    [McpServerTool]
+    [Description("Prepend UTF-8 text to a file. Creates the file if it does not exist.")]
+    public static async Task<object> PrependFile(string path, string content)
+    {
+        Guard.RequireWrites();
+        var fullPath = Guard.RequireAllowedPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var existing = File.Exists(fullPath) ? await File.ReadAllTextAsync(fullPath, Encoding.UTF8) : string.Empty;
+        await File.WriteAllTextAsync(fullPath, content + existing, Encoding.UTF8);
+        return Info(fullPath);
+    }
+
+    [McpServerTool]
+    [Description("Replace occurrences of a substring in a UTF-8 file. Verifies actual occurrence count matches expectedOccurrences before writing to prevent unintended matches. Set expectedOccurrences to null to skip verification.")]
+    public static async Task<object> PatchFile(string path, string find, string replace, int? expectedOccurrences = 1)
+    {
+        Guard.RequireWrites();
+        if (string.IsNullOrEmpty(find))
+            throw new ArgumentException("find must be a non-empty string.", nameof(find));
+        var fullPath = Guard.RequireAllowedFile(path);
+        var content = await File.ReadAllTextAsync(fullPath, Encoding.UTF8);
+        var count = CountOccurrences(content, find);
+        if (count == 0)
+            throw new InvalidOperationException($"'{find}' not found in {fullPath}.");
+        if (expectedOccurrences.HasValue && count != expectedOccurrences.Value)
+            throw new InvalidOperationException($"Expected {expectedOccurrences} occurrence(s) of '{find}' but found {count} in {fullPath}. Aborting to avoid unintended matches.");
+        var patched = content.Replace(find, replace);
+        await File.WriteAllTextAsync(fullPath, patched, Encoding.UTF8);
+        return new { path = fullPath, replaced = count };
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return 0;
+        var count = 0;
+        var index = 0;
+        while ((index = source.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+        return count;
+    }
+
+    [McpServerTool]
     [Description("Copy a file or directory.")]
     public static object Copy(string sourcePath, string destinationPath, bool overwrite = false)
     {

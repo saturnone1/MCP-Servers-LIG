@@ -48,6 +48,15 @@ MCP 클라이언트는 Streamable HTTP `http://localhost:42198/mcp` 또는 legac
 | `create_page` | storage 형식 본문으로 페이지를 생성합니다. |
 | `update_page` | 다음 version 번호로 페이지를 갱신합니다. |
 | `delete_content` | 콘텐츠를 삭제 또는 휴지통 처리합니다. |
+| `update_page_auto` | version을 수동 관리하지 않고 페이지를 갱신합니다. 현재 version/space/title을 조회한 뒤 +1로 PUT하며, 409 발생 시 한 번 재시도합니다. |
+| `append_to_page` | 페이지 끝에 storage 형식 조각을 이어붙입니다. 본문 전체를 재생성하지 않고 조각만 보내면 됩니다. |
+| `prepend_to_page` | 페이지 앞에 storage 형식 조각을 붙입니다. 본문 전체를 재생성하지 않고 조각만 보내면 됩니다. |
+| `replace_section` | 특정 heading 아래 섹션을 통째로 교체합니다. 다음 동급 이상 heading 직전까지가 섹션 범위이며, 여러 개 매칭되면 `occurrenceIndex`로 지정해야 합니다. |
+| `append_to_section` | 섹션 끝(다음 경계 heading 직전)에 조각을 삽입합니다. |
+| `insert_after_heading` | heading 바로 뒤에 조각을 삽입합니다. |
+| `find_replace_text` | 본문에서 substring을 치환합니다. 커밋 전에 실제 매치 개수를 검증해 매크로 파라미터 내부 오탐을 방지합니다. |
+| `get_section` | 페이지 전체를 받지 않고 heading으로 지정된 섹션만 읽어옵니다. |
+| `preview_storage` | 커밋 전에 storage 조각의 XHTML well-formedness를 검증합니다. |
 
 목록·검색 tool은 요청당 최대 100개를 기본 사용하며 `start`로 계속 조회할 수 있습니다.
 
