@@ -70,7 +70,7 @@ Example Streamable HTTP call:
   "params": {
     "name": "extract_text",
     "arguments": {
-      "path": "C:\\Users\\taewon\\Desktop\\넥스원\\2024 분산스위치 논문.hwp",
+      "path": "C:\\Users\\me\\Documents\\report.hwp",
       "maxChars": 4000
     }
   }
@@ -304,7 +304,7 @@ To start all servers without running the smoke calls:
 .\scripts\run-all.ps1
 ```
 
-By default, this mounts the repository at `/workspace` and the Windows `C:\` drive at `/host/c`, then sets `MCP_PATH_MAPPINGS=C:\=/host/c`. That lets MCP clients pass normal Windows paths such as `C:\Users\taewon\Desktop\넥스원\2024 분산스위치 논문.hwp`.
+By default, this mounts the repository at `/workspace` and the Windows `C:\` drive at `/host/c`, then sets `MCP_PATH_MAPPINGS=C:\=/host/c`. That lets MCP clients pass normal Windows paths such as `C:\Users\me\Documents\report.hwp`.
 
 When you want the API-backed servers to connect to real internal services, pass the service endpoints and credentials at startup:
 
