@@ -10,9 +10,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
     JIRA_BASE_URL=http://jira.local \
+    JIRA_API_VERSION=3 \
     MCP_ENABLE_JIRA_WRITES=true
 COPY --from=build /app ./
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl -fsS http://localhost:8080/healthz || exit 1
 ENTRYPOINT ["dotnet", "McpJira.dll"]
-

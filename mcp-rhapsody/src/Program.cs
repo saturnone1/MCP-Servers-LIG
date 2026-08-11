@@ -96,11 +96,14 @@ public sealed class RhapsodyTools
     }
 
     [McpServerTool]
-    [Description("Open a Rhapsody project through the COM Automation API.")]
+    [Description("Open a Rhapsody project through the COM Automation API, reusing the active app and matching active project when available.")]
     public static object OpenProject(string path)
     {
         var fullPath = Guard.RequireAllowedFile(path);
         var app = RhapsodyCom.GetApplication();
+        var activeProject = RhapsodyCom.InvokeAny(app, ["activeProject"]);
+        if (RhapsodyCom.IsProjectFile(activeProject, fullPath))
+            return RhapsodyCom.Describe(activeProject, fullPath);
         var project = RhapsodyCom.InvokeAny(app, ["openProject"], fullPath) ?? RhapsodyCom.InvokeAny(app, ["activeProject"]);
         return RhapsodyCom.Describe(project, fullPath);
     }
@@ -368,6 +371,15 @@ internal static class RhapsodyCom
             metaClass = StringValue(element, ["getMetaClass", "getUserDefinedMetaClass", "metaClass"]),
             description = StringValue(element, ["getDescription", "description"])
         };
+    }
+
+    public static bool IsProjectFile(object? project, string requestedPath)
+    {
+        if (project is null) return false;
+        var candidate = StringValue(project, ["getFileName", "getProjectFileName", "getFullPathName", "fileName"]);
+        if (string.IsNullOrWhiteSpace(candidate)) return false;
+        try { return string.Equals(Path.GetFullPath(candidate), Path.GetFullPath(requestedPath), StringComparison.OrdinalIgnoreCase); }
+        catch { return string.Equals(candidate, requestedPath, StringComparison.OrdinalIgnoreCase); }
     }
 
     public static string? StringValue(object target, string[] names)

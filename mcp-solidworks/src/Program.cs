@@ -62,11 +62,16 @@ public sealed class SolidWorksTools
     }
 
     [McpServerTool]
-    [Description("Open a SolidWorks part, assembly, or drawing through COM Automation.")]
+    [Description("Open a SolidWorks part, assembly, or drawing through COM Automation, reusing the active app and an already-open matching document when available.")]
     public static object OpenDocument(string path, bool visible = true)
     {
         var fullPath = Guard.RequireAllowedFile(path);
         var app = SolidWorks.Application(visible);
+        var openDocument = Com.Invoke(app, "GetOpenDocumentByName", fullPath);
+        if (openDocument is not null)
+        {
+            return SolidWorks.DescribeDocument(openDocument, fullPath);
+        }
         var docType = SolidWorks.DocumentType(fullPath);
         var errors = 0;
         var warnings = 0;

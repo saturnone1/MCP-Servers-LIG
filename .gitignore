@@ -20,6 +20,7 @@ mcp-bundle.zip
 .wix/
 installer/output/
 installer/obj/
+installer/build.log
 mcp-*-bundle-patch/
 mcp-*-bundle-patch.zip
 mcp-manager/publish/

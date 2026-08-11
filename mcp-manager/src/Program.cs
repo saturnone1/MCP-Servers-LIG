@@ -1323,7 +1323,17 @@ internal sealed class McpManager
     private async Task StartDocker(ServerConfig server)
     {
         if (await DockerExists(server.ContainerName))
-            await RunCommand("docker", ["rm", "-f", server.ContainerName], _repoRoot, echo: false);
+        {
+            if (await DockerRunning(server.ContainerName))
+            {
+                Console.WriteLine($"{server.Name} 이미 실행 중입니다. 컨테이너 {server.ContainerName}");
+                return;
+            }
+
+            await RunCommand("docker", ["start", server.ContainerName], _repoRoot, echo: false);
+            Console.WriteLine($"{server.Name} 기존 컨테이너를 시작했습니다. {server.ContainerName}");
+            return;
+        }
 
         var args = new List<string> { "run", "-d", "--name", server.ContainerName, "-p", $"127.0.0.1:{server.Port}:8080" };
         foreach (var volume in server.Volumes)
@@ -1389,6 +1399,12 @@ internal sealed class McpManager
         return result.Stdout.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Any(line => line.Trim() == name);
     }
 
+    private async Task<bool> DockerRunning(string name)
+    {
+        var result = await RunCapture("docker", ["inspect", "--format", "{{.State.Running}}", name], _repoRoot, TimeSpan.FromSeconds(30));
+        return result.ExitCode == 0 && string.Equals(result.Stdout.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task StartProcess(ServerConfig server)
     {
         var pidPath = PidPath(server);
@@ -1402,6 +1418,12 @@ internal sealed class McpManager
                     return;
                 }
             }
+        }
+
+        if (await IsExpectedHealthyServer(server))
+        {
+            Console.WriteLine($"{server.Name} 이미 외부 프로세스로 실행 중입니다. {server.HealthUrl}");
+            return;
         }
 
         var workingDirectory = Expand(server.WorkingDirectory);
@@ -1441,6 +1463,7 @@ internal sealed class McpManager
             _ = Pump(process.StandardOutput, Path.Combine(_logDir, $"{server.Name}.out.log"));
             _ = Pump(process.StandardError, Path.Combine(_logDir, $"{server.Name}.err.log"));
         }
+
         var identity = new ProcessIdentity(process.Id, process.StartTime.ToUniversalTime().Ticks);
         await File.WriteAllTextAsync(pidPath, JsonSerializer.Serialize(identity, JsonOptions()));
         if (_interactiveProcessJob is not null)
@@ -1544,6 +1567,24 @@ internal sealed class McpManager
         catch
         {
             return "down";
+        }
+    }
+
+    private async Task<bool> IsExpectedHealthyServer(ServerConfig server)
+    {
+        try
+        {
+            using var response = await _http.GetAsync(server.HealthUrl);
+            if (!response.IsSuccessStatusCode)
+                return false;
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var json = await JsonDocument.ParseAsync(stream);
+            return json.RootElement.TryGetProperty("server", out var serverName) &&
+                   string.Equals(serverName.GetString(), server.Name, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
         }
     }
 

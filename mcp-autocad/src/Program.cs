@@ -62,14 +62,28 @@ public sealed class AutoCadTools
     }
 
     [McpServerTool]
-    [Description("Open an AutoCAD drawing through COM Automation.")]
+    [Description("Open an AutoCAD drawing through COM Automation, reusing the active app and an already-open matching drawing when available.")]
     public static object OpenDrawing(string path, bool visible = true)
     {
         var fullPath = Guard.RequireAllowedFile(path);
         var app = AutoCad.Application(visible);
         var documents = Com.Get(app, "Documents");
+        var openDocument = AutoCad.Enumerate(documents, 100000)
+            .FirstOrDefault(document => PathEquals(Com.GetString(document, "FullName"), fullPath));
+        if (openDocument is not null)
+        {
+            _ = Com.Invoke(openDocument, "Activate");
+            return AutoCad.DescribeDocument(openDocument, fullPath);
+        }
         var document = Com.Invoke(documents, "Open", fullPath);
         return AutoCad.DescribeDocument(document, fullPath);
+    }
+
+    private static bool PathEquals(string? left, string right)
+    {
+        if (string.IsNullOrWhiteSpace(left)) return false;
+        try { return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase); }
+        catch { return string.Equals(left, right, StringComparison.OrdinalIgnoreCase); }
     }
 
     [McpServerTool(ReadOnly = true)]

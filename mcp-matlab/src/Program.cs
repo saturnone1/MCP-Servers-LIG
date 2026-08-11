@@ -40,6 +40,8 @@ public sealed class MatlabTools
             writesEnabled = Guard.WritesEnabled,
             officialMcpPath = Environment.GetEnvironmentVariable("MATLAB_MCP_CORE_SERVER_PATH"),
             officialMcpArgs = OfficialMcp.ConfiguredArgs,
+            officialMcpProcessRunning = OfficialMcp.IsRunning,
+            officialMcpProcessId = OfficialMcp.ProcessId,
             matlabExe = MatlabDetection.ResolveMatlabExe(),
             matlabRoot = Environment.GetEnvironmentVariable("MATLAB_ROOT"),
             comProgId = progId,
@@ -95,15 +97,10 @@ public sealed class MatlabTools
     [McpServerTool(ReadOnly = true)]
     [Description("Initialize the configured official MathWorks MATLAB MCP server over stdio and return its initialize result.")]
     public static Task<JsonNode?> OfficialMcpInitialize(int timeoutMs = 30000) =>
-        OfficialMcp.Invoke("initialize", new JsonObject
-        {
-            ["protocolVersion"] = "2025-06-18",
-            ["capabilities"] = new JsonObject(),
-            ["clientInfo"] = new JsonObject { ["name"] = "mcp-matlab-http-bridge", ["version"] = "1.0" }
-        }, timeoutMs);
+        OfficialMcp.Initialize(timeoutMs);
 
     [McpServerTool(ReadOnly = true)]
-    [Description("List tools exposed by the official MathWorks MATLAB MCP server over stdio.")]
+    [Description("List tools exposed by the official MathWorks MATLAB MCP server over a reused long-running stdio session.")]
     public static Task<JsonNode?> OfficialMcpToolsList(int timeoutMs = 60000) =>
         OfficialMcp.InvokeAfterInitialize("tools/list", new JsonObject(), timeoutMs);
 
@@ -282,51 +279,83 @@ internal static class Guard
 internal static class OfficialMcp
 {
     private static int _id;
+    private static readonly SemaphoreSlim Gate = new(1, 1);
+    private static readonly object StateLock = new();
+    private static readonly StringBuilder Stderr = new();
+    private static Process? _process;
+    private static string? _processSignature;
+    private static JsonNode? _initializeResult;
+    private static bool _initialized;
+
+    static OfficialMcp() => AppDomain.CurrentDomain.ProcessExit += (_, _) => Reset();
+
     public static string[] ConfiguredArgs => (Environment.GetEnvironmentVariable("MATLAB_MCP_CORE_SERVER_ARGS") ?? "")
         .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    public static async Task<JsonNode?> InvokeAfterInitialize(string method, JsonObject parameters, int timeoutMs)
+    public static bool IsRunning
     {
-        var path = RequiredPath();
-        using var process = Start(path);
-        using var cts = new CancellationTokenSource(timeoutMs);
+        get { try { return _process is { HasExited: false }; } catch { return false; } }
+    }
+    public static int? ProcessId => IsRunning ? _process?.Id : null;
+
+    public static async Task<JsonNode?> Initialize(int timeoutMs)
+    {
+        await Gate.WaitAsync().ConfigureAwait(false);
         try
         {
-            var initId = NextId();
-            await WriteRequest(process, initId, "initialize", new JsonObject
-            {
-                ["protocolVersion"] = "2025-06-18",
-                ["capabilities"] = new JsonObject(),
-                ["clientInfo"] = new JsonObject { ["name"] = "mcp-matlab-http-bridge", ["version"] = "1.0" }
-            }, cts.Token).ConfigureAwait(false);
-            _ = await ReadResponse(process, initId, cts.Token).ConfigureAwait(false);
-            await WriteNotification(process, "notifications/initialized", new JsonObject(), cts.Token).ConfigureAwait(false);
-
-            var id = NextId();
-            await WriteRequest(process, id, method, parameters, cts.Token).ConfigureAwait(false);
-            return await ReadResponse(process, id, cts.Token).ConfigureAwait(false);
+            using var cts = new CancellationTokenSource(Math.Clamp(timeoutMs, 1000, 86400000));
+            var process = EnsureProcess();
+            return await EnsureInitialized(process, cts.Token).ConfigureAwait(false);
+        }
+        catch
+        {
+            Reset();
+            throw;
         }
         finally
         {
-            Stop(process);
+            Gate.Release();
         }
     }
 
-    public static async Task<JsonNode?> Invoke(string method, JsonObject parameters, int timeoutMs)
+    public static async Task<JsonNode?> InvokeAfterInitialize(string method, JsonObject parameters, int timeoutMs)
     {
-        var path = RequiredPath();
-        using var process = Start(path);
-        using var cts = new CancellationTokenSource(timeoutMs);
+        await Gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            using var cts = new CancellationTokenSource(Math.Clamp(timeoutMs, 1000, 86400000));
+            var process = EnsureProcess();
+            _ = await EnsureInitialized(process, cts.Token).ConfigureAwait(false);
             var id = NextId();
             await WriteRequest(process, id, method, parameters, cts.Token).ConfigureAwait(false);
             return await ReadResponse(process, id, cts.Token).ConfigureAwait(false);
         }
+        catch
+        {
+            Reset();
+            throw;
+        }
         finally
         {
-            Stop(process);
+            Gate.Release();
         }
+    }
+
+    private static async Task<JsonNode?> EnsureInitialized(Process process, CancellationToken token)
+    {
+        if (_initialized)
+            return _initializeResult?.DeepClone();
+
+        var initId = NextId();
+        await WriteRequest(process, initId, "initialize", new JsonObject
+        {
+            ["protocolVersion"] = "2025-06-18",
+            ["capabilities"] = new JsonObject(),
+            ["clientInfo"] = new JsonObject { ["name"] = "mcp-matlab-http-bridge", ["version"] = "1.0" }
+        }, token).ConfigureAwait(false);
+        _initializeResult = await ReadResponse(process, initId, token).ConfigureAwait(false);
+        await WriteNotification(process, "notifications/initialized", new JsonObject(), token).ConfigureAwait(false);
+        _initialized = true;
+        return _initializeResult?.DeepClone();
     }
 
     private static string RequiredPath()
@@ -337,6 +366,21 @@ internal static class OfficialMcp
         if (!File.Exists(path))
             throw new FileNotFoundException("Official MATLAB MCP server was not found.", path);
         return path;
+    }
+
+    private static Process EnsureProcess()
+    {
+        var path = RequiredPath();
+        var signature = path + "\0" + string.Join("\0", ConfiguredArgs);
+        if (_process is { HasExited: false } && string.Equals(_processSignature, signature, StringComparison.Ordinal))
+            return _process;
+
+        Reset();
+        _process = Start(path);
+        _processSignature = signature;
+        lock (StateLock) Stderr.Clear();
+        _ = PumpStderr(_process);
+        return _process;
     }
 
     private static Process Start(string path)
@@ -375,8 +419,33 @@ internal static class OfficialMcp
         }
     }
 
-    private static void Stop(Process process)
+    private static async Task PumpStderr(Process process)
     {
+        try
+        {
+            while (await process.StandardError.ReadLineAsync().ConfigureAwait(false) is { } line)
+            {
+                lock (StateLock)
+                {
+                    Stderr.AppendLine(line);
+                    if (Stderr.Length > 32768)
+                        Stderr.Remove(0, Stderr.Length - 32768);
+                }
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private static void Reset()
+    {
+        var process = _process;
+        _process = null;
+        _processSignature = null;
+        _initializeResult = null;
+        _initialized = false;
+        if (process is null) return;
         try
         {
             if (!process.HasExited)
@@ -384,6 +453,10 @@ internal static class OfficialMcp
         }
         catch
         {
+        }
+        finally
+        {
+            process.Dispose();
         }
     }
 
@@ -430,8 +503,9 @@ internal static class OfficialMcp
             if ((int?)node?["id"] == id)
                 return node;
         }
-        var stderr = await process.StandardError.ReadToEndAsync(token).ConfigureAwait(false);
-        throw new TimeoutException($"No JSON-RPC response with id {id}. stderr: {stderr}");
+        string stderr;
+        lock (StateLock) stderr = Stderr.ToString();
+        throw new TimeoutException($"No JSON-RPC response with id {id}. Process exited={process.HasExited}. stderr: {stderr}");
     }
 }
 

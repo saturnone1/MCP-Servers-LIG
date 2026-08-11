@@ -51,6 +51,7 @@ Connect MCP clients with Streamable HTTP at `http://localhost:8092/mcp` or legac
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `JIRA_BASE_URL` | `http://jira.local` | Jira base URL. |
+| `JIRA_API_VERSION` | `3` | REST API version. Use `2` for Jira Server/Data Center deployments that do not expose v3. |
 | `JIRA_BEARER_TOKEN` | empty | Bearer token for Jira Data Center or compatible deployments. |
 | `JIRA_EMAIL` | empty | Email for Jira Cloud basic auth. |
 | `JIRA_API_TOKEN` | empty | API token for Jira Cloud basic auth. |

@@ -28,6 +28,7 @@ $defaultEnv = @{
     }
     'mcp-jira' = [ordered]@{
         JIRA_BASE_URL = 'http://localhost'
+        JIRA_API_VERSION = '3'
         JIRA_BEARER_TOKEN = ''
         JIRA_EMAIL = ''
         JIRA_API_TOKEN = ''

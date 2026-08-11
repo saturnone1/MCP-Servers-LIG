@@ -250,6 +250,25 @@ foreach ($relativePath in $portConfigFiles) {
         }
     }
 }
+
+foreach ($entry in @(
+    @{ Path = 'mcp-autocad/src/Program.cs'; Method = 'OpenDrawing'; Reuse = 'FirstOrDefault' },
+    @{ Path = 'mcp-solidworks/src/Program.cs'; Method = 'OpenDocument'; Reuse = 'GetOpenDocumentByName' },
+    @{ Path = 'mcp-rhapsody/src/Program.cs'; Method = 'OpenProject'; Reuse = 'IsProjectFile' }
+)) {
+    $text = Get-Content -LiteralPath (Join-Path $repo $entry.Path) -Raw
+    $body = Get-MethodBody -Text $text -MethodName $entry.Method
+    if ($null -eq $body -or -not (Test-ContainsOrdinal $body $entry.Reuse)) {
+        $failures.Add("$($entry.Path): $($entry.Method) should reuse an already-open document/project")
+    }
+}
+
+$officialInvoke = Get-MethodBody -Text $matlabText -MethodName 'InvokeAfterInitialize'
+if ($null -eq $officialInvoke -or
+    -not (Test-ContainsOrdinal $officialInvoke 'EnsureProcess()') -or
+    (Test-ContainsOrdinal $officialInvoke 'using var process = Start')) {
+    $failures.Add('mcp-matlab/src/Program.cs: official MATLAB MCP calls should reuse one long-running stdio process')
+}
 if (-not (Test-ContainsOrdinal $confluenceText 'FirstNonEmpty("CONFLUENCE_BEARER_TOKEN", "CONFLUENCE_PAT")') -or
     -not (Test-ContainsOrdinal $confluenceText 'FirstNonEmpty("CONFLUENCE_API_TOKEN", "CONFLUENCE_PASSWORD")')) {
     $failures.Add('mcp-confluence/src/Program.cs: empty primary auth values must fall back to PAT/password compatibility values')
@@ -307,6 +326,9 @@ foreach ($required in @(
     'var captureOutput = _interactiveProcessJob is not null',
     'JsonSerializer.Deserialize<string>(value)',
     '"COOKIE"'
+    'IsExpectedHealthyServer(server)'
+    'DockerRunning(server.ContainerName)'
+    '["start", server.ContainerName]'
 )) {
     if (-not (Test-ContainsOrdinal $managerText $required)) {
         $failures.Add("mcp-manager/src/Program.cs: missing manager lifecycle/autostart behavior '$required'")

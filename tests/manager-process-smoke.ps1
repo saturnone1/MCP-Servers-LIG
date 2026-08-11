@@ -12,10 +12,12 @@ $stateRoot = Join-Path $testRoot 'state'
 $configPath = Join-Path $testRoot 'servers.json'
 $markerPath = Join-Path $testRoot 'args-applied.txt'
 $childScriptPath = Join-Path $testRoot 'test-child.ps1'
+$healthScriptPath = Join-Path $testRoot 'health-child.ps1'
 $previousConfig = $env:MCP_MANAGER_CONFIG
 $previousState = $env:MCP_MANAGER_STATE_DIR
 $childPid = $null
 $bundlePid = $null
+$externalPid = $null
 
 try {
     if (-not $SkipBuild) {
@@ -28,6 +30,22 @@ try {
     $currentExecutable = (Get-Process -Id $PID).MainModule.FileName
     @('param([string]$Marker)', 'Set-Content -LiteralPath $Marker -Value ready', 'Start-Sleep -Seconds 120') |
         Set-Content -LiteralPath $childScriptPath -Encoding UTF8
+    @(
+        'param([int]$Port, [string]$ServerName)',
+        '$listener = [Net.HttpListener]::new()',
+        '$listener.Prefixes.Add("http://127.0.0.1:$Port/")',
+        '$listener.Start()',
+        'try {',
+        '  while ($true) {',
+        '    $context = $listener.GetContext()',
+        '    $body = [Text.Encoding]::UTF8.GetBytes((@{ status = "healthy"; server = $ServerName } | ConvertTo-Json -Compress))',
+        '    $context.Response.StatusCode = 200',
+        '    $context.Response.ContentType = "application/json"',
+        '    $context.Response.OutputStream.Write($body, 0, $body.Length)',
+        '    $context.Response.Close()',
+        '  }',
+        '} finally { $listener.Stop() }'
+    ) | Set-Content -LiteralPath $healthScriptPath -Encoding UTF8
     $servers = @(
             [ordered]@{
                 name = 'pid-mismatch'
@@ -52,6 +70,15 @@ try {
                 port = 42992
                 workingDirectory = $testRoot
                 executable = $currentExecutable
+                env = [ordered]@{}
+            },
+            [ordered]@{
+                name = 'external-existing'
+                kind = 'process'
+                port = 42994
+                healthUrl = 'http://127.0.0.1:42994/healthz'
+                workingDirectory = $testRoot
+                executable = $cmd
                 env = [ordered]@{}
             }
     )
@@ -131,6 +158,26 @@ try {
     }
     $childPid = $null
 
+    $externalProcess = Start-Process -FilePath $powershell -ArgumentList @('-NoLogo', '-NoProfile', '-File', $healthScriptPath, '-Port', '42994', '-ServerName', 'external-existing') -PassThru -WindowStyle Hidden
+    $externalPid = $externalProcess.Id
+    $externalProcess.Dispose()
+    $externalHealthy = $false
+    for ($i = 0; $i -lt 40; $i++) {
+        try {
+            $health = Invoke-RestMethod -Uri 'http://127.0.0.1:42994/healthz' -TimeoutSec 1
+            if ($health.server -eq 'external-existing') { $externalHealthy = $true; break }
+        }
+        catch { Start-Sleep -Milliseconds 100 }
+    }
+    if (-not $externalHealthy) { throw 'External MCP fixture did not become healthy.' }
+    Invoke-TestManager @('start', 'external-existing')
+    if (Test-Path -LiteralPath (Join-Path $stateRoot 'external-existing.pid')) {
+        throw 'Manager launched a duplicate process even though the expected MCP server was already healthy.'
+    }
+    if (-not (Get-Process -Id $externalPid -ErrorAction SilentlyContinue)) {
+        throw 'Manager disturbed the existing external MCP process.'
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($BundleRoot)) {
         Invoke-TestManager @('start', 'bundle-filesystem')
         $bundleIdentityPath = Join-Path $stateRoot 'bundle-filesystem.pid'
@@ -163,6 +210,9 @@ finally {
     }
     if ($bundlePid -and (Get-Process -Id $bundlePid -ErrorAction SilentlyContinue)) {
         Stop-Process -Id $bundlePid -Force -ErrorAction SilentlyContinue
+    }
+    if ($externalPid -and (Get-Process -Id $externalPid -ErrorAction SilentlyContinue)) {
+        Stop-Process -Id $externalPid -Force -ErrorAction SilentlyContinue
     }
     $env:MCP_MANAGER_CONFIG = $previousConfig
     $env:MCP_MANAGER_STATE_DIR = $previousState

@@ -54,6 +54,7 @@ docker run --rm -p 127.0.0.1:8092:8080 `
 | 변수 | 기본값 | 설명 |
 | --- | --- | --- |
 | `JIRA_BASE_URL` | `http://jira.local` | Jira base URL입니다. |
+| `JIRA_API_VERSION` | `3` | REST API 버전입니다. v3를 제공하지 않는 Jira Server/Data Center에서는 `2`를 사용합니다. |
 | `JIRA_BEARER_TOKEN` | 빈 값 | Jira Data Center 또는 호환 배포용 bearer token입니다. |
 | `JIRA_EMAIL` | 빈 값 | Jira Cloud basic auth용 email입니다. |
 | `JIRA_API_TOKEN` | 빈 값 | Jira Cloud basic auth용 API token입니다. |

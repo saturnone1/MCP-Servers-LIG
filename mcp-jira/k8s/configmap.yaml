@@ -8,5 +8,5 @@ metadata:
     app.kubernetes.io/component: mcp-server
 data:
   JIRA_BASE_URL: "https://jira.example.local"
+  JIRA_API_VERSION: "3"
   MCP_ENABLE_JIRA_WRITES: "true"
-

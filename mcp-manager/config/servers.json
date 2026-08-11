@@ -248,6 +248,7 @@
       ],
       "env": {
         "JIRA_BASE_URL": "http://jira.local",
+        "JIRA_API_VERSION": "3",
         "JIRA_BEARER_TOKEN": "",
         "JIRA_EMAIL": "",
         "JIRA_API_TOKEN": "",
