@@ -29,6 +29,9 @@
 | `mcp-matlab` | 42195 | 공식 `matlab/matlab-mcp-core-server` 계보 | MATLAB CLI/COM을 감싸고 공식 MCP bridge hook을 둔 Windows 호스트 C# 서버 | MATLAB 탐지, batch/script 실행, COM eval, workspace 요약 |
 | `mcp-autocad` | 42196 | 오픈소스 AutoCAD MCP COM 자동화 패턴 | AutoCAD COM을 감싸는 Windows 호스트 C# 서버 | drawing 열기, layer/entity 조회, command 전송, layer/line 생성, 저장 |
 | `mcp-solidworks` | 42197 | 오픈소스 SolidWorks MCP COM 자동화 패턴 | SolidWorks COM을 감싸는 Windows 호스트 C# 서버 | CAD 문서 열기, feature/component 조회, mass property, rebuild/save/export |
+| `mcp-gitea` | 42199 | 공식 `gitea/gitea-mcp` 툴 카탈로그 | Gitea API v1 C# client | 저장소, 브랜치, 태그, 커밋, 부분 편집 지원 파일 도구, 이슈, PR, 릴리스, wiki, actions |
+| `mcp-plantuml` | 42200 | 커뮤니티 PlantUML MCP 서버를 로컬 렌더링으로 재구성 | `plantuml.jar`/CLI를 감싸고 원격 서버를 대체 경로로 두는 C# 서버 | svg/png/txt/eps 렌더링, 파일 출력, 문법 검사, PlantUML URL 인코딩/디코딩 |
+| `mcp-harbor` | 42201 | `bupd/harbor-mcp-server`와 `nomagicln/mcp-harbor` 통합 | Harbor v2 REST API C# client | 프로젝트, 저장소, artifact, 태그, 취약점 스캔, quota, audit log, 복제 |
 
 ## 연결 주소
 
@@ -55,6 +58,9 @@ Docker 이미지는 컨테이너 내부 `8080` 포트에서 실행됩니다. Win
 | `mcp-matlab` | `http://localhost:42195/mcp` | `http://localhost:42195/sse` |
 | `mcp-autocad` | `http://localhost:42196/mcp` | `http://localhost:42196/sse` |
 | `mcp-solidworks` | `http://localhost:42197/mcp` | `http://localhost:42197/sse` |
+| `mcp-gitea` | `http://localhost:42199/mcp` | `http://localhost:42199/sse` |
+| `mcp-plantuml` | `http://localhost:42200/mcp` | `http://localhost:42200/sse` |
+| `mcp-harbor` | `http://localhost:42201/mcp` | `http://localhost:42201/sse` |
 
 ## MCP API 형태
 
@@ -146,7 +152,9 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-이 번들의 `servers.json`은 19개 서버를 모두 `process` 방식으로 등록합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 각 서버의 `Mcp*.exe`를 직접 실행합니다.
+이 번들의 `servers.json`은 22개 서버를 모두 `process` 방식으로 등록하되 그중 8개는 `"deprecated": true`로 표시합니다. 따라서 `McpManager.exe start all`은 Docker를 호출하지 않고 배포 대상 14개 서버의 `Mcp*.exe`만 직접 실행합니다.
+
+`mcp-docker`, `mcp-dotnet`, `mcp-git`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-mssql`, `mcp-shell`은 지원 종료 상태입니다. `publish-mcp-bundle.ps1`이 더 이상 빌드하지 않고 그룹·`all` 대상에서도 제외되지만, `McpManager.exe list`에는 `[지원종료]` 표시와 함께 남아 있고 `McpManager.exe start mcp-git`처럼 이름을 직접 지정하면 실행됩니다. 소스와 아래 Docker 워크플로는 그대로이며, `servers.bundle.json`의 플래그를 지우면 다시 번들에 포함됩니다.
 
 번들의 `<server>.env`는 기본값이며 수정 가능한 사용자별 override는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`에 저장됩니다. `edit-env-mcp-jira.cmd` 또는 Manager 화면에서 수정한 뒤 서버를 재시작하세요. Manager는 번들 루트와 서버 폴더의 기본 env, `servers.json`의 `envFiles`를 먼저 읽고 사용자별 override를 마지막에 적용합니다.
 
@@ -187,25 +195,25 @@ Windows 설치 파일은 다음 명령으로 생성합니다.
 
 기본 버전은 `installer\VERSION`에서 읽으며, 의도적으로 다른 릴리스를 만들 때만 `-Version`으로 덮어씁니다. 정식 서명 빌드는 `-CertificateThumbprint <thumbprint>`를 전달하거나 `LIG_SIGNING_CERT_THUMBPRINT` 환경 변수를 설정하면 제품 실행 파일, 내장 MSI 및 최종 Setup을 모두 서명합니다.
 
-사용자에게 제공되는 설치 파일은 `installer\output`의 `Setup.exe` 하나뿐이며 MSI는 그 안에 내장되는 빌드 재료로만 사용합니다. Setup 자체가 먼저 UAC 관리자 권한을 요청하고 명시적인 설치 진행 창과 최상단 완료 창을 표시합니다. 앱 목록과 시작 메뉴에는 관리자 권한을 자체 요청하고 실행 중 프로세스를 정리한 뒤 제거 진행 창과 완료 창을 표시하는 전용 Uninstaller가 등록됩니다. 사용자는 `mcp-bundle`, MSI, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 MCP 서버 19개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기와 실패 시 복구되는 업그레이드를 포함합니다. `McpManager.exe`는 실행할 때마다 관리자 권한을 요청하고 여기서 시작한 서버는 권한을 상속하지만, 개별 MCP 서버 EXE는 LLM이 직접 실행할 수 있도록 승격을 강제하지 않습니다. 바로가기는 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 인증서를 지정하지 않으면 설치 파일은 서명되지 않으며 빌드가 명확한 경고를 출력합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
+사용자에게 제공되는 설치 파일은 `installer\output`의 `Setup.exe` 하나뿐이며 MSI는 그 안에 내장되는 빌드 재료로만 사용합니다. Setup 자체가 먼저 UAC 관리자 권한을 요청하고 명시적인 설치 진행 창과 최상단 완료 창을 표시합니다. 앱 목록과 시작 메뉴에는 관리자 권한을 자체 요청하고 실행 중 프로세스를 정리한 뒤 제거 진행 창과 완료 창을 표시하는 전용 Uninstaller가 등록됩니다. 사용자는 `mcp-bundle`, MSI, ZIP 또는 별도 .NET/ASP.NET Core 런타임 설치 파일이 필요하지 않습니다. 설치본은 지원 종료되지 않은 MCP 서버 14개, 공유 런타임, 제품 아이콘을 내장한 self-contained Manager, 시작 메뉴 및 바탕화면 바로가기와 실패 시 복구되는 업그레이드를 포함합니다. `McpManager.exe`는 실행할 때마다 관리자 권한을 요청하고 여기서 시작한 서버는 권한을 상속하지만, 개별 MCP 서버 EXE는 LLM이 직접 실행할 수 있도록 승격을 강제하지 않습니다. 바로가기는 `McpManager.exe`를 직접 실행하므로 작업표시줄에도 제품 아이콘이 표시됩니다. 프로그램은 Program Files에 컴퓨터 단위로 설치되고, 수정 가능한 설정·로그·PID는 `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`에 저장합니다. 인증서를 지정하지 않으면 설치 파일은 서명되지 않으며 빌드가 명확한 경고를 출력합니다. 자세한 내용은 `installer\README.ko.md`를 참고하세요.
 
 주의할 점은 서버 실행 파일 자체는 포함되지만, 일부 tool이 호출하는 외부 프로그램은 대상 PC에 있어야 한다는 점입니다. Dockerfile에서 `apt-get`, `curl`, `pip`로 설치하던 항목은 Windows exe 번들에 자동으로 포함되지 않습니다.
 
 | 서버 | Windows exe 번들 상태 | 추가 필요 항목 |
 | --- | --- | --- |
 | `mcp-filesystem` | 자체 동작 | 없음 |
-| `mcp-mssql`, `mcp-postgresql` | 자체 동작 | 실제 DB 연결 문자열 |
-| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | 자체 동작 | 실제 API URL/토큰 |
-| `mcp-shell` | 자체 동작 | 실행할 명령이 Windows에 존재해야 함 |
-| `mcp-git` | 서버는 자체 동작 | `git.exe` |
-| `mcp-dotnet` | 서버는 번들 런타임으로 동작 | 대상 PC의 외부 .NET SDK/CLI. 필요하면 `MCP_DOTNET_CLI_PATH`로 명시할 수 있으며, 프로젝트의 `global.json`과 대상 프레임워크에 따라 .NET 8/9/10 SDK를 선택합니다. |
+| `mcp-postgresql` | 자체 동작 | 실제 DB 연결 문자열 |
+| `mcp-prometheus`, `mcp-confluence`, `mcp-gitea`, `mcp-harbor` | 자체 동작 | 실제 API URL/토큰 |
 | `mcp-kubernetes` | 서버는 자체 동작 | `kubectl.exe`, kubeconfig 또는 in-cluster 대체 환경 |
-| `mcp-docker` | 서버는 자체 동작 | Docker CLI와 Docker Desktop/daemon |
+| `mcp-plantuml` | `plantuml.jar`를 번들에 동봉 | 대상 PC의 Java 런타임. 번들에 JRE는 포함하지 않습니다. Java가 없으면 `PLANTUML_SERVER_URL`이 대체 경로 |
+| `mcp-docker`, `mcp-dotnet`, `mcp-git`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-mssql`, `mcp-shell` | 지원 종료, 번들 제외 | 필요하면 소스에서 빌드하거나 Docker 이미지를 사용 |
 | `mcp-office` | `officecli.exe`를 번들에 동봉 | legacy `.doc`용 `antiword`는 선택 사항. 없으면 OfficeCLI로 fallback |
 | `mcp-hwp` | `.hwpx`와 기본 `.hwp` 텍스트 추출은 내장 파서로 처리 | 고급 `.hwp` fallback은 선택적 `hwp5txt`, `docx/pdf/odt` 변환은 LibreOffice `soffice` |
 | `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | 서버는 자체 동작 | 해당 상용 프로그램, COM/CLI, 라이선스 |
 
 Office 서버는 `mcp-office\vendor\officecli`에 받아 둔 OfficeCLI Windows binary를 publish 시 `tools/officecli.exe`로 함께 복사합니다. vendor에 없으면 `publish-mcp-bundle.ps1`이 `mcp-office\scripts\download-officecli.ps1`을 호출해 내려받습니다.
+
+PlantUML 서버는 `mcp-plantuml\vendor\plantuml`에 받아 둔 PlantUML jar를 publish 시 `tools/plantuml.jar`로 복사하고 `PLANTUML_JAR_PATH`가 이를 가리키게 합니다. vendor에 없으면 `publish-mcp-bundle.ps1`이 `mcp-plantuml\scripts\download-plantuml.ps1`을 호출합니다. 번들이 설치본에 재배포되므로 이 스크립트는 GPL인 `plantuml.jar` 대신 **MIT 에디션**을 기본값으로 받습니다. 다른 에디션이 필요하면 `-Edition asl|bsd|epl|lgpl|mit-light|gpl`로 지정합니다. jar만으로는 실행되지 않고 대상 PC에 Java 런타임이 필요합니다.
 
 MATLAB 서버는 `mcp-matlab\vendor\official`에 받아 둔 MathWorks 공식 MCP binary를 publish 시 `official/` 폴더로 함께 복사합니다.
 
@@ -377,4 +385,7 @@ air gap 클러스터에서는 이미지를 클러스터 런타임에 직접 로�
 - `mcp-matlab/README.md`, `mcp-matlab/README.ko.md`
 - `mcp-autocad/README.md`, `mcp-autocad/README.ko.md`
 - `mcp-solidworks/README.md`, `mcp-solidworks/README.ko.md`
+- `mcp-gitea/README.md`, `mcp-gitea/README.ko.md`
+- `mcp-plantuml/README.md`, `mcp-plantuml/README.ko.md`
+- `mcp-harbor/README.md`, `mcp-harbor/README.ko.md`
 

@@ -13,6 +13,15 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
+# servers.bundle.json is the single source of truth for which servers the bundle still ships.
+$bundleConfigPath = Join-Path $repoRoot 'mcp-manager\config\servers.bundle.json'
+$deprecatedServers = @((Get-Content -LiteralPath $bundleConfigPath -Raw | ConvertFrom-Json).servers |
+    Where-Object { $_.deprecated } |
+    ForEach-Object { $_.name })
+if ($deprecatedServers.Count -gt 0) {
+    Write-Host ("== Skipping deprecated servers: {0}" -f ($deprecatedServers -join ', '))
+}
+
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
 function Stop-ExistingBundleProcesses {
@@ -52,18 +61,6 @@ function Stop-ExistingBundleProcesses {
 }
 
 Stop-ExistingBundleProcesses -BundleRoot $OutputRoot
-
-# Remove artifacts retired with MCP-PDF after stopping an older 20-server bundle.
-$outputPrefix = [IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-foreach ($relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler')) {
-    $stalePath = [IO.Path]::GetFullPath((Join-Path $OutputRoot $relativePath))
-    if (-not $stalePath.StartsWith($outputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Unexpected retired artifact path: $stalePath"
-    }
-    if (Test-Path -LiteralPath $stalePath) {
-        Remove-Item -LiteralPath $stalePath -Recurse -Force
-    }
-}
 
 function Copy-BundledDotnetRuntime {
     param(
@@ -138,6 +135,25 @@ foreach ($staleManagerFile in @('McpManager.exe', 'McpManager.dll', 'McpManager.
 
 Copy-Item -LiteralPath (Join-Path $repoRoot 'mcp-manager\config\servers.bundle.json') -Destination (Join-Path $OutputRoot 'servers.json') -Force
 
+# Remove artifacts retired with MCP-PDF, plus anything a deprecated server left behind, after stopping an older bundle.
+$outputPrefix = [IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+$retiredPaths = @('mcp-pdf-win-x64', 'dependencies\poppler')
+foreach ($deprecated in $deprecatedServers) {
+    $retiredPaths += "$deprecated-win-x64"
+    $retiredPaths += "edit-env-$deprecated.cmd"
+    $retiredPaths += "start-$deprecated.cmd"
+    $retiredPaths += "stop-$deprecated.cmd"
+}
+foreach ($relativePath in $retiredPaths) {
+    $stalePath = [IO.Path]::GetFullPath((Join-Path $OutputRoot $relativePath))
+    if (-not $stalePath.StartsWith($outputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unexpected retired artifact path: $stalePath"
+    }
+    if (Test-Path -LiteralPath $stalePath) {
+        Remove-Item -LiteralPath $stalePath -Recurse -Force
+    }
+}
+
 $servers = @(
     @{ Name = 'mcp-office'; Project = 'mcp-office\src\McpOffice.csproj'; Folder = 'mcp-office-win-x64'; Env = 'mcp-office\config\office.env.example' },
     @{ Name = 'mcp-filesystem'; Project = 'mcp-filesystem\src\McpFilesystem.csproj'; Folder = 'mcp-filesystem-win-x64' },
@@ -154,11 +170,16 @@ $servers = @(
     @{ Name = 'mcp-jira'; Project = 'mcp-jira\src\McpJira.csproj'; Folder = 'mcp-jira-win-x64' },
     @{ Name = 'mcp-loki'; Project = 'mcp-loki\src\McpLoki.csproj'; Folder = 'mcp-loki-win-x64' },
     @{ Name = 'mcp-confluence'; Project = 'mcp-confluence\src\McpConfluence.csproj'; Folder = 'mcp-confluence-win-x64' },
+    @{ Name = 'mcp-gitea'; Project = 'mcp-gitea\src\McpGitea.csproj'; Folder = 'mcp-gitea-win-x64' },
+    @{ Name = 'mcp-plantuml'; Project = 'mcp-plantuml\src\McpPlantUml.csproj'; Folder = 'mcp-plantuml-win-x64' },
+    @{ Name = 'mcp-harbor'; Project = 'mcp-harbor\src\McpHarbor.csproj'; Folder = 'mcp-harbor-win-x64' },
     @{ Name = 'mcp-rhapsody'; Script = 'mcp-rhapsody\scripts\publish-win.ps1'; Folder = 'mcp-rhapsody-win-x64' },
     @{ Name = 'mcp-matlab'; Script = 'mcp-matlab\scripts\publish-win.ps1'; Folder = 'mcp-matlab-win-x64' },
     @{ Name = 'mcp-autocad'; Script = 'mcp-autocad\scripts\publish-win.ps1'; Folder = 'mcp-autocad-win-x64' },
     @{ Name = 'mcp-solidworks'; Script = 'mcp-solidworks\scripts\publish-win.ps1'; Folder = 'mcp-solidworks-win-x64' }
 )
+
+$servers = @($servers | Where-Object { $deprecatedServers -notcontains $_.Name })
 
 foreach ($server in $servers) {
     Write-Host ""
@@ -217,11 +238,33 @@ setlocal
             }
         }
     }
+
+    if ($server.Name -eq 'mcp-plantuml') {
+        $plantumlVendor = Join-Path $repoRoot 'mcp-plantuml\vendor\plantuml\plantuml.jar'
+        if (-not (Test-Path -LiteralPath $plantumlVendor)) {
+            Write-Host "Downloading PlantUML for Windows bundle"
+            & (Join-Path $repoRoot 'mcp-plantuml\scripts\download-plantuml.ps1')
+        }
+
+        $toolsDir = Join-Path $output 'tools'
+        New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+        Copy-Item -LiteralPath $plantumlVendor -Destination (Join-Path $toolsDir 'plantuml.jar') -Force
+        foreach ($sidecar in @('plantuml.sha256', 'README.txt')) {
+            $source = Join-Path $repoRoot "mcp-plantuml\vendor\plantuml\$sidecar"
+            if (Test-Path -LiteralPath $source) {
+                Copy-Item -LiteralPath $source -Destination (Join-Path $toolsDir $sidecar) -Force
+            }
+        }
+    }
 }
 
 $configPath = Join-Path $OutputRoot 'servers.json'
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 foreach ($server in $config.servers) {
+    if ($deprecatedServers -contains $server.name) {
+        continue
+    }
+
     if (-not $server.env) {
         continue
     }
@@ -315,6 +358,10 @@ explorer.exe "%ENV_DIR%"
 
 $config = Get-Content -LiteralPath (Join-Path $OutputRoot 'servers.json') -Raw | ConvertFrom-Json
 foreach ($server in $config.servers) {
+    if ($deprecatedServers -contains $server.name) {
+        continue
+    }
+
     $workingDirectory = $server.workingDirectory.Replace('{manager}', $OutputRoot)
     $envPath = Join-Path $workingDirectory "$($server.name).env"
 @"

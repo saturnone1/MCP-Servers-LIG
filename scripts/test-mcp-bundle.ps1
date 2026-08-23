@@ -22,6 +22,8 @@ if (-not (Test-Path -LiteralPath $launcherPath)) {
 }
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+$bundledServers = @($config.servers | Where-Object { -not $_.deprecated })
+$deprecatedServers = @($config.servers | Where-Object { $_.deprecated } | ForEach-Object { $_.name })
 $missing = @()
 $releaseDebris = Get-ChildItem -LiteralPath $BundleRoot -Recurse -File |
     Where-Object { $_.Extension -in '.pdb', '.old' }
@@ -43,7 +45,7 @@ else {
 }
 
 Write-Host "== Bundle executables"
-foreach ($server in $config.servers) {
+foreach ($server in $bundledServers) {
     $workingDirectory = $server.workingDirectory.Replace('{manager}', $BundleRoot)
     $exe = Join-Path $workingDirectory $server.executable
     if (Test-Path -LiteralPath $exe) {
@@ -58,7 +60,8 @@ foreach ($server in $config.servers) {
 Write-Host ""
 Write-Host "== Bundled command dependencies"
 $bundledDependencies = [ordered]@{
-    'mcp-office' = @('tools\officecli.exe')
+    'mcp-office'   = @('tools\officecli.exe')
+    'mcp-plantuml' = @('tools\plantuml.jar')
 }
 
 foreach ($entry in $bundledDependencies.GetEnumerator()) {
@@ -78,10 +81,8 @@ foreach ($entry in $bundledDependencies.GetEnumerator()) {
 Write-Host ""
 Write-Host "== Required external PATH dependencies"
 $dependencies = [ordered]@{
-    'mcp-git'        = @('git')
-    'mcp-dotnet'     = @('dotnet')
     'mcp-kubernetes' = @('kubectl')
-    'mcp-docker'     = @('docker')
+    'mcp-plantuml'   = @('java')
 }
 
 foreach ($entry in $dependencies.GetEnumerator()) {
@@ -99,8 +100,9 @@ foreach ($entry in $dependencies.GetEnumerator()) {
 Write-Host ""
 Write-Host "== Optional external PATH dependencies"
 $optionalDependencies = [ordered]@{
-    'mcp-office' = @('antiword')
-    'mcp-hwp'    = @('hwp5txt', 'soffice')
+    'mcp-office'   = @('antiword')
+    'mcp-hwp'      = @('hwp5txt', 'soffice')
+    'mcp-plantuml' = @('plantuml')
 }
 
 foreach ($entry in $optionalDependencies.GetEnumerator()) {
@@ -136,7 +138,7 @@ try {
     }
 
     $managerText = $managerOutput -join [Environment]::NewLine
-    foreach ($server in $config.servers) {
+    foreach ($server in $bundledServers) {
         if ($managerText -notmatch [Regex]::Escape([string]$server.name)) {
             throw "Manager output did not include bundle server: $($server.name)"
         }
@@ -148,6 +150,11 @@ finally {
     if (Test-Path -LiteralPath $validationState) {
         Remove-Item -LiteralPath $validationState -Recurse -Force
     }
+}
+
+if ($deprecatedServers.Count -gt 0) {
+    Write-Host ""
+    Write-Host ("== Deprecated servers (not bundled): {0}" -f ($deprecatedServers -join ', '))
 }
 
 if ($missing.Count -gt 0) {

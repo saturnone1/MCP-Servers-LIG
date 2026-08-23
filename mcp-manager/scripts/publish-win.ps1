@@ -79,6 +79,10 @@ pause
 
 $config = Get-Content -LiteralPath (Join-Path $Output 'servers.json') -Raw | ConvertFrom-Json
 foreach ($server in $config.servers) {
+    if ($server.deprecated) {
+        continue
+    }
+
 @"
 @echo off
 setlocal

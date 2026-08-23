@@ -377,6 +377,68 @@
         "MCP_ALLOWED_DIRS": "*",
         "MCP_ENABLE_SOLIDWORKS_WRITES": "true"
       }
+    },
+    {
+      "name": "mcp-gitea",
+      "kind": "docker",
+      "port": 42199,
+      "image": "local/mcp-gitea",
+      "groups": [
+        "docker",
+        "devops"
+      ],
+      "volumes": [
+        "{repo}:/workspace"
+      ],
+      "env": {
+        "GITEA_BASE_URL": "http://gitea.local",
+        "GITEA_TOKEN": "",
+        "MCP_ENABLE_GITEA_WRITES": "true"
+      }
+    },
+    {
+      "name": "mcp-plantuml",
+      "kind": "docker",
+      "port": 42200,
+      "image": "local/mcp-plantuml",
+      "groups": [
+        "docker",
+        "diagram"
+      ],
+      "volumes": [
+        "{repo}:/workspace"
+      ],
+      "mountHostDrives": true,
+      "env": {
+        "MCP_PATH_MAPPINGS": "{repo}=/workspace",
+        "MCP_ALLOWED_DIRS": "/",
+        "PLANTUML_JAR_PATH": "",
+        "PLANTUML_PATH": "plantuml",
+        "JAVA_PATH": "java",
+        "PLANTUML_SERVER_URL": "",
+        "PLANTUML_INCLUDE_PATH": "",
+        "MCP_ENABLE_PLANTUML_WRITES": "true"
+      }
+    },
+    {
+      "name": "mcp-harbor",
+      "kind": "docker",
+      "port": 42201,
+      "image": "local/mcp-harbor",
+      "groups": [
+        "docker",
+        "registry",
+        "devops"
+      ],
+      "volumes": [
+        "{repo}:/workspace"
+      ],
+      "env": {
+        "HARBOR_BASE_URL": "http://harbor.local",
+        "HARBOR_USERNAME": "",
+        "HARBOR_PASSWORD": "",
+        "MCP_ENABLE_HARBOR_WRITES": "true"
+      }
     }
   ]
 }

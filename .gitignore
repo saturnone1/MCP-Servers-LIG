@@ -9,6 +9,7 @@ obj/
 mcp-*/airgap/*.tar
 mcp-rhapsody/publish/
 mcp-office/vendor/
+mcp-plantuml/vendor/
 mcp-matlab/vendor/official/
 mcp-matlab/publish/
 mcp-autocad/publish/

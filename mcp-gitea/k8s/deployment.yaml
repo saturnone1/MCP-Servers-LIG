@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gitea
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: mcp-gitea
+    app.kubernetes.io/component: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-gitea
+      app.kubernetes.io/component: mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-gitea
+        app.kubernetes.io/component: mcp-server
+    spec:
+      containers:
+        - name: mcp-gitea
+          image: local/mcp-gitea:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: mcp-gitea-config
+            - secretRef:
+                name: mcp-gitea-auth
+                optional: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi

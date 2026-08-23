@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-plantuml-config
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: mcp-plantuml
+    app.kubernetes.io/component: mcp-server
+data:
+  PLANTUML_PATH: "plantuml"
+  JAVA_PATH: "java"
+  MCP_ALLOWED_DIRS: "/workspace"
+  MCP_ENABLE_PLANTUML_WRITES: "true"

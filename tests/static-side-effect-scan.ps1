@@ -184,7 +184,9 @@ foreach ($entry in @(
     @{ Path = 'mcp-jira/src/Program.cs'; Method = 'Send'; Required = 'UriFormatException' },
     @{ Path = 'mcp-confluence/src/Program.cs'; Method = 'Send'; Required = 'UriFormatException' },
     @{ Path = 'mcp-prometheus/src/Program.cs'; Method = 'Get'; Required = 'UriFormatException' },
-    @{ Path = 'mcp-loki/src/Program.cs'; Method = 'Get'; Required = 'UriFormatException' }
+    @{ Path = 'mcp-loki/src/Program.cs'; Method = 'Get'; Required = 'UriFormatException' },
+    @{ Path = 'mcp-gitea/src/Program.cs'; Method = 'Send'; Required = 'UriFormatException' },
+    @{ Path = 'mcp-harbor/src/Program.cs'; Method = 'Send'; Required = 'UriFormatException' }
 )) {
     $text = Get-Content -LiteralPath (Join-Path $repo $entry.Path) -Raw
     $body = Get-MethodBody -Text $text -MethodName $entry.Method
@@ -216,11 +218,16 @@ $portConfigFiles = @(
     'mcp-manager/config/servers.json',
     'mcp-manager/config/servers.bundle.json'
 )
+$deprecatedReleaseServers = @(
+    'mcp-docker', 'mcp-dotnet', 'mcp-git', 'mcp-gitlab',
+    'mcp-jira', 'mcp-loki', 'mcp-mssql', 'mcp-shell'
+)
 $expectedServers = @(
     'mcp-office', 'mcp-filesystem', 'mcp-git', 'mcp-shell', 'mcp-dotnet', 'mcp-mssql',
     'mcp-hwp', 'mcp-kubernetes', 'mcp-docker', 'mcp-prometheus', 'mcp-postgresql',
     'mcp-gitlab', 'mcp-jira', 'mcp-loki', 'mcp-confluence', 'mcp-rhapsody',
-    'mcp-matlab', 'mcp-autocad', 'mcp-solidworks'
+    'mcp-matlab', 'mcp-autocad', 'mcp-solidworks', 'mcp-gitea', 'mcp-plantuml',
+    'mcp-harbor'
 )
 foreach ($relativePath in $portConfigFiles) {
     $config = Get-Content -LiteralPath (Join-Path $repo $relativePath) -Raw | ConvertFrom-Json
@@ -228,25 +235,32 @@ foreach ($relativePath in $portConfigFiles) {
     $missingServers = @($expectedServers | Where-Object { $_ -notin $actualServers })
     $unexpectedServers = @($actualServers | Where-Object { $_ -notin $expectedServers })
     if ($actualServers.Count -ne $expectedServers.Count -or $missingServers.Count -gt 0 -or $unexpectedServers.Count -gt 0) {
-        $failures.Add("${relativePath}: expected the 19-server release set; missing=[$($missingServers -join ',')] unexpected=[$($unexpectedServers -join ',')]")
+        $failures.Add("${relativePath}: expected the 22-server release set; missing=[$($missingServers -join ',')] unexpected=[$($unexpectedServers -join ',')]")
     }
     if (@($actualServers | Select-Object -Unique).Count -ne $actualServers.Count) {
         $failures.Add("${relativePath}: contains duplicate server names")
     }
+    if ($relativePath -eq 'mcp-manager/config/servers.bundle.json') {
+        $actualDeprecated = @($config.servers | Where-Object { $_.deprecated } | ForEach-Object { $_.name })
+        $deprecationDrift = @(Compare-Object -ReferenceObject $deprecatedReleaseServers -DifferenceObject $actualDeprecated)
+        if ($deprecationDrift.Count -gt 0) {
+            $failures.Add("${relativePath}: deprecated set drifted; expected [$($deprecatedReleaseServers -join ',')] actual [$($actualDeprecated -join ',')]")
+        }
+    }
     $actualPorts = @($config.servers | ForEach-Object { [int]$_.port })
-    $expectedPorts = @(42180..42198)
+    $expectedPorts = @(42180..42201)
     $missingPorts = @($expectedPorts | Where-Object { $_ -notin $actualPorts })
     $unexpectedPorts = @($actualPorts | Where-Object { $_ -notin $expectedPorts })
     if ($missingPorts.Count -gt 0 -or $unexpectedPorts.Count -gt 0 -or
         @($actualPorts | Select-Object -Unique).Count -ne $actualPorts.Count) {
-        $failures.Add("${relativePath}: expected unique ports 42180-42198; missing=[$($missingPorts -join ',')] unexpected=[$($unexpectedPorts -join ',')]")
+        $failures.Add("${relativePath}: expected unique ports 42180-42201; missing=[$($missingPorts -join ',')] unexpected=[$($unexpectedPorts -join ',')]")
     }
     foreach ($server in $config.servers) {
         if ($null -eq $server.env -or @($server.env.PSObject.Properties).Count -eq 0) {
             $failures.Add("${relativePath}: $($server.name) must publish editable environment defaults")
         }
         if ($server.port -ge 8080 -and $server.port -le 8098) {
-            $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42198 range")
+            $failures.Add("${relativePath}: $($server.name) uses collision-prone external port $($server.port); use the 42180-42201 range")
         }
     }
 }
@@ -300,9 +314,14 @@ foreach ($relativePath in $portConfigFiles) {
 
 $bundlePublishText = Get-Content -LiteralPath (Join-Path $repo 'scripts/publish-mcp-bundle.ps1') -Raw
 $stopIndex = $bundlePublishText.IndexOf('Stop-ExistingBundleProcesses -BundleRoot $OutputRoot', [StringComparison]::Ordinal)
-$retiredCleanupIndex = $bundlePublishText.IndexOf("foreach (`$relativePath in @('mcp-pdf-win-x64', 'dependencies\poppler'))", [StringComparison]::Ordinal)
+$retiredCleanupIndex = $bundlePublishText.IndexOf("`$retiredPaths = @('mcp-pdf-win-x64', 'dependencies\poppler')", [StringComparison]::Ordinal)
 if ($stopIndex -lt 0 -or $retiredCleanupIndex -le $stopIndex) {
     $failures.Add('scripts/publish-mcp-bundle.ps1: running legacy servers must stop before retired MCP-PDF artifacts are removed')
+}
+foreach ($required in @('$deprecatedServers -notcontains $_.Name', '$deprecatedServers -contains $server.name', 'mcp-plantuml\vendor\plantuml\plantuml.jar')) {
+    if (-not (Test-ContainsOrdinal $bundlePublishText $required)) {
+        $failures.Add("scripts/publish-mcp-bundle.ps1: deprecated servers must be excluded from the bundle ('$required')")
+    }
 }
 if (Test-ContainsOrdinal $bundlePublishText '$server.env = [pscustomobject]@{}') {
     $failures.Add('scripts/publish-mcp-bundle.ps1: published environment defaults must remain in servers.json')
@@ -311,6 +330,11 @@ if (Test-ContainsOrdinal $bundlePublishText '$server.env = [pscustomobject]@{}')
 $readmeText = Get-Content -LiteralPath (Join-Path $repo 'README.md') -Raw
 if (Test-ContainsOrdinal $readmeText 'registers all 20 servers') {
     $failures.Add('README.md: bundle server count is stale; the release contains 19 servers')
+}
+
+$managerPublishText = Get-Content -LiteralPath (Join-Path $repo 'mcp-manager/scripts/publish-win.ps1') -Raw
+if (-not (Test-ContainsOrdinal $managerPublishText 'if ($server.deprecated)')) {
+    $failures.Add('mcp-manager/scripts/publish-win.ps1: deprecated servers must not get start/stop launcher scripts')
 }
 
 $managerText = Get-Content -LiteralPath (Join-Path $repo 'mcp-manager/src/Program.cs') -Raw
@@ -329,6 +353,9 @@ foreach ($required in @(
     'IsExpectedHealthyServer(server)'
     'DockerRunning(server.ContainerName)'
     '["start", server.ContainerName]'
+    'public bool Deprecated { get; set; }'
+    'var supported = config.Servers.Where(s => !s.Deprecated);'
+    'config.Servers.Where(server => !server.Deprecated).ToArray()'
 )) {
     if (-not (Test-ContainsOrdinal $managerText $required)) {
         $failures.Add("mcp-manager/src/Program.cs: missing manager lifecycle/autostart behavior '$required'")
@@ -339,6 +366,11 @@ $bundleConfig = Get-Content -LiteralPath (Join-Path $repo 'mcp-manager/config/se
 $officeConfig = $bundleConfig.servers | Where-Object name -eq 'mcp-office' | Select-Object -First 1
 if ($officeConfig.env.ANTIWORD_PATH -ne 'antiword') {
     $failures.Add('mcp-manager/config/servers.bundle.json: ANTIWORD_PATH should allow normal PATH resolution when antiword is not bundled')
+}
+
+$plantumlConfig = $bundleConfig.servers | Where-Object name -eq 'mcp-plantuml' | Select-Object -First 1
+if ($plantumlConfig.env.PLANTUML_JAR_PATH -ne '{manager}\mcp-plantuml-win-x64\tools\plantuml.jar') {
+    $failures.Add('mcp-manager/config/servers.bundle.json: PLANTUML_JAR_PATH should point at the jar copied into the bundle')
 }
 
 $defaultEnvIndex = $managerText.IndexOf('foreach (var env in server.Env)', [StringComparison]::Ordinal)

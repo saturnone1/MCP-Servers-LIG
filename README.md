@@ -29,6 +29,9 @@ These images are intended for trusted local testing. Write and execute capabilit
 | `mcp-matlab` | 42195 | Official `matlab/matlab-mcp-core-server` lineage | Windows-host C# wrapper around MATLAB CLI/COM plus official MCP bridge hook | Detect MATLAB, run batch/script, COM eval, workspace summary |
 | `mcp-autocad` | 42196 | Open-source AutoCAD MCP COM automation pattern | Windows-host C# AutoCAD COM wrapper | Open drawings, list layers/entities, send commands, create layer/line, save |
 | `mcp-solidworks` | 42197 | Open-source SolidWorks MCP COM automation pattern | Windows-host C# SolidWorks COM wrapper | Open CAD docs, list features/components, mass properties, rebuild/save/export |
+| `mcp-gitea` | 42199 | Official `gitea/gitea-mcp` tool catalogue | C# Gitea API v1 client | Repos, branches, tags, commits, files with partial edits, issues, pull requests, releases, wiki, actions |
+| `mcp-plantuml` | 42200 | Community PlantUML MCP servers, rebuilt for local rendering | C# wrapper around `plantuml.jar`/CLI with a remote-server fallback | Render svg/png/txt/eps, render to file, syntax check, PlantUML URL encode/decode |
+| `mcp-harbor` | 42201 | `bupd/harbor-mcp-server` and `nomagicln/mcp-harbor` combined | C# Harbor v2 REST API client | Projects, repositories, artifacts, tags, vulnerability scans, quotas, audit logs, replication |
 
 ## Connections
 
@@ -55,6 +58,9 @@ Docker images listen on port `8080` inside the container. Windows-host desktop s
 | `mcp-matlab` | `http://localhost:42195/mcp` | `http://localhost:42195/sse` |
 | `mcp-autocad` | `http://localhost:42196/mcp` | `http://localhost:42196/sse` |
 | `mcp-solidworks` | `http://localhost:42197/mcp` | `http://localhost:42197/sse` |
+| `mcp-gitea` | `http://localhost:42199/mcp` | `http://localhost:42199/sse` |
+| `mcp-plantuml` | `http://localhost:42200/mcp` | `http://localhost:42200/sse` |
+| `mcp-harbor` | `http://localhost:42201/mcp` | `http://localhost:42201/sse` |
 
 ## MCP API Shape
 
@@ -146,7 +152,9 @@ mcp-bundle\mcp-git-win-x64\McpGit.exe
 mcp-bundle\mcp-solidworks-win-x64\McpSolidWorks.exe
 ```
 
-The bundle `servers.json` registers all 19 servers as `process` entries. `McpManager.exe start all` therefore starts each `Mcp*.exe` directly and does not call Docker.
+The bundle `servers.json` lists all 22 servers as `process` entries and marks 8 of them `"deprecated": true`. `McpManager.exe start all` therefore starts the 14 shipped `Mcp*.exe` directly and does not call Docker.
+
+`mcp-docker`, `mcp-dotnet`, `mcp-git`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-mssql`, and `mcp-shell` are deprecated: `publish-mcp-bundle.ps1` no longer builds them, and group or `all` targets skip them. `McpManager.exe list` still shows them flagged, and naming one explicitly (`McpManager.exe start mcp-git`) still resolves it. Their sources and the Docker workflow below are unchanged; clearing the flag in `servers.bundle.json` brings a server back into the bundle.
 
 Every server publishes its supported environment-variable catalog and defaults in `servers.json`. Editable per-user values are stored under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager\env`; use `edit-env-mcp-jira.cmd` or the Manager dashboard, then restart the server. The Manager creates these files with all defaults and, during upgrades, adds newly supported keys without overwriting existing user values. Runtime precedence is server defaults, bundled/explicit env files, then the per-user file. `McpManager.exe` also reads `common.env` and `<server>.env` from the bundle root plus explicit `envFiles` from `servers.json`.
 
@@ -189,25 +197,25 @@ Build the Windows installer with:
 
 The default version comes from `installer\VERSION`. Override it with `-Version` only for an intentional release. For production signing, pass `-CertificateThumbprint <thumbprint>` or set `LIG_SIGNING_CERT_THUMBPRINT`; the build signs product executables, the MSI payload, and the final Setup.
 
-The build writes exactly one user-facing `Setup.exe` to `installer\output`; the MSI is an internal build payload embedded in that executable and is not distributed separately. Setup requests elevation before extracting the payload to a machine-accessible staging directory and invokes Windows Installer with an explicit basic progress window, avoiding non-elevated execution and 2502/2503 errors. Apps and the Start Menu register a dedicated self-elevating Uninstaller that stops installed processes, runs removal with its own progress UI, and shows a topmost completion result. Users do not need the `mcp-bundle` directory, MSI, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. The installer includes all 19 MCP servers, the shared runtime, a self-contained Manager with the product icon embedded, Start Menu and desktop shortcuts, and rollback-safe upgrades. `McpManager.exe` requests administrator elevation on every launch; servers started by it inherit that token, while individual server executables remain directly launchable by MCP clients. The shortcuts launch `McpManager.exe` directly so the product icon is used on the taskbar. Installation is per-machine under Program Files; writable settings, logs, and PID files stay under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`. External applications such as Git, Docker, kubectl, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. Without a configured certificate the setup remains unsigned and the build prints an explicit warning.
+The build writes exactly one user-facing `Setup.exe` to `installer\output`; the MSI is an internal build payload embedded in that executable and is not distributed separately. Setup requests elevation before extracting the payload to a machine-accessible staging directory and invokes Windows Installer with an explicit basic progress window, avoiding non-elevated execution and 2502/2503 errors. Apps and the Start Menu register a dedicated self-elevating Uninstaller that stops installed processes, runs removal with its own progress UI, and shows a topmost completion result. Users do not need the `mcp-bundle` directory, MSI, ZIP archive, WiX, or a separate .NET/ASP.NET Core runtime installer. The installer includes the 14 non-deprecated MCP servers, the shared runtime, a self-contained Manager with the product icon embedded, Start Menu and desktop shortcuts, and rollback-safe upgrades. `McpManager.exe` requests administrator elevation on every launch; servers started by it inherit that token, while individual server executables remain directly launchable by MCP clients. The shortcuts launch `McpManager.exe` directly so the product icon is used on the taskbar. Installation is per-machine under Program Files; writable settings, logs, and PID files stay under `%LOCALAPPDATA%\LIG AI MCP\.mcp-manager`. External applications such as Git, Docker, kubectl, MATLAB, AutoCAD, SolidWorks, and Rhapsody are still required when their integrations are used. Without a configured certificate the setup remains unsigned and the build prints an explicit warning.
 
 The server executables are included, but tools that shell out to external programs still need those programs on the target PC. Items installed by Dockerfiles through `apt-get`, `curl`, or `pip` are not automatically embedded in the Windows exe bundle.
 
 | Server | Windows exe bundle status | Additional requirement |
 | --- | --- | --- |
 | `mcp-filesystem` | Self-contained | None |
-| `mcp-mssql`, `mcp-postgresql` | Server and shared runtime included | Real DB connection string |
-| `mcp-prometheus`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-confluence` | Server and shared runtime included | Real API URL/token |
-| `mcp-shell` | Server and shared runtime included | Commands invoked by tools must exist on Windows |
-| `mcp-git` | Server and shared runtime included | `git.exe` |
-| `mcp-dotnet` | Server runs on the bundled runtime | External .NET SDK/CLI on the target PC; `MCP_DOTNET_CLI_PATH` can select one explicitly. Project `global.json` and target frameworks control .NET 8/9/10 SDK usage. |
+| `mcp-postgresql` | Server and shared runtime included | Real DB connection string |
+| `mcp-prometheus`, `mcp-confluence`, `mcp-gitea`, `mcp-harbor` | Server and shared runtime included | Real API URL/token |
 | `mcp-kubernetes` | Server and shared runtime included | `kubectl.exe` plus kubeconfig or equivalent cluster auth |
-| `mcp-docker` | Server and shared runtime included | Docker CLI and Docker Desktop/daemon |
+| `mcp-plantuml` | Bundles `plantuml.jar` | A Java runtime on the target PC. The bundle does not ship a JRE. `PLANTUML_SERVER_URL` is the online fallback when Java is unavailable. |
+| `mcp-docker`, `mcp-dotnet`, `mcp-git`, `mcp-gitlab`, `mcp-jira`, `mcp-loki`, `mcp-mssql`, `mcp-shell` | Deprecated; not bundled | Build from source or run the Docker image if still needed |
 | `mcp-office` | Bundles `officecli.exe` | `antiword` for legacy `.doc` is optional; OfficeCLI is used as fallback |
 | `mcp-hwp` | Built-in parser handles `.hwpx` and basic `.hwp` text extraction | Optional `hwp5txt` for fallback; LibreOffice `soffice` only for `docx/pdf/odt` conversion |
 | `mcp-rhapsody`, `mcp-matlab`, `mcp-autocad`, `mcp-solidworks` | Server and shared runtime included | Corresponding commercial software, COM/CLI, and license |
 
 The Office publish flow copies the downloaded OfficeCLI Windows binary from `mcp-office\vendor\officecli` into the bundle as `tools/officecli.exe`. If the vendor binary is missing, `publish-mcp-bundle.ps1` calls `mcp-office\scripts\download-officecli.ps1`.
+
+The PlantUML publish flow copies the downloaded PlantUML jar from `mcp-plantuml\vendor\plantuml` into the bundle as `tools/plantuml.jar`, and points `PLANTUML_JAR_PATH` at it. If the vendor jar is missing, `publish-mcp-bundle.ps1` calls `mcp-plantuml\scripts\download-plantuml.ps1`, which defaults to the MIT-licensed PlantUML edition rather than the GPL `plantuml.jar`, because the bundle is redistributed inside the installer. Pass `-Edition asl|bsd|epl|lgpl|mit-light|gpl` to choose another one. The jar still needs a Java runtime on the target PC.
 
 The MATLAB publish flow copies the downloaded official MathWorks MCP binary from `mcp-matlab\vendor\official` into the bundle's `official/` folder.
 
@@ -379,4 +387,7 @@ Each folder contains a dedicated `README.md` with implementation notes, tool lis
 - `mcp-matlab/README.md`
 - `mcp-autocad/README.md`
 - `mcp-solidworks/README.md`
+- `mcp-gitea/README.md`
+- `mcp-plantuml/README.md`
+- `mcp-harbor/README.md`
 

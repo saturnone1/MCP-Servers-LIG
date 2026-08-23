@@ -148,7 +148,7 @@ internal sealed class McpManager
         var cursorWasVisible = TryGetCursorVisible();
         PrepareInteractiveConsole();
         var config = await LoadConfig();
-        var servers = config.Servers.ToArray();
+        var servers = config.Servers.Where(server => !server.Deprecated).ToArray();
         _interactiveProcessJob = ChildProcessJob.CreateForCurrentPlatform();
         LoadAutostartServers(servers);
         var autostartResult = await StartAutostartServers(servers);
@@ -259,7 +259,7 @@ internal sealed class McpManager
 
         var started = 0;
         var failed = new List<string>();
-        foreach (var server in servers.Where(server => _autostartServers.Contains(server.Name)))
+        foreach (var server in servers.Where(server => !server.Deprecated && _autostartServers.Contains(server.Name)))
         {
             try
             {
@@ -286,7 +286,7 @@ internal sealed class McpManager
         try
         {
             var names = JsonSerializer.Deserialize<string[]>(File.ReadAllText(_autostartPath), JsonOptions()) ?? [];
-            var knownNames = servers.Select(server => server.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var knownNames = servers.Where(server => !server.Deprecated).Select(server => server.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var name in names.Where(knownNames.Contains))
                 _autostartServers.Add(name);
         }
@@ -315,7 +315,7 @@ internal sealed class McpManager
 
     private async Task ExecuteAutostartCommand(ManagerConfig config, string[] args)
     {
-        var servers = config.Servers.ToArray();
+        var servers = config.Servers.Where(server => !server.Deprecated).ToArray();
         LoadAutostartServers(servers);
         var action = args.FirstOrDefault()?.ToLowerInvariant() ?? "list";
         if (action == "list")
@@ -480,7 +480,7 @@ internal sealed class McpManager
         PrintLogoMark();
         WriteColorLine(new string('-', width), ConsoleColor.DarkCyan);
         WriteKeyValueLine("시스템", "LIG Defense & Aerospace LIG AI MCP", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-        WriteKeyValueLine("담당", "서태원 선임연구원 / 미사일시스템통제기술연구소. M&S개발단.3팀", $"서버 {config.Servers.Count}개");
+        WriteKeyValueLine("담당", "서태원 선임연구원 / 미사일시스템통제기술연구소. M&S개발단.3팀", $"서버 {config.Servers.Count(server => !server.Deprecated)}개");
         WriteKeyValueLine("설정", ShortenPath(_configPath, width - 16), "");
         WriteKeyValueLine("번들", ShortenPath(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), width - 16), "");
         WriteColorLine(new string('=', width), ConsoleColor.DarkCyan);
@@ -1300,18 +1300,26 @@ internal sealed class McpManager
 
     private IEnumerable<ServerConfig> Select(ManagerConfig config, string target)
     {
+        var byName = config.Servers.Where(s => string.Equals(s.Name, target, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (byName.Length > 0)
+            return byName;
+
+        // 그룹/종류 대상은 지원 종료 서버를 건너뛰고, 이름을 직접 지정할 때만 선택됩니다.
+        var supported = config.Servers.Where(s => !s.Deprecated);
         if (string.Equals(target, "all", StringComparison.OrdinalIgnoreCase))
-            return config.Servers;
+            return supported;
         if (string.Equals(target, "docker", StringComparison.OrdinalIgnoreCase))
-            return config.Servers.Where(s => s.Kind == "docker");
+            return supported.Where(s => s.Kind == "docker");
         if (string.Equals(target, "windows", StringComparison.OrdinalIgnoreCase) || string.Equals(target, "desktop", StringComparison.OrdinalIgnoreCase))
-            return config.Servers.Where(s => s.Kind == "process");
-        return config.Servers.Where(s => string.Equals(s.Name, target, StringComparison.OrdinalIgnoreCase) || s.Groups.Contains(target, StringComparer.OrdinalIgnoreCase));
+            return supported.Where(s => s.Kind == "process");
+        return supported.Where(s => s.Groups.Contains(target, StringComparer.OrdinalIgnoreCase));
     }
 
     private async Task Start(ServerConfig server)
     {
         WriteColorLine($"== 시작: {server.Name}", ConsoleColor.Green);
+        if (server.Deprecated)
+            WriteColorLine($"{server.Name}은(는) 지원 종료된 서버입니다. 번들에 포함되지 않아 실행되지 않을 수 있습니다.", ConsoleColor.Yellow);
         if (server.Kind == "docker")
         {
             await StartDocker(server);
@@ -1630,10 +1638,11 @@ internal sealed class McpManager
         WriteColorLine("그룹", ConsoleColor.DarkGray);
         foreach (var server in servers)
         {
-            WriteColor($"{server.Name,-18}", ConsoleColor.Cyan);
+            WriteColor($"{server.Name,-18}", server.Deprecated ? ConsoleColor.DarkGray : ConsoleColor.Cyan);
             WriteColor($"{server.Kind,-9}", ConsoleColor.Gray);
             WriteColor($"{server.Port,-6}", ConsoleColor.Gray);
-            WriteColorLine(string.Join(",", server.Groups), ConsoleColor.DarkGray);
+            var groups = string.Join(",", server.Groups);
+            WriteColorLine(server.Deprecated ? $"{groups} [지원종료]" : groups, ConsoleColor.DarkGray);
         }
     }
 
@@ -2085,6 +2094,7 @@ internal sealed record ProcessIdentity(int Pid, long? StartTimeUtcTicks);
 internal sealed class ServerConfig
 {
     public string Name { get; set; } = "";
+    public bool Deprecated { get; set; }
     public string Kind { get; set; } = "";
     public int Port { get; set; }
     public string Image { get; set; } = "";
