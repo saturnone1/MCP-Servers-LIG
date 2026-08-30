@@ -1,0 +1,51 @@
+{{- range $name, $server := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lig-mcp-{{ $name }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: lig-mcp-{{ $name }} } }
+  template:
+    metadata:
+      labels:
+        app: lig-mcp-{{ $name }}
+        app.kubernetes.io/part-of: lig-mcp
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ if eq $name "kubernetes" }}lig-mcp-kubernetes{{ else }}default{{ end }}
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.registry }}/{{ $server.image }}"
+          imagePullPolicy: IfNotPresent
+          {{- with $server.command }}
+          command: {{ toJson . }}
+          {{- end }}
+          {{- with $server.args }}
+          args: {{ toJson . }}
+          {{- end }}
+          ports: [{ name: http, containerPort: {{ $server.port }} }]
+          {{- with $server.env }}
+          env:
+            {{- range $key, $value := . }}
+            - { name: {{ $key }}, value: {{ $value | quote }} }
+            {{- end }}
+          {{- end }}
+          {{- with $server.secretName }}
+          envFrom: [{ secretRef: { name: {{ . }}, optional: false } }]
+          {{- end }}
+          readinessProbe: { tcpSocket: { port: http }, initialDelaySeconds: 3 }
+          livenessProbe: { tcpSocket: { port: http }, initialDelaySeconds: 10 }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+          resources: {{ toYaml $.Values.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata: { name: lig-mcp-{{ $name }} }
+spec:
+  selector: { app: lig-mcp-{{ $name }} }
+  ports: [{ name: http, port: {{ $server.port }}, targetPort: http }]
+{{- end }}

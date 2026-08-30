@@ -1,0 +1,11 @@
+registry: harbor.lig.local/lig-mcp
+services:
+  grafana:
+    env:
+      GRAFANA_URL: http://grafana.monitoring.svc:3000
+  harbor:
+    env:
+      HARBOR_BASE_URL: https://harbor.lig.local
+  xwiki:
+    env:
+      XWIKI_BASE_URL: http://xwiki.xwiki.svc:8080/xwiki/rest/wikis/xwiki

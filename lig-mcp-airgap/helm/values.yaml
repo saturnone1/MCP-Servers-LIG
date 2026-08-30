@@ -1,0 +1,35 @@
+registry: harbor.example.local/lig-mcp
+imagePullSecrets: []
+clientNamespaceSelector:
+  lig-mcp-access: "true"
+services:
+  kubernetes:
+    image: kubernetes-mcp-server:v0.0.66
+    port: 8080
+    args: ["--port", "8080", "--cluster-provider", "in-cluster"]
+  grafana:
+    image: mcp-grafana:1.3.0
+    secretName: lig-mcp-grafana
+    port: 8000
+    command: ["/app/mcp-grafana"]
+    args: ["-t", "streamable-http", "--address", "0.0.0.0:8000", "--allowed-hosts", "*"]
+    env:
+      GRAFANA_URL: http://grafana.monitoring.svc:3000
+  harbor:
+    image: mcp-harbor:1.0.0
+    secretName: lig-mcp-harbor
+    port: 8080
+    env:
+      HARBOR_BASE_URL: https://harbor.example.local
+      MCP_ENABLE_HARBOR_WRITES: "true"
+  xwiki:
+    image: xwiki-mcp:v20260810-3
+    secretName: lig-mcp-xwiki
+    port: 8080
+    env:
+      XWIKI_BASE_URL: http://xwiki.xwiki.svc:8080/xwiki/rest/wikis/xwiki
+      XWIKI_MCP_ADDR: :8080
+      XWIKI_MCP_ALLOW_DELETE: "true"
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { cpu: 500m, memory: 512Mi }

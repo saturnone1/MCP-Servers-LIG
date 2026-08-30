@@ -27,3 +27,4 @@ mcp-*-bundle-patch.zip
 mcp-manager/publish/
 .mcp-manager/
 tests/fixtures/office-smoke-*
+artifacts/

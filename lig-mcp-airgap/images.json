@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "images": [
+    { "name": "kubernetes", "source": "quay.io/containers/kubernetes_mcp_server:v0.0.66", "target": "kubernetes-mcp-server:v0.0.66", "license": "Apache-2.0" },
+    { "name": "grafana", "source": "docker.io/grafana/mcp-grafana:1.3.0", "target": "mcp-grafana:1.3.0", "license": "Apache-2.0" },
+    { "name": "harbor", "source": "local/lig-mcp-harbor:1.0.0", "target": "mcp-harbor:1.0.0", "buildContext": "mcp-harbor", "license": "repository" },
+    { "name": "xwiki", "source": "docker.io/lnikonl/xwiki-mcp:v20260810-3", "target": "xwiki-mcp:v20260810-3", "license": "Apache-2.0" }
+  ]
+}
